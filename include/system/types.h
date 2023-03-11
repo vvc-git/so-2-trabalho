@@ -41,6 +41,14 @@ extern "C"
 inline void * operator new(size_t s, void * a) { return a; }
 inline void * operator new[](size_t s, void * a) { return a; }
 
+void * operator new(size_t, const EPOS::System_Allocator &);
+void * operator new[](size_t, const EPOS::System_Allocator &);
+
+void * operator new(size_t, const EPOS::Scratchpad_Allocator &);
+void * operator new[](size_t, const EPOS::Scratchpad_Allocator &);
+
+void * operator new(size_t, const EPOS::Color &);
+void * operator new[](size_t, const EPOS::Color &);
 
 // Utilities
 __BEGIN_UTIL
@@ -54,7 +62,10 @@ template<> class Padding<64> { long long int _padding; } __attribute__((packed))
 typedef unsigned char Percent;
 typedef unsigned char UUID[8];
 
-class Dummy {};
+template <typename ... Tn> struct Dummy {
+    Dummy(Tn ... an){}
+    friend Debug & operator<<(Debug & db, const Dummy & d) { return db; };
+};
 
 __END_UTIL
 
@@ -160,7 +171,6 @@ enum
     CLOCK_ID,
     ALARM_ID,
     CHRONOMETER_ID,
-    IPC_COMMUNICATOR_ID,
     UTILITY_ID,
     LAST_COMPONENT_ID,
 
