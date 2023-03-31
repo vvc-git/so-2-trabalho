@@ -91,6 +91,8 @@ namespace EPOS {
 #define __UART_H                __HEADER_MACH(uart)
 #define __DISPLAY_H             __HEADER_MACH(display)
 #define __KEYBOARD_H            __HEADER_MACH(keyboard)
+#define __SCRATCHPAD_H          __HEADER_MACH(scratchpad)
+#define __FPGA_H                __HEADER_MACH(fpga)
 
 #define __KEYPAD_H              __HEADER_TRAN(keypad)
 
@@ -180,6 +182,7 @@ namespace EPOS {
 #define __PMU_H                 __HEADER_ARCH(pmu)
 
 #define __UART_H                __HEADER_MACH(uart)
+#define __SPI_H                 __HEADER_MACH(spi)
 #endif
 
 #include <system/meta.h>
