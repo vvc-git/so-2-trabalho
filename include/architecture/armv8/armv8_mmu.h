@@ -78,16 +78,16 @@ public:
             IO                  = (nG | RW_USR | DEV | PTE),                            // Device Memory = Shareable, RWX, SYS
             DMA                 = (nG | RO_SYS | DEV | PTE),                            // Device Memory no cacheable / Old Peripheral = Shareable, RWX, B ?
 
-            PT_MASK             = ((PG_SIZE - 1) | (0xfUL << 52)),
+            PT_MASK             = (sizeof(Page) - 1) | (0xfUL << 52),
             PD_FLAGS            = (PAGE_DESCRIPTOR | XN | EL1_XN),
-            PD_MASK             = ((PG_SIZE - 1) | (0xfUL << 52))
+            PD_MASK             = (sizeof(Page) - 1) | (0xfUL << 52)
         };
         
     public:
         Page_Flags() {}
         Page_Flags(unsigned long f) : _flags(f) {}
         Page_Flags(Flags f) : _flags(nG |
-                                     ((f & Flags::RW)  ? RW_SYS : RO_SYS) |
+                                     ((f & Flags::WR)  ? RW_SYS : RO_SYS) |
                                      // ((f & Flags::USR) ? RW_USR : 0) | // as we are in EL1, this will brake system
                                      ((f & Flags::CWT) ? CWT  : CWB) |
                                      ((f & Flags::CD)  ? CD   : 0) |
@@ -205,7 +205,7 @@ public:
         unsigned int size() const { return (_to - _from) * sizeof(Page); }
 
         Phy_Addr phy_address() const {
-            return (!((_flags & Page_Flags::CWT) || (_flags & Page_Flags::CD))) ? Phy_Addr(ind((*_pt)[_from])) : Phy_Addr(false);
+            return (!((_flags & Page_Flags::CWT) || (_flags & Page_Flags::CD))) ? Phy_Addr(unflag((*_pt)[_from])) : Phy_Addr(false);
             // CT == Strongly Ordered == C/B/TEX bits are 0
         }
 
@@ -293,7 +293,7 @@ public:
 
         void detach(const Chunk & chunk) {
             for(unsigned int i = 0; i < PD_ENTRIES; i++) {
-                if(ind(pte2phy((*_pd)[i])) == ind(chunk.pt())) {
+                if(unflag(pte2phy((*_pd)[i])) == unflag(chunk.pt())) {
                     detach(i, chunk.pt(), chunk.pts());
                     return;
                 }
@@ -303,7 +303,7 @@ public:
 
         void detach(const Chunk & chunk, Log_Addr addr) {
             unsigned int from = pdi(addr);
-            if(ind(pte2phy((*_pd)[from])) != ind(chunk.pt())) {
+            if(unflag(pte2phy((*_pd)[from])) != unflag(chunk.pt())) {
                 db<MMU>(WRN) << "MMU::Directory::detach(pt=" << chunk.pt() << ",addr=" << addr << ") failed!" << endl;
                 return;
             }
@@ -423,7 +423,7 @@ public:
 
     static void free(Phy_Addr frame, int n = 1) {
         // Clean up MMU flags in frame address
-        frame = ind(frame);
+        frame = unflag(frame);
         Color color = colorful ? phy2color(frame) : WHITE;
 
         db<MMU>(TRC) << "MMU::free(frame=" << frame << ",color=" << color << ",n=" << n << ")" << endl;
@@ -437,7 +437,7 @@ public:
 
     static void white_free(Phy_Addr frame, int n) {
         // Clean up MMU flags in frame address
-        frame = ind(frame);
+        frame = unflag(frame);
 
         db<MMU>(TRC) << "MMU::free(frame=" << frame << ",color=" << WHITE << ",n=" << n << ")" << endl;
 
@@ -494,7 +494,7 @@ private:
     static Page_Directory * _master;
 };
 
-class MMU: public IF<Traits<System>::multitask, ARMv8_MMU, No_MMU>::Result {};
+class MMU: public IF<Traits<System>::multitask || true, ARMv8_MMU, No_MMU>::Result {};
 
 __END_SYS
 

@@ -2,7 +2,6 @@
 
 #include <machine/machine.h>
 #include <machine/display.h>
-#include <system/memory_map.h>
 
 __BEGIN_SYS
 

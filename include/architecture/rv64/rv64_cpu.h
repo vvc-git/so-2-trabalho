@@ -215,7 +215,7 @@ public:
     static Reg fr() { Reg r; ASM("mv %0, a0" :  "=r"(r)); return r; }
     static void fr(Reg r) {  ASM("mv a0, %0" : : "r"(r) :); }
 
-    static unsigned int id() { return 0; }
+    static unsigned int id() { return multitask ? tp() : mhartid(); } // SiFive-U always has 2 cores, but core 0 does not feature an MMU, so we halt it and let core 1 run in a single-core configuration; id must be 1 for CLINT offsets and similar things.
     static unsigned int cores() { return 1; }
 
     using CPU_Common::clock;
@@ -394,6 +394,12 @@ public:
 
     static void mideleg(Reg r) { ASM("csrw mideleg, %0" : : "r"(r) : "cc"); }
     static void medeleg(Reg r) { ASM("csrw medeleg, %0" : : "r"(r) : "cc"); }
+
+    static void pmpcfg0(Reg r)   { ASM("csrw pmpcfg0,  %0" : : "r"(r) : "cc"); }
+    static Reg  pmpcfg0() { Reg r; ASM("csrr %0, pmpcfg0" :  "=r"(r) : : ); return r; }
+
+    static void pmpaddr0(Reg r)   { ASM("csrw pmpaddr0, %0" : : "r"(r) : "cc"); }
+    static Reg  pmpaddr0() { Reg r; ASM("csrr %0, pmpaddr0" :  "=r"(r) : : ); return r; }
 
     // Supervisor mode
     static void sint_enable()  { ASM("csrsi sstatus, %0" : : "i"(SIE) : "cc"); }

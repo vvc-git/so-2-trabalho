@@ -24,6 +24,7 @@ protected:
     typedef CPU::Log_Addr Log_Addr;
     typedef CPU::Phy_Addr Phy_Addr;
 
+public:
     // Address Constants
     static const unsigned long LA_BITS  = OFFSET_BITS + PT_BITS + AT_BITS + PD_BITS;
     static const unsigned long PT_SHIFT = OFFSET_BITS;
@@ -35,9 +36,10 @@ protected:
     static const unsigned long AT_SPAN = 1UL << (OFFSET_BITS + PT_BITS + AT_BITS);
     static const unsigned long PD_SPAN = 1UL << (OFFSET_BITS + PT_BITS + AT_BITS + PD_BITS);
 
-public:
-    // Memory page
+    // Memory pages
     typedef unsigned char Page[PG_SIZE];
+    typedef unsigned char Big_Page[PT_SPAN];
+    typedef unsigned char Huge_Page[AT_SPAN];
     typedef Page Frame;
 
     // Page_Table, Attacher and Page_Directory entries
@@ -57,17 +59,17 @@ public:
         enum {
             PRE  = 1 << 0, // Present
             RD   = 1 << 1, // Readable
-            RW   = 1 << 2, // Writable
+            WR   = 1 << 2, // Writable
             EX   = 1 << 3, // Executable
             USR  = 1 << 4, // Access Control (0=supervisor, 1=user)
             CD   = 1 << 5, // Cache disable (0=cacheable, 1=non-cacheable)
             CWT  = 1 << 6, // Cache mode (0=write-back, 1=write-through)
             CT   = 1 << 7, // Contiguous (0=non-contiguous, 1=contiguous)
             IO   = 1 << 8, // Memory Mapped I/O (0=memory, 1=I/O)
-            SYS  = (PRE | RD | RW | EX),
-            APP  = (PRE | RD | RW | EX | USR),
+            SYS  = (PRE | RD | WR | EX),
+            APP  = (PRE | RD | WR | EX | USR),
             APPC = (PRE | RD | EX | USR),
-            APPD = (PRE | RD | RW | USR)
+            APPD = (PRE | RD | WR | USR)
         };
 
     public:
@@ -93,11 +95,13 @@ public:
     constexpr static unsigned int pts(unsigned int pages) { return PT_BITS ? (pages + PT_ENTRIES - 1) / PT_ENTRIES : 0; }
     constexpr static unsigned long pages(unsigned long bytes) { return (bytes + sizeof(Page) - 1) / sizeof(Page); }
 
+    // Functions to handle physical addresses
+    constexpr static Phy_Addr unflag(Phy_Addr addr) { return addr & ~(sizeof(Page) - 1); }
+
     // Functions to handle logical addresses
-    constexpr static unsigned long ind(Log_Addr addr) { return addr & ~(sizeof(Page) - 1); }
     constexpr static unsigned long off(Log_Addr addr) { return addr & (sizeof(Page) - 1); }
     constexpr static unsigned long pti(Log_Addr addr) { return (addr >> PT_SHIFT) & (PT_ENTRIES - 1); }
-    constexpr static unsigned long pti(Log_Addr base, Log_Addr addr) { return pti(addr - base); }
+    constexpr static unsigned long pti(Log_Addr base, Log_Addr addr) { return (addr - base) >> PT_SHIFT; } // can be larger than PT_ENTRIES, used mainly by chunks
     constexpr static unsigned long ati(Log_Addr addr) { return (addr >> AT_SHIFT) & (AT_ENTRIES - 1); }
     constexpr static unsigned long pdi(Log_Addr addr) { return (addr >> PD_SHIFT) & (PD_ENTRIES - 1); }
 

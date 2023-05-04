@@ -39,7 +39,7 @@ public:
             AP0  = 1 << 4,  
             AP1  = 1 << 5,
             AP2  = 1 << 9,
-            RW   = AP0,         // read/write, system
+            WR   = AP0,         // read/write, system
             RO   = AP2,         // read/only, system
             USR  = (AP1 | AP0),
             // TEX[2:0], C, B, S --> set shareability/cacheability
@@ -77,7 +77,7 @@ public:
         Page_Flags() {}
         Page_Flags(unsigned long f) : _flags(f) {}
         Page_Flags(Flags f) : _flags(nG |
-                                    ((f & Flags::RW)  ? RW   : RO) |
+                                    ((f & Flags::WR)  ? WR   : RO) |
                                     ((f & Flags::USR) ? USR  : 0) |
                                     ((f & Flags::CWT) ? CWT  : 0) |
                                     ((f & Flags::CD)  ? CD   : 0) |
@@ -227,7 +227,7 @@ public:
         unsigned int size() const { return (_to - _from) * sizeof(Page); }
 
         Phy_Addr phy_address() const {
-            return (!((_flags & Page_Flags::CWT) || (_flags & Page_Flags::CD))) ? Phy_Addr(ind((*_pt)[_from])) : Phy_Addr(false);
+            return (!((_flags & Page_Flags::CWT) || (_flags & Page_Flags::CD))) ? Phy_Addr(unflag((*_pt)[_from])) : Phy_Addr(false);
             // CT == Strongly Ordered == C/B/TEX bits are 0
         }
 
@@ -315,7 +315,7 @@ public:
 
         void detach(const Chunk & chunk) {
             for(unsigned int i = 0; i < PD_ENTRIES; i++) {
-                if(ind(pte2phy((*_pd)[i])) == ind(chunk.pt())) {
+                if(unflag(pte2phy((*_pd)[i])) == unflag(chunk.pt())) {
                     detach(i, chunk.pt(), chunk.pts());
                     return;
                 }
@@ -325,7 +325,7 @@ public:
 
         void detach(const Chunk & chunk, Log_Addr addr) {
             unsigned int from = pdi(addr);
-            if(ind(pte2phy((*_pd)[from])) != ind(chunk.pt())) {
+            if(unflag(pte2phy((*_pd)[from])) != unflag(chunk.pt())) {
                 db<MMU>(WRN) << "MMU::Directory::detach(pt=" << chunk.pt() << ",addr=" << addr << ") failed!" << endl;
                 return;
             }
@@ -445,7 +445,7 @@ public:
 
     static void free(Phy_Addr frame, int n = 1) {
         // Clean up MMU flags in frame address
-        frame = ind(frame);
+        frame = unflag(frame);
         Color color = colorful ? phy2color(frame) : WHITE;
 
         db<MMU>(TRC) << "MMU::free(frame=" << frame << ",color=" << color << ",n=" << n << ")" << endl;
@@ -459,7 +459,7 @@ public:
 
     static void white_free(Phy_Addr frame, int n) {
         // Clean up MMU flags in frame address
-        frame = ind(frame);
+        frame = unflag(frame);
 
         db<MMU>(TRC) << "MMU::free(frame=" << frame << ",color=" << WHITE << ",n=" << n << ")" << endl;
 
@@ -516,7 +516,7 @@ private:
     static Page_Directory * _master;
 };
 
-class MMU: public IF<Traits<System>::multitask, ARMv7_MMU, No_MMU>::Result {};
+class MMU: public IF<Traits<System>::multitask || (Traits<Build>::MODEL == Traits<Build>::Raspberry_Pi3), ARMv7_MMU, No_MMU>::Result {};
 
 __END_SYS
 

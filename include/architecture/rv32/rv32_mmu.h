@@ -10,7 +10,7 @@
 
 __BEGIN_SYS
 
-class RV32S_MMU: public MMU_Common<10, 10, 12>
+class SV32_MMU: public MMU_Common<10, 10, 12>
 {
     friend class CPU;
     friend class Setup;
@@ -20,12 +20,13 @@ private:
     typedef MMU_Common<10, 10, 12> Common;
 
     static const bool colorful = Traits<MMU>::colorful;
-    static const unsigned int COLORS = Traits<MMU>::COLORS;
-    static const unsigned int RAM_BASE = Memory_Map::RAM_BASE;
-    static const unsigned int APP_LOW = Memory_Map::APP_LOW;
-    static const unsigned int PHY_MEM = Memory_Map::PHY_MEM;
-    static const unsigned int SYS = Memory_Map::SYS;
-    static const unsigned int IO = Memory_Map::IO;
+    static const unsigned long COLORS = Traits<MMU>::COLORS;
+    static const unsigned long RAM_BASE = Memory_Map::RAM_BASE;
+    static const unsigned long APP_LOW = Memory_Map::APP_LOW;
+    static const unsigned long APP_HIGH = Memory_Map::APP_HIGH;
+    static const unsigned long PHY_MEM = Memory_Map::PHY_MEM;
+    static const unsigned long SYS = Memory_Map::SYS;
+    static const unsigned long IO = Memory_Map::IO;
 
 public:
     // Page Flags
@@ -43,23 +44,31 @@ public:
             D    = 1 << 7, // Dirty
             CT   = 1 << 8, // Contiguous (reserved for use by supervisor RSW)
             MIO  = 1 << 9, // I/O (reserved for use by supervisor RSW)
-            APP  = (V | R | W | X),
-            APPC = (V | R | X),
-            APPD = (V | R | W),
-            SYS  = (V | R | W | X),
+
+            IAD  = (Traits<Build>::MODEL == Traits<Build>::SiFive_U) ? A | D : 0, // SiFive-U RV64 MMU can´t handle A and D and requires it to be set
+
+            APP  = (V | R | W | X | U | IAD),
+            APPC = (V | R |     X | U | IAD),
+            APPD = (V | R | W | X | U | IAD),
+            SYS  = (V | R | W | X | IAD),
             IO   = (SYS | MIO),
             DMA  = (SYS | CT),
-            MASK = (1 << 10) - 1
+            MASK = (1 << 10) - 1,
+
+            PT  = (V | IAD),
+            PD  = (V | IAD),
+
+            FLAT_MEM_PD = SYS,
         };
 
     public:
         Page_Flags() {}
         Page_Flags(unsigned long f) : _flags(f) {}
-        Page_Flags(Flags f) : _flags(V |
+        Page_Flags(Flags f) : _flags(V | IAD |
                                      ((f & Flags::RD)  ? R  : 0) |
-                                     ((f & Flags::RW)  ? W  : 0) |
+                                     ((f & Flags::WR)  ? W  : 0) |
                                      ((f & Flags::EX)  ? X  : 0) |
-//                                     ((f & Flags::USR) ? U  : 0) |
+                                     ((f & Flags::USR) ? U  : 0) |
                                      ((f & Flags::CWT) ? 0  : 0) |
                                      ((f & Flags::CD)  ? 0  : 0) |
                                      ((f & Flags::CT)  ? CT : 0) |
@@ -137,7 +146,7 @@ public:
     public:
         Chunk() {}
 
-        Chunk(unsigned int bytes, Flags flags, Color color = WHITE)
+        Chunk(unsigned long bytes, Flags flags, Color color = WHITE)
         : _from(0), _to(pages(bytes)), _pts(Common::pts(_to - _from)), _flags(Page_Flags(flags)), _pt(calloc(_pts, WHITE)) {
             if(_flags & Page_Flags::CT)
                 _pt->map_contiguous(_from, _to, _flags, color);
@@ -145,13 +154,18 @@ public:
                 _pt->map(_from, _to, _flags, color);
         }
 
-        Chunk(Phy_Addr phy_addr, unsigned int bytes, Flags flags)
+        Chunk(Phy_Addr phy_addr, unsigned long bytes, Flags flags)
         : _from(0), _to(pages(bytes)), _pts(Common::pts(_to - _from)), _flags(Page_Flags(flags)), _pt(calloc(_pts, WHITE)) {
             _pt->remap(phy_addr, _from, _to, flags);
         }
 
         Chunk(Phy_Addr pt, unsigned int from, unsigned int to, Flags flags)
         : _from(from), _to(to), _pts(Common::pts(_to - _from)), _flags(flags), _pt(pt) {}
+
+        Chunk(Phy_Addr pt, unsigned int from, unsigned int to, Flags flags, Phy_Addr phy_addr)
+        : _from(from), _to(to), _pts(Common::pts(_to - _from)), _flags(flags), _pt(pt) {
+            _pt->remap(phy_addr, _from, _to, flags);
+        }
 
         ~Chunk() {
             if(!(_flags & Page_Flags::IO)) {
@@ -167,23 +181,23 @@ public:
         unsigned int pts() const { return _pts; }
         Page_Flags flags() const { return _flags; }
         Page_Table * pt() const { return _pt; }
-        unsigned int size() const { return (_to - _from) * sizeof(Page); }
+        unsigned long size() const { return (_to - _from) * sizeof(Page); }
 
         Phy_Addr phy_address() const {
-            return (_flags & Page_Flags::CT) ? Phy_Addr(ind((*_pt)[_from])) : Phy_Addr(false);
+            return (_flags & Page_Flags::CT) ? Phy_Addr(unflag((*_pt)[_from])) : Phy_Addr(false);
         }
 
-        int resize(unsigned int amount) {
+        int resize(unsigned long amount) {
             if(_flags & Page_Flags::CT)
                 return 0;
 
-            unsigned int pgs = pages(amount);
+            unsigned long pgs = pages(amount);
 
             Color color = colorful ? phy2color(_pt) : WHITE;
 
-            unsigned int free_pgs = _pts * PT_ENTRIES - _to;
+            unsigned long free_pgs = _pts * PT_ENTRIES - _to;
             if(free_pgs < pgs) { // resize _pt
-                unsigned int pts = _pts + Common::pts(pgs - free_pgs);
+                unsigned long pts = _pts + Common::pts(pgs - free_pgs);
                 Page_Table * pt = calloc(pts, color);
                 memcpy(phy2log(pt), phy2log(_pt), _pts * sizeof(Page));
                 free(_pt, _pts);
@@ -226,7 +240,7 @@ public:
 
         Phy_Addr pd() const { return _pd; }
 
-        void activate() const { RV32S_MMU::pd(_pd); }
+        void activate() const { SV32_MMU::pd(_pd); }
 
         Log_Addr attach(const Chunk & chunk, unsigned int from = pdi(APP_LOW)) {
             for(unsigned int i = from; i < PD_ENTRIES; i++)
@@ -244,7 +258,7 @@ public:
 
         void detach(const Chunk & chunk) {
             for(unsigned int i = 0; i < PD_ENTRIES; i++) {
-                if(ind(pte2phy((*_pd)[i])) == ind(chunk.pt())) {
+                if(unflag(pte2phy((*_pd)[i])) == unflag(chunk.pt())) {
                     detach(i, chunk.pt(), chunk.pts());
                     return;
                 }
@@ -254,7 +268,7 @@ public:
 
         void detach(const Chunk & chunk, Log_Addr addr) {
             unsigned int from = pdi(addr);
-            if(ind(pte2phy((*_pd)[from])) != ind(chunk.pt())) {
+            if(unflag(pte2phy((*_pd)[from])) != unflag(chunk.pt())) {
                 db<MMU>(WRN) << "MMU::Directory::detach(pt=" << chunk.pt() << ",addr=" << addr << ") failed!" << endl;
                 return;
             }
@@ -294,13 +308,13 @@ public:
     class DMA_Buffer: public Chunk
     {
     public:
-        DMA_Buffer(unsigned int s) : Chunk(s, Page_Flags::DMA) {
+        DMA_Buffer(unsigned long s) : Chunk(s, Page_Flags::DMA) {
             Directory dir(current());
             _log_addr = dir.attach(*this);
             db<MMU>(TRC) << "MMU::DMA_Buffer() => " << *this << endl;
         }
 
-        DMA_Buffer(unsigned int s, Log_Addr d): Chunk(s, Page_Flags::DMA) {
+        DMA_Buffer(unsigned long s, Log_Addr d): Chunk(s, Page_Flags::DMA) {
             Directory dir(current());
             _log_addr = dir.attach(*this);
             memcpy(_log_addr, d, s);
@@ -333,7 +347,7 @@ public:
             os << "{addr=" << static_cast<void *>(t._addr) << ",pd=" << pd << ",pd[" << pdi(t._addr) << "]=" << pde << ",pt=" << pt;
             if(t._show_pt)
                 os << "=>" << pt->log();
-            os << ",pt[" << pti(t._addr) << "]=" << pte << ",f=" << pte2phy(pte) << ",*addr=" << hex << *static_cast<unsigned int *>(t._addr) << "}";
+            os << ",pt[" << pti(t._addr) << "]=" << pte << ",f=" << pte2phy(pte) << ",*addr=" << hex << *static_cast<unsigned long *>(t._addr) << "}";
             return os;
         }
 
@@ -344,9 +358,9 @@ public:
     };
 
 public:
-    RV32S_MMU() {}
+    SV32_MMU() {}
 
-    static Phy_Addr alloc(unsigned int frames = 1, Color color = WHITE) {
+    static Phy_Addr alloc(unsigned long frames = 1, Color color = WHITE) {
         Phy_Addr phy(false);
 
         if(frames) {
@@ -364,15 +378,15 @@ public:
         return phy;
     }
 
-    static Phy_Addr calloc(unsigned int frames = 1, Color color = WHITE) {
+    static Phy_Addr calloc(unsigned long frames = 1, Color color = WHITE) {
         Phy_Addr phy = alloc(frames, color);
         memset(phy2log(phy), 0, sizeof(Frame) * frames);
         return phy;
     }
 
-    static void free(Phy_Addr frame, int n = 1) {
+    static void free(Phy_Addr frame, unsigned long n = 1) {
         // Clean up MMU flags in frame address
-        frame = ind(frame);
+        frame = unflag(frame);
         Color color = colorful ? phy2color(frame) : WHITE;
 
         db<MMU>(TRC) << "MMU::free(frame=" << frame << ",color=" << color << ",n=" << n << ")" << endl;
@@ -384,9 +398,9 @@ public:
         }
     }
 
-    static void white_free(Phy_Addr frame, int n) {
+    static void white_free(Phy_Addr frame, unsigned long n) {
         // Clean up MMU flags in frame address
-        frame = ind(frame);
+        frame = unflag(frame);
 
         db<MMU>(TRC) << "MMU::free(frame=" << frame << ",color=" << WHITE << ",n=" << n << ")" << endl;
 
@@ -397,7 +411,7 @@ public:
         }
     }
 
-    static unsigned int allocable(Color color = WHITE) { return _free[color].head() ? _free[color].head()->size() : 0; }
+    static unsigned long allocable(Color color = WHITE) { return _free[color].head() ? _free[color].head()->size() : 0; }
 
     static Page_Directory * volatile current() { return static_cast<Page_Directory * volatile>(pd()); }
 
@@ -428,8 +442,8 @@ public:
     }
 
 private:
-    static Phy_Addr pd() { return CPU::satp() << 12; }
-    static void pd(Phy_Addr pd) { CPU::satp((1 << 31) | (pd >> 12)); }
+    static Phy_Addr pd() { return CPU::satp() << PT_SHIFT; }
+    static void pd(Phy_Addr pd) { CPU::satp((1 << 31) | (pd >> PT_SHIFT)); }
 
     static void flush_tlb() { CPU::flush_tlb(); }
     static void flush_tlb(Log_Addr addr) { CPU::flush_tlb(addr); }
@@ -441,7 +455,7 @@ private:
     static Page_Directory * _master;
 };
 
-class MMU: public IF<Traits<System>::multitask, RV32S_MMU, No_MMU>::Result {};
+class MMU: public IF<Traits<System>::multitask || (Traits<Build>::MODEL != Traits<Build>::SiFive_E), SV32_MMU, No_MMU>::Result {};
 
 __END_SYS
 

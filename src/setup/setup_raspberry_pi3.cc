@@ -237,7 +237,7 @@ void Setup::build_lm()
         if(!stp_elf->valid())
             db<Setup>(ERR) << "SETUP ELF image is corrupted!" << endl;
         si->lm.stp_entry = stp_elf->entry();
-        int i = 0;
+        unsigned int i = 0;
         for(; (i < stp_elf->segments()) && (stp_elf->segment_type(i) != PT_LOAD); i++);
         si->lm.stp_code = stp_elf->segment_address(i);
         si->lm.stp_code_size = stp_elf->segment_size(i);
@@ -264,7 +264,7 @@ void Setup::build_lm()
         if(!ini_elf->valid())
             db<Setup>(ERR) << "INIT ELF image is corrupted!" << endl;
         si->lm.ini_entry = ini_elf->entry();
-        int i = 0;
+        unsigned int i = 0;
         for(; (i < ini_elf->segments()) && (ini_elf->segment_type(i) != PT_LOAD); i++);
         si->lm.ini_code = ini_elf->segment_address(i);
         si->lm.ini_code_size = ini_elf->segment_size(i);
@@ -293,7 +293,7 @@ void Setup::build_lm()
         if(!sys_elf->valid())
             db<Setup>(ERR) << "OS ELF image is corrupted!" << endl;
         si->lm.sys_entry = sys_elf->entry();
-        for(int i = 0; i < sys_elf->segments(); i++) {
+        for(unsigned int i = 0; i < sys_elf->segments(); i++) {
             if((sys_elf->segment_size(i) == 0) || (sys_elf->segment_type(i) != PT_LOAD))
                 continue;
             if((sys_elf->segment_address(i) < SYS) || (sys_elf->segment_address(i) > SYS_HIGH)) {
@@ -350,7 +350,7 @@ void Setup::build_lm()
         if(!app_elf->valid())
             db<Setup>(ERR) << "APP ELF image is corrupted!" << endl;
         si->lm.app_entry = app_elf->entry();
-        for(int i = 0; i < app_elf->segments(); i++) {
+        for(unsigned int i = 0; i < app_elf->segments(); i++) {
             if((app_elf->segment_size(i) == 0) || (app_elf->segment_type(i) != PT_LOAD))
                 continue;
             if((app_elf->segment_address(i) < APP_LOW) || (app_elf->segment_address(i) > APP_HIGH)) {
@@ -439,7 +439,7 @@ void Setup::build_pmm()
     //   NP = size of I/O address space in pages
     //   NPTE_PT = number of page table entries per page table
     top_page -= MMU::pts(MMU::pages(si->bm.mio_top - si->bm.mio_base));
-    si->pmm.io_pts = top_page * sizeof(Page);
+    si->pmm.io_pt = top_page * sizeof(Page);
 
     // Page tables to map the first APPLICATION code segment
     top_page -= MMU::pts(MMU::pages(si->lm.app_code_size));
@@ -629,7 +629,7 @@ void Setup::setup_sys_pd()
                    << ",spt="   << reinterpret_cast<void *>(si->pmm.sys_pt)
                    << ",spd="   << reinterpret_cast<void *>(si->pmm.sys_pd)
                    << ",mem="   << reinterpret_cast<void *>(si->pmm.phy_mem_pt)
-                   << ",io="    << reinterpret_cast<void *>(si->pmm.io_pts)
+                   << ",io="    << reinterpret_cast<void *>(si->pmm.io_pt)
                    << ",umemb=" << reinterpret_cast<void *>(si->pmm.usr_mem_base)
                    << ",umemt=" << reinterpret_cast<void *>(si->pmm.usr_mem_top)
                    << ",sysc="  << reinterpret_cast<void *>(si->pmm.sys_code)
@@ -653,7 +653,7 @@ void Setup::setup_sys_pd()
     unsigned int mem_size = MMU::pages(si->bm.mem_top - si->bm.mem_base);
     unsigned int n_pts = MMU::pts(mem_size);
 
-    // Map the whole physical memory into the page tables pointed by phy_mem_pts
+    // Map the whole physical memory into the page tables pointed by phy_mem_pt
     PT_Entry * pts = reinterpret_cast<PT_Entry *>(si->pmm.phy_mem_pt);
     for(unsigned int i = MMU::pti(si->bm.mem_base), j = 0; i < MMU::pti(si->bm.mem_base) + mem_size; i++, j++)
         pts[i] = MMU::phy2pte(si->bm.mem_base + j * sizeof(Page), Flags::SYS);
@@ -677,15 +677,15 @@ void Setup::setup_sys_pd()
     unsigned int io_size = MMU::pages(si->bm.mio_top - si->bm.mio_base);
     n_pts = MMU::pts(io_size);
 
-    // Map I/O address space into the page tables pointed by io_pts
-    pts = reinterpret_cast<PT_Entry *>(si->pmm.io_pts);
+    // Map I/O address space into the page tables pointed by io_pt
+    pts = reinterpret_cast<PT_Entry *>(si->pmm.io_pt);
     for(unsigned int i = 0; i < io_size; i++)
         pts[i] = MMU::phy2pte(si->bm.mio_base + i * sizeof(Page), Flags::IO);
 
     // Attach devices' memory at Memory_Map::IO
     assert((MMU::pdi(MMU::align_segment(IO)) + n_pts) < (MMU::PD_ENTRIES - 1)); // check if it would overwrite the OS
     for(unsigned int i = MMU::pdi(MMU::align_segment(IO)), j = 0; i < MMU::pdi(MMU::align_segment(IO)) + n_pts; i++, j++)
-        sys_pd[i] = MMU::phy2pde(si->pmm.io_pts + j * sizeof(Page_Table));
+        sys_pd[i] = MMU::phy2pde(si->pmm.io_pt + j * sizeof(Page_Table));
 
     // Attach the OS (i.e. sys_pt)
     n_pts = MMU::pts(MMU::pages(SYS_HEAP - SYS)); // SYS_HEAP is handled by Init_System
@@ -793,7 +793,7 @@ void Setup::load_parts()
     if(si->lm.has_ini) {
         db<Setup>(TRC) << "Setup::load_init()" << endl;
         ELF * ini_elf = reinterpret_cast<ELF *>(&bi[si->bm.init_offset]);
-        for(int i = 0; i < ini_elf->segments(); i++) {
+        for(unsigned int i = 0; i < ini_elf->segments(); i++) {
             if(ini_elf->segment_type(i) != PT_LOAD)
                 continue;
             if(Traits<Setup>::hysterically_debugged) {
@@ -810,7 +810,7 @@ void Setup::load_parts()
     if(si->lm.has_sys) {
         db<Setup>(TRC) << "Setup::load_sys()" << endl;
         ELF * sys_elf = reinterpret_cast<ELF *>(&bi[si->bm.system_offset]);
-        for(int i = 0; i < sys_elf->segments(); i++) {
+        for(unsigned int i = 0; i < sys_elf->segments(); i++) {
             if(sys_elf->segment_type(i) != PT_LOAD)
                 continue;
             if(Traits<Setup>::hysterically_debugged) {
@@ -827,7 +827,7 @@ void Setup::load_parts()
     if(si->lm.has_app) {
         db<Setup>(TRC) << "Setup::load_app()" << endl;
         ELF * app_elf = reinterpret_cast<ELF *>(&bi[si->bm.application_offset]);
-        for(int i = 0; i < app_elf->segments(); i++) {
+        for(unsigned int i = 0; i < app_elf->segments(); i++) {
             if(app_elf->segment_type(i) != PT_LOAD)
                 continue;
             if(Traits<Setup>::hysterically_debugged) {
