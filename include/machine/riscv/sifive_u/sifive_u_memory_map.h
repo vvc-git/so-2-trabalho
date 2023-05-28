@@ -56,8 +56,6 @@ public:
         APP_CODE        = Traits<Machine>::APP_CODE,
         APP_DATA        = Traits<Machine>::APP_DATA,
 
-        INIT            = Traits<Machine>::INIT,
-
         PHY_MEM         = Traits<Machine>::PHY_MEM,
 
         IO              = Traits<Machine>::IO,
@@ -69,8 +67,9 @@ public:
         SYS_PD          = multitask ? SYS + 0x00102000 : NOT_USED,
         SYS_DATA        = multitask ? SYS + 0x00103000 : NOT_USED,
         SYS_STACK       = multitask ? SYS + 0x00200000 : NOT_USED,
+        INIT            = multitask ? SYS_STACK        : NOT_USED,
         SYS_HEAP        = multitask ? SYS + 0x00400000 : NOT_USED,
-        SYS_HIGH        = multitask ? SYS + 0x007fffff : NOT_USED
+        SYS_HIGH        = multitask ? SYS + 0x5fffffff : NOT_USED
     };
 };
 

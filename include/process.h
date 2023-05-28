@@ -160,6 +160,10 @@ protected:
     Task(Address_Space * as, Segment * cs, Segment * ds, Log_Addr code, Log_Addr data, int (* entry)(Tn ...), Tn ... an)
     : _as(as), _cs(cs), _ds(ds), _code(code), _data(data), _entry(entry) {
         db<Task, Init>(TRC) << "Task(as=" << _as << ",cs=" << _cs << ",ds=" << _ds << ",code=" << _code << ",data=" << _data << ",entry=" << _entry << ") => " << this << endl;
+
+        _current = this;
+        activate();
+        _main = new (SYSTEM) Thread(Thread::Configuration(Thread::RUNNING, Thread::MAIN, this, 0), entry, an ...);
     }
 
 public:
@@ -167,16 +171,54 @@ public:
     Task(Segment * cs, Segment * ds, Log_Addr code, Log_Addr data, int (* entry)(Tn ...), Tn ... an)
     : _as (new (SYSTEM) Address_Space), _cs(cs), _ds(ds), _code(_as->attach(_cs, code)), _data(_as->attach(_ds, data)), _entry(entry) {
         db<Task>(TRC) << "Task(as=" << _as << ",cs=" << _cs << ",ds=" << _ds << ",entry=" << _entry << ",code=" << _code << ",data=" << _data << ") => " << this << endl;
+
+        _main = new (SYSTEM) Thread(Thread::Configuration(Thread::READY, Thread::NORMAL, this, 0), entry, an ...);
     }
     
     template<typename ... Tn>
     Task(const Thread::Configuration & conf, Segment * cs, Segment * ds, Log_Addr code, Log_Addr data, int (* entry)(Tn ...), Tn ... an)
     : _as (new (SYSTEM) Address_Space), _cs(cs), _ds(ds), _code(_as->attach(_cs, code)), _data(_as->attach(_ds, data)), _entry(entry) {
         db<Task>(TRC) << "Task(as=" << _as << ",cs=" << _cs << ",ds=" << _ds << ",entry=" << _entry << ",code=" << _code << ",data=" << _data << ") => " << this << endl;
+
+        _main = new (SYSTEM) Thread(Thread::Configuration(conf.state, conf.criterion, this, 0), entry, an ...);
     }
     
     template<typename ... Tn>
     Task(Task * task = _current, int (* entry)(Tn ...) = 0, Tn ... an) { // fork-like constructor
+        // Allocate resources
+        _as = new (SYSTEM) Address_Space;
+        _cs = new (SYSTEM) Segment(task->code_segment()->size()); // TODO: remap to Segment::Flags::APPC afer memcpy
+        _ds = new (SYSTEM) Segment(task->data_segment()->size());
+        _entry = entry ? entry : static_cast<int (*)(Tn ...)>(task->entry());
+
+        // Copy segments
+        Log_Addr src_code, src_data;
+        if(task == _current) {
+            src_code = task->code();
+            src_data = task->data();
+        } else {
+            src_code = _current->address_space()->attach(task->code_segment());
+            src_data = _current->address_space()->attach(task->data_segment());
+        }
+        Log_Addr dst_code = _current->address_space()->attach(_cs);
+        Log_Addr dst_data = _current->address_space()->attach(_ds);
+        memcpy(dst_code, src_code, task->code_segment()->size());
+        memcpy(dst_data, src_data, task->data_segment()->size());
+        _current->address_space()->detach(_cs);
+        _current->address_space()->detach(_ds);
+        if(task != _current) {
+            _current->address_space()->detach(task->code_segment());
+            _current->address_space()->detach(task->data_segment());
+        }
+
+        // Map segments
+        _code = _as->attach(_cs, task->code());
+        _data = _as->attach(_ds, task->data());
+
+        db<Task>(TRC) << "Task(as=" << _as << ",cs=" << _cs << ",ds=" << _ds << ",entry=" << _entry << ",code=" << _code << ",data=" << _data << ") => " << this << endl;
+
+        // Create the task's main thread
+        _main = new (SYSTEM) Thread(Thread::Configuration(Thread::READY, Thread::NORMAL, this, 0), static_cast<int (*)(Tn ...)>(_entry), an ...);
     }
 
     ~Task();
@@ -221,6 +263,36 @@ private:
 };
 
 
+// A Java-like Active Object
+class Active: public Thread
+{
+public:
+    Active(): Thread(Configuration(Thread::SUSPENDED), &entry, this) {}
+    virtual ~Active() {}
+
+    virtual int run() = 0;
+
+    void start() { resume(); }
+
+private:
+    static int entry(Active * runnable) { return runnable->run(); }
+};
+
+
+// An event handler that triggers a thread (see handler.h)
+class Thread_Handler : public Handler
+{
+public:
+    Thread_Handler(Thread * h) : _handler(h) {}
+    ~Thread_Handler() {}
+
+    void operator()() { _handler->resume(); }
+
+private:
+    Thread * _handler;
+};
+
+
 // Thread inline methods that depend on Task
 // Threads with the default configuration are only used in single-task scenarios, since the framework's agent always creates a configuration
 template<typename ... Tn>
@@ -234,9 +306,7 @@ inline Thread::Thread(int (* entry)(Tn ...), Tn ... an)
 
 template<typename ... Tn>
 inline Thread::Thread(const Configuration & conf, int (* entry)(Tn ...), Tn ... an)
-: _task(conf.task ? conf.task : Task::self()), _state(conf.state), _waiting(0), _joining(0), _link(this, conf.criterion)
-{
-}
+: _task(conf.task ? conf.task : Task::self()), _state(conf.state), _waiting(0), _joining(0), _link(this, conf.criterion);
 
 __END_SYS
 

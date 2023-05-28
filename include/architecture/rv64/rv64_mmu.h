@@ -198,28 +198,31 @@ public:
             return (_flags & Page_Flags::CT) ? Phy_Addr(unflag((*_pt)[_from])) : Phy_Addr(false);
         }
 
-        int resize(unsigned long amount) {
+        unsigned long resize(long amount) {
             if(_flags & Page_Flags::CT)
                 return 0;
 
-            unsigned long pgs = pages(amount);
+            if(amount > 0) {
+                unsigned long pgs = pages(amount);
 
-            Color color = colorful ? phy2color(_pt) : WHITE;
+                Color color = colorful ? phy2color(_pt) : WHITE;
 
-            unsigned long free_pgs = _pts * PT_ENTRIES - _to;
-            if(free_pgs < pgs) { // resize _pt
-                unsigned long pts = _pts + Common::pts(pgs - free_pgs);
-                Page_Table * pt = calloc(pts, color);
-                memcpy(phy2log(pt), phy2log(_pt), _pts * sizeof(Page));
-                free(_pt, _pts);
-                _pt = pt;
-                _pts = pts;
-            }
+                unsigned long free_pgs = _pts * PT_ENTRIES - _to;
+                if(free_pgs < pgs) { // resize _pt
+                    unsigned long pts = _pts + Common::pts(pgs - free_pgs);
+                    Page_Table * pt = calloc(pts, color);
+                    memcpy(phy2log(pt), phy2log(_pt), _pts * sizeof(Page));
+                    free(_pt, _pts);
+                    _pt = pt;
+                    _pts = pts;
+                }
 
-            _pt->map(_to, _to + pgs, _flags, color);
-            _to += pgs;
+                _pt->map(_to, _to + pgs, _flags, color);
+                _to += pgs;
+            } else
+                db<MMU>(WRN) << "MMU::Chunk::resize(amount=" << amount << "): segment shrinking not implemented!" << endl;
 
-            return pgs * sizeof(Page);
+            return size();
         }
 
     private:
@@ -243,73 +246,63 @@ public:
 
         Directory(Page_Directory * pd): _free(false), _pd(pd) {}
 
-        ~Directory() { if(_free) free(_pd); }
+        ~Directory() {
+            if(_free) {
+                for(unsigned int i = pdi(APP_LOW); i < pdi(APP_HIGH); i++) {
+                    Attacher * at = pde2phy(_pd->log()[i]);
+                    if(at)
+                        free(at);
+                }
+                free(_pd);
+            }
+        }
 
         Phy_Addr pd() const { return _pd; }
 
         void activate() const { SV39_MMU::pd(_pd); }
 
-        Log_Addr attach(const Chunk & chunk) {
-            for(Log_Addr addr = APP_LOW; addr < APP_HIGH; addr += sizeof(Big_Page)) {
-                if(attachable(addr, chunk.pt(), chunk.pts(), chunk.flags())) {
-                    attach(addr, chunk.pt(), chunk.pts(), chunk.flags());
-                    return addr;
-                }
+        Log_Addr find(const Chunk & chunk) {
+            for(unsigned int i = 0; i < PD_ENTRIES; i++) {
+                Attacher * at = pde2phy(_pd->log()[i]);
+                if(at)
+                    for(unsigned int j = 0; j < AT_ENTRIES; j++)
+                        if(unflag(ate2phy(at->log()[j & (AT_ENTRIES - 1)])) == unflag(chunk.pt()))
+                            return (i << PD_SHIFT) + (j << AT_SHIFT);
             }
             return Log_Addr(false);
         }
 
+        Log_Addr attach(const Chunk & chunk) {
+            for(Log_Addr addr = APP_LOW; addr < (APP_HIGH - chunk.size()); addr += sizeof(Big_Page))
+                if(attach(chunk, addr) == addr)
+                    return addr;
+            return Log_Addr(false);
+        }
+
         Log_Addr attach(const Chunk & chunk, Log_Addr addr) {
+            if(addr != align_segment(addr)) {
+                db<MMU>(WRN) << "MMU::Directory::attach(chunk=" << &chunk << ",addr=" << addr << "): not attaching chunk to misaligned address!" << endl;
+                return Log_Addr(false);
+            }
+            if((PD_SPAN - ((pdi(addr) << PD_SHIFT) + (ati(addr) << AT_SHIFT))) < chunk.size()) {
+                db<MMU>(WRN) << "MMU::Directory::attach(chunk=" << &chunk << ",addr=" << addr << "): attaching chunk would reach beyond the limit of the address space!" << endl;
+                return Log_Addr(false);
+            }
             if(!attachable(addr, chunk.pt(), chunk.pts(), chunk.flags()))
-                return false;
-            attach(addr, chunk.pt(), chunk.pts(), chunk.flags());
-            return addr;
+                return Log_Addr(false);
+            return attach(addr, chunk.pt(), chunk.pts(), chunk.flags());
         }
 
         void detach(const Chunk & chunk) {
-            unsigned int i = 0;
-            unsigned int j = 0;
-            for(; i < PD_ENTRIES; i++) {
-                Attacher * at = _pd->log()[i];
-                if(at) {
-                    unsigned int ates = 0;
-                    for(j = 0; j < AT_ENTRIES; j++) {
-                        if(unflag(ate2phy((*at)[i])) == unflag(chunk.pt())) {
-                            at->log()[j & (AT_ENTRIES - 1)] = 0;
-                            ates++;
-                        }
-                    }
-                    if(ates == AT_ENTRIES)
-                        _pd->log()[i] = 0;
-                }
-            }
-            if((i == PD_ENTRIES) && (j == AT_ENTRIES))
-                db<MMU>(WRN) << "MMU::Directory::detach(pt=" << chunk.pt() << ") failed!" << endl;
-            else
-                flush_tlb();
+            Log_Addr addr = find(chunk);
+            if(!addr)
+                db<MMU>(WRN) << "MMU::Directory::detach(chunk=" << &chunk << ") [pt=" << chunk.pt() << "] failed!" << endl;
+            detach(addr, chunk.pt(), chunk.pts());
         }
 
         void detach(const Chunk & chunk, Log_Addr addr) {
-            unsigned int i = pdi(addr);
-            unsigned int j = ati(addr);
-            for(; i < pds(ats(chunk.pts())); i++) {
-                Attacher * at = _pd->log()[i];
-                if(at) {
-                    unsigned int ates = 0;
-                    for(j = 0; j < AT_ENTRIES; j++) {
-                        if(unflag(ate2phy((*at)[i])) == unflag(chunk.pt())) {
-                            at->log()[j & (AT_ENTRIES - 1)] = 0;
-                            ates++;
-                        } else {
-                            db<MMU>(WRN) << "MMU::Directory::detach(pt=" << chunk.pt() << ",addr=" << addr << ") failed!" << endl;
-                            return;
-                        }
-                    }
-                    if(ates == AT_ENTRIES)
-                        _pd->log()[i] = 0;
-                }
-            }
-            flush_tlb();
+            if(!detach(addr, chunk.pt(), chunk.pts()))
+                db<MMU>(WRN) << "MMU::Directory::detach(chunk=" << &chunk << ",addr=" << addr << ") [pt=" << chunk.pt() << "] failed!" << endl;
         }
 
         Phy_Addr physical(Log_Addr addr) {
@@ -333,7 +326,7 @@ public:
             return true;
         }
 
-        bool attach(Log_Addr addr, const Page_Table * pt, unsigned int pts, Page_Flags flags) {
+        Log_Addr attach(Log_Addr addr, const Page_Table * pt, unsigned int pts, Page_Flags flags) {
             for(unsigned int i = pdi(addr); i < pdi(addr) + ats(pts); i++) {
                 Attacher * at = pde2phy(_pd->log()[i]);
                 if(!at) {
@@ -343,7 +336,22 @@ public:
                 for(unsigned int j = ati(addr); j < ati(addr) + pts; j++, pt++)
                     at->log()[j & (AT_ENTRIES - 1)] = phy2ate(Phy_Addr(pt));
             }
-            return true;
+            return addr;
+        }
+
+        Log_Addr detach(Log_Addr addr, const Page_Table * pt, unsigned int pts) {
+            for(unsigned int i = pdi(addr); i < pdi(addr) + ats(pts); i++) {
+                Attacher * at = pde2phy(_pd->log()[i]);
+                if(at) {
+                    for(unsigned int j = ati(addr); j < ati(addr) + pts; j++, pt++)
+                        if(unflag(ate2phy(at->log()[j & (AT_ENTRIES - 1)])) == unflag(pt))
+                            at->log()[j] = 0;
+                        else
+                            return Log_Addr(false);
+                }
+            }
+            flush_tlb();
+            return addr;
         }
 
     private:

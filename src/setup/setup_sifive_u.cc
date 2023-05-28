@@ -60,7 +60,6 @@ private:
     static const unsigned long SYS_DATA         = Memory_Map::SYS_DATA;
     static const unsigned long SYS_STACK        = Memory_Map::SYS_STACK;
     static const unsigned long SYS_HEAP         = Memory_Map::SYS_HEAP;
-    static const unsigned long SYS_HIGH         = Memory_Map::SYS_HIGH;
     static const unsigned long APP_CODE         = Memory_Map::APP_CODE;
     static const unsigned long APP_DATA         = Memory_Map::APP_DATA;
 
@@ -224,7 +223,7 @@ void Setup::build_lm()
         if(!sys_elf->valid())
             db<Setup>(ERR) << "OS ELF image is corrupted!" << endl;
 
-        sys_elf->scan(reinterpret_cast<ELF::Loadable *>(&si->lm.sys_entry), SYS_CODE, SYS_DATA - 1, SYS_DATA, SYS_HIGH);
+        sys_elf->scan(reinterpret_cast<ELF::Loadable *>(&si->lm.sys_entry), SYS_CODE, SYS_DATA - 1, SYS_DATA, SYS_STACK - 1);
 
         if(si->lm.sys_code != SYS_CODE)
             db<Setup>(ERR) << "OS code segment address (" << reinterpret_cast<void *>(si->lm.sys_code) << ") does not match the machine's memory map (" << reinterpret_cast<void *>(SYS_CODE) << ")!" << endl;
@@ -294,7 +293,7 @@ void Setup::build_pmm()
     si->pmm.sys_pd = MMU::calloc();
 
     // System Page Table
-    si->pmm.sys_pt = MMU::calloc(MMU::pts(MMU::pages(SYS_HIGH - SYS)));
+    si->pmm.sys_pt = MMU::calloc(MMU::pts(MMU::pages(SYS_HEAP - SYS)));
 
     // Page tables to map the whole physical memory
     // = NP/NPTE_PT * sizeof(Page)
@@ -422,7 +421,7 @@ void Setup::setup_sys_pt()
 
     // SYSTEM heap is handled by Init_System, so we don't map it here!
 
-    for(unsigned int i = 0; i < MMU::pts(MMU::pages(SYS_HIGH - SYS)); i++)
+    for(unsigned int i = 0; i < MMU::pts(MMU::pages(SYS_HEAP - SYS)); i++)
         db<Setup>(INF) << "SYS_PT[" << &sys_pt[i] << "]=" << sys_pt[i] << endl;
 }
 
@@ -479,7 +478,7 @@ void Setup::setup_sys_pd()
                    << "})" << endl;
 
     // Check alignments
-    assert(MMU::pdi(SETUP) <= MMU::pdi(APP_LOW));
+    assert(MMU::pdi(SETUP) == MMU::pdi(RAM_BASE));
     assert(MMU::pdi(INT_M2S) == MMU::pdi(RAM_TOP));
     if(RAM_BASE != MMU::align_segment(RAM_BASE))
         db<Setup>(WRN) << "Setup::setup_sys_pd: unaligned physical memory!" << endl;
@@ -503,12 +502,12 @@ void Setup::setup_sys_pd()
 
     // Also attach the portions of the physical memory used by SETUP (including the BOOT_STACK)
     if(PHY_MEM != RAM_BASE) {
-        Chunk base(&mem_pt[MMU::ati(RAM_BASE)], MMU::pti(RAM_BASE, APP_LOW), MMU::pti(RAM_BASE, APP_LOW) + MMU::pages(APP_LOW - RAM_BASE), Flags::SYS);
-        Chunk top(&mem_pt[MMU::ati(RAM_TOP)], 0, MMU::PT_ENTRIES, Flags::SYS);
+        Chunk base(&mem_pt[MMU::pti(RAM_BASE)], 0, 1, Flags::SYS);
+        Chunk top(&mem_pt[MMU::pts(MMU::pti(RAM_BASE, RAM_TOP + 1) - MMU::PT_ENTRIES)], MMU::PT_ENTRIES - 1, MMU::PT_ENTRIES, Flags::SYS);
         if(dir.attach(base, RAM_BASE) != RAM_BASE)
-            db<Setup>(ERR) << "Setup::setup_sys_pd: cannot attach SETUP physical memory at " << reinterpret_cast<void *>(RAM_BASE) << "!" << endl;
-        if(dir.attach(top, MMU::align_segment(RAM_TOP) - sizeof(MMU::Big_Page)) != MMU::align_segment(RAM_TOP) - sizeof(MMU::Big_Page))
-            db<Setup>(ERR) << "Setup::setup_sys_pd: cannot attach SETUP physical memory at " << static_cast<void *>(MMU::align_segment(RAM_TOP) - sizeof(MMU::Big_Page)) << "!" << endl;
+            db<Setup>(ERR) << "Setup::setup_sys_pd: cannot attach SETUP code at " << reinterpret_cast<void *>(RAM_BASE) << "!" << endl;
+        if(dir.attach(top, RAM_TOP - sizeof(MMU::Big_Page) + 1) != RAM_TOP - sizeof(MMU::Big_Page) + 1)
+            db<Setup>(ERR) << "Setup::setup_sys_pd: cannot attach SETUP stack at " << reinterpret_cast<void *>(RAM_TOP - sizeof(MMU::Big_Page) + 1) << "!" << endl;
     }
 
     // Map I/O address space into the page tables pointed by io_pt
@@ -519,8 +518,8 @@ void Setup::setup_sys_pd()
         db<Setup>(ERR) << "Setup::setup_sys_pd: cannot attach memory-mapped I/O at " << reinterpret_cast<void *>(IO) << "!" << endl;
 
     // Attach the OS (i.e. sys_pt)
-    Chunk os(si->pmm.sys_pt, MMU::pti(SYS), MMU::pti(SYS) + MMU::pages(SYS_HEAP - SYS), Flags::SYS);
-    if(dir.attach(os, SYS) != SYS)
+    Chunk sys(si->pmm.sys_pt, MMU::pti(SYS), MMU::pti(SYS) + MMU::pages(SYS_HEAP - SYS), Flags::SYS);
+    if(dir.attach(sys, SYS) != SYS)
         db<Setup>(ERR) << "Setup::setup_sys_pd: cannot attach the OS at " << reinterpret_cast<void *>(SYS) << "!" << endl;
 
     // Attach the first APPLICATION CODE (i.e. app_code_pt)
@@ -736,7 +735,7 @@ void _entry() // machine mode
 
     if(Traits<System>::multitask) {
         CLINT::mtvec(CLINT::DIRECT, Memory_Map::INT_M2S); // setup a machine mode interrupt handler to forward timer interrupts (which cannot be delegated via mideleg)
-        CPU::mideleg(0xffff);                           // delegate all possible interrupts to supervisor mode (MTI can't be delegated https://groups.google.com/a/groups.riscv.org/g/sw-dev/c/A5XmyE5FE_0/m/TEnvZ0g4BgAJ)
+        CPU::mideleg(CPU::SSI | CPU::STI | CPU::SEI);   // delegate supervisor interrupts to supervisor mode
         CPU::medeleg(0xffff);                           // delegate all exceptions to supervisor mode
         CPU::mstatuss(CPU::MPP_S);                      // prepare jump into supervisor mode at mret
         CPU::sstatuss(CPU::SUM);                        // allows User Memory access in supervisor mode
@@ -767,10 +766,14 @@ void _int_m2s()
     ASM("       csrw    mscratch, sp                                 \n");
 if(Traits<CPU>::WORD_SIZE == 32) {
     ASM("       auipc    sp,      1             \n"     // SP = PC + 1 << 2 (INT_M2S + 4 + sizeof(Page))
-        "       sw       a2, -12(sp)            \n"
-        "       sw       a3, -16(sp)            \n"
-        "       sw       a4, -20(sp)            \n"
-        "       sw       a5, -24(sp)            \n");
+        "       sw       a0, -12(sp)            \n"
+        "       sw       a1, -16(sp)            \n"
+        "       sw       a2, -20(sp)            \n"
+        "       sw       a3, -24(sp)            \n"
+        "       sw       a4, -28(sp)            \n"
+        "       sw       a5, -32(sp)            \n"
+        "       sw       a6, -36(sp)            \n"
+        "       sw       a7, -40(sp)            \n");
 } else {
     ASM("       auipc    sp,      1             \n"     // SP = PC + 1 << 2 (INT_M2S + 4 + sizeof(Page))
         "       sd       a2, -20(sp)            \n"
@@ -782,21 +785,22 @@ if(Traits<CPU>::WORD_SIZE == 32) {
     CPU::Reg id = CPU::mcause();
 
     if((id & CLINT::INT_MASK) == CLINT::IRQ_MAC_TIMER) {
-        // MIP.MTI is a direct logic on (MTIME == MTIMECMP) and reseting the Timer (i.e. adjusting MTIMECMP) seems to be the only way to clear it
-        Timer::reset();
-        CPU::sies(CPU::STI);
+        Timer::reset();                 // MIP.MTI is a direct logic on (MTIME == MTIMECMP) and reseting the Timer (i.e. adjusting MTIMECMP) seems to be the only way to clear it
+        CPU::sies(CPU::STI);            // reenable STI, which is disabled by the supervisor's handler
+        CPU::mips(CPU::STI);            // forward MTI as STI
+        while(CPU::mip() & CPU::MTI);   // wait for MTI to go down (due to MTIMECMP adjustment) to avoid spurious interrupts
     }
-
-    CPU::Reg i = 1 << ((id & CLINT::INT_MASK) - 2);
-    if(CPU::int_enabled() && (CPU::sie() & i))
-        CPU::mips(i); // forward to supervisor mode
 
     // Restore context
 if(Traits<CPU>::WORD_SIZE == 32) {
-    ASM("       lw       a2, -12(sp)            \n"
-        "       lw       a3, -16(sp)            \n"
-        "       lw       a4, -20(sp)            \n"
-        "       lw       a5, -24(sp)            \n");
+    ASM("       lw       a0, -12(sp)            \n"
+        "       lw       a1, -16(sp)            \n"
+        "       lw       a2, -20(sp)            \n"
+        "       lw       a3, -24(sp)            \n"
+        "       lw       a4, -28(sp)            \n"
+        "       lw       a5, -32(sp)            \n"
+        "       lw       a6, -36(sp)            \n"
+        "       lw       a7, -40(sp)            \n");
 } else {
     ASM("       ld       a2, -20(sp)            \n"
         "       ld       a3, -28(sp)            \n"

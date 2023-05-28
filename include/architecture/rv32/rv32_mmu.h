@@ -22,11 +22,9 @@ private:
     static const bool colorful = Traits<MMU>::colorful;
     static const unsigned long COLORS = Traits<MMU>::COLORS;
     static const unsigned long RAM_BASE = Memory_Map::RAM_BASE;
+    static const unsigned long PHY_MEM = Memory_Map::PHY_MEM;
     static const unsigned long APP_LOW = Memory_Map::APP_LOW;
     static const unsigned long APP_HIGH = Memory_Map::APP_HIGH;
-    static const unsigned long PHY_MEM = Memory_Map::PHY_MEM;
-    static const unsigned long SYS = Memory_Map::SYS;
-    static const unsigned long IO = Memory_Map::IO;
 
 public:
     // Page Flags
@@ -187,28 +185,31 @@ public:
             return (_flags & Page_Flags::CT) ? Phy_Addr(unflag((*_pt)[_from])) : Phy_Addr(false);
         }
 
-        int resize(unsigned long amount) {
+        unsigned long resize(long amount) {
             if(_flags & Page_Flags::CT)
                 return 0;
 
-            unsigned long pgs = pages(amount);
+            if(amount > 0) {
+                unsigned long pgs = pages(amount);
 
-            Color color = colorful ? phy2color(_pt) : WHITE;
+                Color color = colorful ? phy2color(_pt) : WHITE;
 
-            unsigned long free_pgs = _pts * PT_ENTRIES - _to;
-            if(free_pgs < pgs) { // resize _pt
-                unsigned long pts = _pts + Common::pts(pgs - free_pgs);
-                Page_Table * pt = calloc(pts, color);
-                memcpy(phy2log(pt), phy2log(_pt), _pts * sizeof(Page));
-                free(_pt, _pts);
-                _pt = pt;
-                _pts = pts;
-            }
+                unsigned long free_pgs = _pts * PT_ENTRIES - _to;
+                if(free_pgs < pgs) { // resize _pt
+                    unsigned long pts = _pts + Common::pts(pgs - free_pgs);
+                    Page_Table * pt = calloc(pts, color);
+                    memcpy(phy2log(pt), phy2log(_pt), _pts * sizeof(Page));
+                    free(_pt, _pts);
+                    _pt = pt;
+                    _pts = pts;
+                }
 
-            _pt->map(_to, _to + pgs, _flags, color);
-            _to += pgs;
+                _pt->map(_to, _to + pgs, _flags, color);
+                _to += pgs;
+            } else
+                db<MMU>(WRN) << "MMU::Chunk::resize(amount=" << amount << "): segment shrinking not implemented!" << endl;
 
-            return pgs * sizeof(Page);
+            return size();
         }
 
     private:
@@ -228,11 +229,9 @@ public:
     {
     public:
         Directory(): _free(true), _pd(calloc(1, WHITE)) {
-            for(unsigned int i = pdi(IO); i < pdi(APP_LOW); i++)
-                (*_pd)[i] = (*_master)[i];
-            
-            for(unsigned int i = pdi(SYS); i < PD_ENTRIES; i++)
-                (*_pd)[i] = (*_master)[i];
+            for(unsigned int i = 0; i < PD_ENTRIES; i++)
+                if(!((i >= pdi(APP_LOW)) && (i <= pdi(APP_HIGH))))
+                    _pd->log()[i] = _master->log()[i];
         }
 
         Directory(Page_Directory * pd): _free(false), _pd(pd) {}
@@ -243,37 +242,44 @@ public:
 
         void activate() const { SV32_MMU::pd(_pd); }
 
-        Log_Addr attach(const Chunk & chunk, unsigned int from = pdi(APP_LOW)) {
-            for(unsigned int i = from; i < PD_ENTRIES; i++)
-                if(attach(i, chunk.pt(), chunk.pts(), chunk.flags()))
-                    return i << PD_SHIFT;
+        Log_Addr find(const Chunk & chunk) {
+            for(unsigned int i = 0; i < PD_ENTRIES; i++)
+                if(unflag(pde2phy(_pd->log()[i])) == unflag(chunk.pt()))
+                    return (i << PD_SHIFT);
+            return Log_Addr(false);
+        }
+
+        Log_Addr attach(const Chunk & chunk) {
+            for(Log_Addr addr = align_segment(APP_LOW); addr < (APP_HIGH - chunk.size()); addr += sizeof(Big_Page))
+                if(attachable(addr, chunk.pt(), chunk.pts(), chunk.flags()))
+                    return attach(addr, chunk.pt(), chunk.pts(), chunk.flags());
             return Log_Addr(false);
         }
 
         Log_Addr attach(const Chunk & chunk, Log_Addr addr) {
-            unsigned int from = pdi(addr);
-            if(attach(from, chunk.pt(), chunk.pts(), chunk.flags()))
-                return from << PD_SHIFT;
-            return Log_Addr(false);
+            if(addr != align_segment(addr)) {
+                db<MMU>(WRN) << "MMU::Directory::attach(chunk=" << &chunk << ",addr=" << addr << "): not attaching chunk to misaligned address!" << endl;
+                return Log_Addr(false);
+            }
+            if((PD_ENTRIES - pdi(addr)) < pts(pages(chunk.size()))) {
+                db<MMU>(WRN) << "MMU::Directory::attach(chunk=" << &chunk << ",addr=" << addr << "): attaching chunk of " << pts(pages(chunk.size())) << " PTs at PD[" << pdi(addr) <<"] would reach beyond the limit of the address space!" << endl;
+                return Log_Addr(false);
+            }
+            if(!attachable(addr, chunk.pt(), chunk.pts(), chunk.flags()))
+                return Log_Addr(false);
+            return attach(addr, chunk.pt(), chunk.pts(), chunk.flags());
         }
 
         void detach(const Chunk & chunk) {
-            for(unsigned int i = 0; i < PD_ENTRIES; i++) {
-                if(unflag(pte2phy((*_pd)[i])) == unflag(chunk.pt())) {
-                    detach(i, chunk.pt(), chunk.pts());
-                    return;
-                }
-            }
-            db<MMU>(WRN) << "MMU::Directory::detach(pt=" << chunk.pt() << ") failed!" << endl;
+            Log_Addr addr = find(chunk);
+            if(!addr)
+                db<MMU>(WRN) << "MMU::Directory::detach(chunk=" << &chunk << ") [pt=" << chunk.pt() << "] failed!" << endl;
+            detach(addr, chunk.pt(), chunk.pts());
         }
 
         void detach(const Chunk & chunk, Log_Addr addr) {
-            unsigned int from = pdi(addr);
-            if(unflag(pte2phy((*_pd)[from])) != unflag(chunk.pt())) {
-                db<MMU>(WRN) << "MMU::Directory::detach(pt=" << chunk.pt() << ",addr=" << addr << ") failed!" << endl;
-                return;
-            }
-            detach(from, chunk.pt(), chunk.pts());
+            if(!detach(addr, chunk.pt(), chunk.pts()))
+                db<MMU>(WRN) << "MMU::Directory::detach(chunk=" << &chunk << ",addr=" << addr << ") [pt=" << chunk.pt() << "] failed!" << endl;
         }
 
         Phy_Addr physical(Log_Addr addr) {
@@ -284,20 +290,26 @@ public:
         }
 
     private:
-        bool attach(unsigned int from, const Page_Table * pt, unsigned int n, Page_Flags flags) {
-            for(unsigned int i = from; i < from + n; i++)
-                if(_pd->log()[i])
+        bool attachable(Log_Addr addr, const Page_Table * pt, unsigned int pts, Page_Flags flags) {
+            for(unsigned int i = pdi(addr); i < pdi(addr) + pts; i++) {
+                if(pde2phy(_pd->log()[i]))
                     return false;
-            for(unsigned int i = from; i < from + n; i++, pt++)
-                _pd->log()[i] = phy2pde(Phy_Addr(pt));
+            }
             return true;
         }
 
-        void detach(unsigned int from, const Page_Table * pt, unsigned int n) {
-            for(unsigned int i = from; i < from + n; i++) {
+        Log_Addr attach(Log_Addr addr, const Page_Table * pt, unsigned int pts, Page_Flags flags) {
+            for(unsigned int i = pdi(addr); i < pdi(addr) + pts; i++, pt++)
+                _pd->log()[i] = phy2pde(Phy_Addr(pt));
+            return addr;
+        }
+
+        Log_Addr detach(Log_Addr addr, const Page_Table * pt, unsigned int pts) {
+            for(unsigned int i = pdi(addr); i < pdi(addr) + pts; i++) {
                 _pd->log()[i] = 0;
                 flush_tlb(i << PD_SHIFT);
             }
+            return addr;
         }
 
     private:

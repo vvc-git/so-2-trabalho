@@ -4,6 +4,13 @@
 #include <utility/ostream.h>
 #include <architecture/cpu.h>
 #include <system.h>
+#include <framework/main.h>
+
+// Framework class attributes
+__BEGIN_SYS
+Framework::Cache Framework::_cache;
+__END_SYS
+
 
 // Global objects
 __BEGIN_SYS

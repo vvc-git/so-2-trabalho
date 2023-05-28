@@ -5,13 +5,13 @@
 __BEGIN_SYS
 
 // Methods
-Segment::Segment(unsigned int bytes, Flags flags): Chunk(bytes, flags, WHITE)
+Segment::Segment(unsigned long bytes, Flags flags): Chunk(bytes, flags, WHITE)
 {
     db<Segment>(TRC) << "Segment(bytes=" << bytes << ",flags=" << flags << ") [Chunk::pt=" << Chunk::pt() << ",sz=" << Chunk::size() << "] => " << this << endl;
 }
 
 
-Segment::Segment(Phy_Addr phy_addr, unsigned int bytes, Flags flags): Chunk(phy_addr, bytes, flags | Flags::IO)
+Segment::Segment(Phy_Addr phy_addr, unsigned long bytes, Flags flags): Chunk(phy_addr, bytes, flags | Flags::IO)
 // The MMU::IO flag signalizes the MMU that the attached memory shall
 // not be released when the chunk is deleted
 {
@@ -25,7 +25,7 @@ Segment::~Segment()
 }
 
 
-unsigned int Segment::size() const
+unsigned long Segment::size() const
 {
     return Chunk::size();
 }
@@ -37,7 +37,7 @@ Segment::Phy_Addr Segment::phy_address() const
 }
 
 
-int Segment::resize(int amount)
+int Segment::resize(long amount)
 {
     db<Segment>(TRC) << "Segment::resize(amount=" << amount << ")" << endl;
 

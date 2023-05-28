@@ -698,7 +698,7 @@ public:
         Context * ctx = new(sp) Context(usp, entry, exit); // init_stack is called with USP = 0 for kernel threads
         init_stack_helper(&ctx->_r0, an ...);
         
-#ifndef __library__
+#ifdef __kernel__
         // Dummy context
         if(usp) { // multitask
             sp -= sizeof(Context);

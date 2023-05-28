@@ -42,6 +42,7 @@ private:
 class Segment: public MMU::Chunk
 {
     friend class Thread;        // for Segment(pt)
+    friend class Init_End;        // for Segment(pt)
 
 private:
     typedef MMU::Chunk Chunk;
@@ -51,13 +52,13 @@ public:
     typedef MMU::Flags Flags;
 
 public:
-    Segment(unsigned int bytes, Flags flags = Flags::APP);
-    Segment(Phy_Addr phy_addr, unsigned int bytes, Flags flags);
+    Segment(unsigned long bytes, Flags flags = Flags::APP);
+    Segment(Phy_Addr phy_addr, unsigned long bytes, Flags flags);
     ~Segment();
 
-    unsigned int size() const;
+    unsigned long size() const;
     Phy_Addr phy_address() const;
-    int resize(int amount);
+    int resize(long amount);
 
 private:
     Segment(Phy_Addr pt, unsigned int from, unsigned int to, Flags flags): Chunk(pt, from, to, flags) {

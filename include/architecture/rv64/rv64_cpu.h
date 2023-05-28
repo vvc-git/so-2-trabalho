@@ -102,7 +102,7 @@ public:
         // Contexts are loaded with [m|s]ret, which gets pc from [m|s]epc and updates some bits of [m|s]status, that's why _st is initialized with [M|S]PIE and [M|S]PP
         // Kernel threads are created with usp = 0 and have SPP_S set
         // Dummy contexts for the first execution of each thread (both kernel and user) are created with exit = 0 and SPIE cleared (no interrupts until the second context is popped)
-        Context(Log_Addr entry, Log_Addr exit): _pc(entry), _st((exit ? MPIE : 0) | MPP_M), _x1(exit) {
+        Context(Log_Addr entry, Log_Addr exit, Log_Addr usp): _usp(usp), _pc(entry), _st(multitask ? ((exit ? SPIE : 0) | (usp ? SPP_U : SPP_S) | SUM) : ((exit ? MPIE : 0) | MPP_M)), _x1(exit) {
             if(Traits<Build>::hysterically_debugged || Traits<Thread>::trace_idle) {
                                                                         _x5 =  5;  _x6 =  6;  _x7 =  7;  _x8 =  8;  _x9 =  9;
                 _x10 = 10; _x11 = 11; _x12 = 12; _x13 = 13; _x14 = 14; _x15 = 15; _x16 = 16; _x17 = 17; _x18 = 18; _x19 = 19;
@@ -117,6 +117,7 @@ public:
         friend OStream & operator<<(OStream & db, const Context & c) {
             db << hex
                << "{sp="   << &c
+               << ",usp="  << c._usp
                << ",pc="   << c._pc
                << ",st="   << c._st
                << ",lr="   << c._x1
@@ -154,6 +155,7 @@ public:
     private:
         static void pop(bool interrupt = false);  // interrupt or context switch?
         static void push(bool interrupt = false); // interrupt or context switch?
+        static void first_dispatch() __attribute__ ((naked));
 
     private:
         Reg _pc;      // pc
@@ -190,6 +192,7 @@ public:
         Reg _x29;     // t4
         Reg _x30;     // t5
         Reg _x31;     // t6
+        Reg _usp;     // usp (used with multitasking)
     };
 
     // Interrupt Service Routines
@@ -234,6 +237,9 @@ public:
     static void fpu_restore();
 
     static void switch_context(Context ** o, Context * n) __attribute__ ((naked));
+
+    static void syscall(void * message);
+    static void syscalled(unsigned int int_id);
 
     template<typename T>
     static T tsl(volatile T & lock) {
@@ -324,11 +330,21 @@ public:
 
     template<typename ... Tn>
     static Context * init_stack(Log_Addr usp, Log_Addr sp, void (* exit)(), int (* entry)(Tn ...), Tn ... an) {
+        // Multitasking scenarios use this method with USP != 0 for application threads, what causes two contexts to be pushed into the thread's stack.
+        // The context pushed first (and popped last) is the "regular" one, with entry pointing to the thread's entry point.
+        // The second context (popped first) is a dummy context that has first_dispatch as entry point. It is a system-level context (CPL=0),
+        // so switch_context doesn't need to care for cross-level IRETs.
+
+        // Real context
         sp -= sizeof(Context);
-        Context * ctx = new(sp) Context(entry, exit);
+        Context * ctx = new(sp) Context(entry, exit, usp); // init_stack is called with usp = 0 for kernel threads
         init_stack_helper(&ctx->_x10, an ...); // x10 is a0
         return ctx;
     }
+
+    // In RISC-V, the main thread of each task gets parameters over registers, not the stack, and they are initialized by init_stack.
+    template<typename ... Tn>
+    static Log_Addr init_user_stack(Log_Addr usp, void (* exit)(), Tn ... an) { return usp; }
 
 public:
     // RISC-V 64 specifics
@@ -452,6 +468,10 @@ private:
 inline void CPU::Context::push(bool interrupt)
 {
     ASM("       addi     sp, sp, %0             \n" : : "i"(-sizeof(Context))); // adjust SP for the pushes below
+if(multitask) {
+    ASM("       csrr     x3, sscratch           \n"     // SSCRATCH holds KSP in user-land and USP in kernel (USP = 0 for kernel threads)
+        "       sd       x3,    0(sp)           \n");   // push USP
+}
 if(interrupt) {
   if(multitask) {
     ASM("       csrr     x3,    sepc            \n"
@@ -462,6 +482,10 @@ if(interrupt) {
   }
 } else {
     ASM("       sd       x1,    0(sp)           \n");   // push RA as PC on context switches
+}
+if(!interrupt && multitask) {
+    ASM("       li       x3,      %0            \n"
+        "       csrs     sstatus, x3            \n": : "i"(SPP_S));   // set SPP_S inside the kernel; the push(true) on IC::entry() has already saved the correct value to eventually return to the application
 }
 if(multitask) {
     ASM("       csrr     x3, sstatus            \n");
@@ -503,7 +527,7 @@ inline void CPU::Context::pop(bool interrupt)
 {
     ASM("       ld       x3,    0(sp)           \n");   // pop PC into TMP
 if(interrupt) {
-    ASM("       add      x3, x3, a0             \n");   // a0 is set by exception handlers to adjust [M|S]EPC to point to the next instruction if needed
+    ASM("       add      x3, x3, a0             \n");   // A0 is set by exception handlers to adjust [M|S]EPC to point to the next instruction if needed
 }
 if(multitask) {
     ASM("       csrw     sepc, x3               \n");   // SEPC = PC
@@ -512,8 +536,8 @@ if(multitask) {
 }
 
     ASM("       ld       x3,    8(sp)           \n");   // pop ST into TMP
-if(!interrupt) {                                        // [M|S]STATUS.[M|S]PP is automatically cleared on the [m|s]ret in the ISR, so we need to recover it here
-    ASM("       li       a0,     %0             \n"     // use a0 as a second TMP (it will be restored later) to adjust [M|S]STATUS.[M|S]PP
+if(!interrupt & !multitask) {                           // [M|S]STATUS.[M|S]PP is automatically cleared on the [M|S]RET in the ISR, so we need to recover it here
+    ASM("       li       a0,     %0             \n"     // use A0 as a second TMP (it will be restored later) to adjust [M|S]STATUS.[M|S]PP
         "       or       x3, x3, a0             \n" : : "i"(multitask ? SPP_S : MPP_M));
 }
     ASM("       ld       x1,   16(sp)           \n"     // pop RA

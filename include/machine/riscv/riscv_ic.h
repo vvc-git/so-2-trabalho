@@ -54,7 +54,7 @@ public:
 
 public:
     static void mtvec(Mode mode, Phy_Addr base) {
-    	Reg tmp = (base & 0xfffffffc) | (Reg(mode) & 0x3);
+    	Reg tmp = (base & -4UL) | (Reg(mode) & 0x3);
         ASM("csrw mtvec, %0" : : "r"(tmp) : "cc");
     }
 
@@ -95,6 +95,7 @@ public:
     using IC_Common::Interrupt_Handler;
 
     enum {
+        INT_SYSCALL     = CPU::EXC_ENVU,
         INT_SYS_TIMER   = EXCS + (multitask ? IRQ_SUP_TIMER : IRQ_MAC_TIMER)
     };
 
@@ -158,6 +159,7 @@ private:
     static void dispatch();
 
     // Logical handlers
+    static void syscall(Interrupt_Id i);
     static void int_not(Interrupt_Id i);
     static void exception(Interrupt_Id i);
 
