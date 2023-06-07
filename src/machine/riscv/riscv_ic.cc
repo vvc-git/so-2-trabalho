@@ -12,6 +12,9 @@ extern "C" { static void print_context(); }
 
 __BEGIN_SYS
 
+static CPU::Reg a0;
+static CPU::Reg a1;
+
 IC::Interrupt_Handler IC::_int_vector[IC::INTS];
 
 void IC::entry()
@@ -38,18 +41,25 @@ void IC::dispatch()
 {
     Interrupt_Id id = int_id();
 
+    // Preserve handler's arguments
+    a0 = CPU::a0(); // exit passes status through a0
+    a1 = CPU::a1(); // syscalls pass messages through a1
+
     if(((id != INT_SYS_TIMER) && (id != INT_SYSCALL) && ((id == CPU::EXC_IPF) && (CPU::epc() != CPU::Log_Addr(&__exit)))) || Traits<IC>::hysterically_debugged)
         db<IC>(TRC) << "IC::dispatch(i=" << id << ") [sp=" << CPU::sp() << "]" << endl;
 
     if(multitask) {
         if(id == INT_SYS_TIMER)
-            CPU::siec(CPU::STI);
+            CPU::ecall();  // we can't clear CPU::sipc(CPU::STI) in supervisor mode, so let's ecall int_m2s so it does it for us
     } else {
         // MIP.MTI is a direct logic on (MTIME == MTIMECMP) and reseting the Timer seems to be the only way to clear it
         if(id == INT_SYS_TIMER)
             Timer::reset();
     }
 
+    // Ensure the handler gets the correct arguments
+    CPU::a0(a0);
+    CPU::a1(a1);
     _int_vector[id](id);
 
     if(id >= EXCS)

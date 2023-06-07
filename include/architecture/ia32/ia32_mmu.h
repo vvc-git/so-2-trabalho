@@ -107,6 +107,13 @@ public:
             }
         }
 
+        void reflag(int from, int to, Page_Flags flags) {
+            for( ; from < to; from++) {
+                Log_Addr * pte = phy2log(&_entry[from]);
+                *pte = phy2pte(pte2phy(_entry[from]), flags);
+            }
+        }
+
         void unmap(int from, int to) {
             for( ; from < to; from++) {
                 free(_entry[from]);
@@ -117,10 +124,14 @@ public:
 
         friend OStream & operator<<(OStream & os, Page_Table & pt) {
             os << "{\n";
+            int brk = 0;
             for(unsigned int i = 0; i < PT_ENTRIES; i++)
-                if(pt[i])
-                    os << "[" << i << "] \t" << pte2phy(pt[i]) << "\n";
-            os << "}";
+                if(pt[i]) {
+                    os << "[" << i << "]=" << pte2phy(pt[i]) << "  ";
+                    if(!(++brk % 4))
+                        os << "\n";
+                }
+            os << "\n}";
             return os;
         }
 
@@ -135,55 +146,65 @@ public:
     class Chunk
     {
     public:
-        Chunk() {}
-
-        Chunk(unsigned int bytes, Flags flags, Color color = WHITE)
-        : _from(0), _to(pages(bytes)), _pts(Common::pts(_to - _from)), _flags(Page_Flags(flags)), _pt(calloc(_pts, WHITE)) {
+        Chunk(unsigned long bytes, Flags flags, Color color = WHITE)
+        : _free(true), _from(0), _to(pages(bytes)), _pts(Common::pts(_to - _from)), _flags(Page_Flags(flags)), _pt(calloc(_pts, WHITE)) {
             if(_flags & Page_Flags::CT)
                 _pt->map_contiguous(_from, _to, _flags, color);
             else
                 _pt->map(_from, _to, _flags, color);
         }
 
-        Chunk(Phy_Addr phy_addr, unsigned int bytes, Flags flags)
-        : _from(0), _to(pages(bytes)), _pts(Common::pts(_to - _from)), _flags(Page_Flags(flags)), _pt(calloc(_pts, WHITE)) {
+        Chunk(Phy_Addr phy_addr, unsigned long bytes, Flags flags)
+        : _free(true), _from(0), _to(pages(bytes)), _pts(Common::pts(_to - _from)), _flags(Page_Flags(flags)), _pt(calloc(_pts, WHITE)) {
             _pt->remap(phy_addr, _from, _to, flags);
         }
 
         Chunk(Phy_Addr pt, unsigned int from, unsigned int to, Flags flags)
-        : _from(from), _to(to), _pts(Common::pts(_to - _from)), _flags(flags), _pt(pt) {}
+        : _free(false), _from(from), _to(to), _pts(Common::pts(_to - _from)), _flags(flags), _pt(pt) {}
+
+        Chunk(Phy_Addr pt, unsigned int from, unsigned int to, Flags flags, Phy_Addr phy_addr)
+        : _free(false), _from(from), _to(to), _pts(Common::pts(_to - _from)), _flags(flags), _pt(pt) {
+            _pt->remap(phy_addr, _from, _to, flags);
+        }
 
         ~Chunk() {
-            if(!(_flags & Page_Flags::IO)) {
-                if(_flags & Page_Flags::CT)
-                    free((*_pt)[_from], _to - _from);
-                else
-                    for( ; _from < _to; _from++)
-                        free((*_pt)[_from]);
+            if(_free) {
+                if(!(_flags & Page_Flags::IO)) {
+                    if(_flags & Page_Flags::CT)
+                        free((*_pt)[_from], _to - _from);
+                    else
+                        for( ; _from < _to; _from++)
+                            free((*_pt)[_from]);
+                }
+                free(_pt, _pts);
             }
-            free(_pt, _pts);
         }
 
         unsigned int pts() const { return _pts; }
         Page_Flags flags() const { return _flags; }
         Page_Table * pt() const { return _pt; }
-        unsigned int size() const { return (_to - _from) * sizeof(Page); }
+        unsigned long size() const { return (_to - _from) * sizeof(Page); }
+        
+        void reflag(Flags flags) {
+            _flags = flags;
+            _pt->reflag(_from, _to, _flags);
+        }
 
         Phy_Addr phy_address() const {
             return (_flags & Page_Flags::CT) ? Phy_Addr(unflag((*_pt)[_from])) : Phy_Addr(false);
         }
 
-        int resize(unsigned int amount) {
+        unsigned long resize(long amount) {
             if(_flags & Page_Flags::CT)
                 return 0;
 
-            unsigned int pgs = pages(amount);
+            unsigned long pgs = pages(amount);
 
             Color color = colorful ? phy2color(_pt) : WHITE;
 
-            unsigned int free_pgs = _pts * PT_ENTRIES - _to;
+            unsigned long free_pgs = _pts * PT_ENTRIES - _to;
             if(free_pgs < pgs) { // resize _pt
-                unsigned int pts = _pts + Common::pts(pgs - free_pgs);
+                unsigned long pts = _pts + Common::pts(pgs - free_pgs);
                 Page_Table * pt = calloc(pts, color);
                 memcpy(phy2log(pt), phy2log(_pt), _pts * sizeof(Page));
                 free(_pt, _pts);
@@ -194,10 +215,11 @@ public:
             _pt->map(_to, _to + pgs, _flags, color);
             _to += pgs;
 
-            return pgs * sizeof(Page);
+            return size();
         }
 
     private:
+        bool _free;
         unsigned int _from;
         unsigned int _to;
         unsigned int _pts;
@@ -209,18 +231,13 @@ public:
     class Directory
     {
     public:
-        Directory() : _pd(calloc(1, WHITE)), _free(true) {
-            if(PHY_MEM < APP_LOW)
-                for(unsigned int i = pdi(PHY_MEM); i < pdi(APP_LOW); i++)
-                    (*_pd)[i] = (*_master)[i];
-            else
-                for(unsigned int i = pdi(APP_LOW); i < pdi(PHY_MEM); i++)
-                    (*_pd)[i] = (*_master)[i];
-            for(unsigned int i = pdi(SYS); i <= pdi(SYS_HIGH); i++)
-                (*_pd)[i] = (*_master)[i];
+        Directory(): _free(true), _pd(calloc(1, WHITE)) {
+            for(unsigned int i = 0; i < PD_ENTRIES; i++)
+                if(!((i >= pdi(APP_LOW)) && (i <= pdi(APP_HIGH))))
+                    _pd->log()[i] = _master->log()[i];
         }
 
-        Directory(Page_Directory * pd) : _pd(pd), _free(false) {}
+        Directory(Page_Directory * pd): _free(false), _pd(pd) {}
 
         ~Directory() { if(_free) free(_pd); }
 
@@ -288,21 +305,21 @@ public:
         }
 
     private:
-        Page_Directory * _pd;  // this is a physical address, but operator*() returns a logical address
         bool _free;
+        Page_Directory * _pd;  // this is a physical address, but operator*() returns a logical address
     };
 
     // DMA_Buffer
     class DMA_Buffer: public Chunk
     {
     public:
-        DMA_Buffer(unsigned int s) : Chunk(s, Page_Flags::DMA) {
+        DMA_Buffer(unsigned long s) : Chunk(s, Page_Flags::DMA) {
             Directory dir(current());
             _log_addr = dir.attach(*this);
             db<MMU>(TRC) << "MMU::DMA_Buffer() => " << *this << endl;
         }
 
-        DMA_Buffer(unsigned int s, Log_Addr d): Chunk(s, Page_Flags::DMA) {
+        DMA_Buffer(unsigned long s, Log_Addr d): Chunk(s, Page_Flags::DMA) {
             Directory dir(current());
             _log_addr = dir.attach(*this);
             memcpy(_log_addr, d, s);
@@ -335,7 +352,7 @@ public:
             os << "{addr=" << static_cast<void *>(t._addr) << ",pd=" << pd << ",pd[" << pdi(t._addr) << "]=" << pde << ",pt=" << pt;
             if(t._show_pt)
                 os << "=>" << pt->log();
-            os << ",pt[" << pti(t._addr) << "]=" << pte << ",f=" << pte2phy(pte) << ",*addr=" << hex << *static_cast<unsigned int *>(t._addr) << "}";
+            os << ",pt[" << pti(t._addr) << "]=" << pte << ",f=" << pte2phy(pte) << ",*addr=" << hex << *static_cast<unsigned long *>(t._addr) << "}";
             return os;
         }
 
@@ -348,7 +365,7 @@ public:
 public:
     MMU() {}
 
-    static Phy_Addr alloc(unsigned int frames = 1, Color color = WHITE) {
+    static Phy_Addr alloc(unsigned long frames = 1, Color color = WHITE) {
         Phy_Addr phy(false);
 
         if(frames) {
@@ -366,13 +383,13 @@ public:
         return phy;
     }
 
-    static Phy_Addr calloc(unsigned int frames = 1, Color color = WHITE) {
+    static Phy_Addr calloc(unsigned long frames = 1, Color color = WHITE) {
         Phy_Addr phy = alloc(frames, color);
         memset(phy2log(phy), 0, sizeof(Frame) * frames);
         return phy;
     }
 
-    static void free(Phy_Addr frame, int n = 1) {
+    static void free(Phy_Addr frame, unsigned long n = 1) {
         // Clean up MMU flags in frame address
         frame = unflag(frame);
         Color color = colorful ? phy2color(frame) : WHITE;
@@ -386,7 +403,7 @@ public:
         }
     }
 
-    static void white_free(Phy_Addr frame, int n) {
+    static void white_free(Phy_Addr frame, unsigned long n) {
         // Clean up MMU flags in frame address
         frame = unflag(frame);
 
@@ -399,7 +416,7 @@ public:
         }
     }
 
-    static unsigned int allocable(Color color = WHITE) { return _free[color].head() ? _free[color].head()->size() : 0; }
+    static unsigned long allocable(Color color = WHITE) { return _free[color].head() ? _free[color].head()->size() : 0; }
 
     static Page_Directory * volatile current() { return static_cast<Page_Directory * volatile>(pd()); }
 
@@ -416,8 +433,14 @@ public:
     static Phy_Addr pde2phy(PD_Entry entry) { return (entry & ~Page_Flags::MASK); }
     static Page_Flags pde2flg(PT_Entry entry) { return (entry & Page_Flags::MASK); }
 
+#ifdef __setup__
+    // SETUP uses the MMU to build a primordial memory model before turning the MMU on, so no log vs phy adjustments are made
+    static Log_Addr phy2log(Phy_Addr phy) { return Log_Addr((RAM_BASE == PHY_MEM) ? phy : (RAM_BASE > PHY_MEM) ? phy : phy ); }
+    static Phy_Addr log2phy(Log_Addr log) { return Phy_Addr((RAM_BASE == PHY_MEM) ? log : (RAM_BASE > PHY_MEM) ? log : log ); }
+#else
     static Log_Addr phy2log(Phy_Addr phy) { return Log_Addr((RAM_BASE == PHY_MEM) ? phy : (RAM_BASE > PHY_MEM) ? phy - (RAM_BASE - PHY_MEM) : phy + (PHY_MEM - RAM_BASE)); }
     static Phy_Addr log2phy(Log_Addr log) { return Phy_Addr((RAM_BASE == PHY_MEM) ? log : (RAM_BASE > PHY_MEM) ? log + (RAM_BASE - PHY_MEM) : log - (PHY_MEM - RAM_BASE)); }
+#endif
 
     static Color phy2color(Phy_Addr phy) { return static_cast<Color>(colorful ? ((phy >> PT_SHIFT) & 0x7f) % COLORS : WHITE); } // TODO: what is 0x7f
 

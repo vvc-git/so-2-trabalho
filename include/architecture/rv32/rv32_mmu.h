@@ -47,7 +47,7 @@ public:
 
             APP  = (V | R | W | X | U | IAD),
             APPC = (V | R |     X | U | IAD),
-            APPD = (V | R | W | X | U | IAD),
+            APPD = (V | R | W     | U | IAD),
             SYS  = (V | R | W | X | IAD),
             IO   = (SYS | MIO),
             DMA  = (SYS | CT),

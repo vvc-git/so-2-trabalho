@@ -37,8 +37,13 @@ void Thread::init()
     Log_Addr code = si->lm.app_code;
     Log_Addr data = si->lm.app_data;
     Main * main = reinterpret_cast<Main *>(si->lm.app_entry);
+    int argc = static_cast<int>(si->lm.app_extra_size);
+    char ** argv = reinterpret_cast<char **>(si->lm.app_extra);
 
-    new (SYSTEM) Task(as, cs, ds, code, data, main);
+    new (SYSTEM) Task(as, cs, ds, code, data, main, argc, argv);
+
+    if(si->lm.has_ext)
+        db<Init>(INF) << "Thread::init: additional data from mkbi at " << reinterpret_cast<void *>(si->lm.app_extra) << ":" << si->lm.app_extra_size << endl;
 
 #endif
 

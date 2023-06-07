@@ -102,7 +102,7 @@ public:
         // Contexts are loaded with [m|s]ret, which gets pc from [m|s]epc and updates some bits of [m|s]status, that's why _st is initialized with [M|S]PIE and [M|S]PP
         // Kernel threads are created with usp = 0 and have SPP_S set
         // Dummy contexts for the first execution of each thread (both kernel and user) are created with exit = 0 and SPIE cleared (no interrupts until the second context is popped)
-        Context(Log_Addr entry, Log_Addr exit, Log_Addr usp): _usp(usp), _pc(entry), _st(multitask ? ((exit ? SPIE : 0) | (usp ? SPP_U : SPP_S) | SUM) : ((exit ? MPIE : 0) | MPP_M)), _x1(exit) {
+        Context(Log_Addr entry, Log_Addr exit, Log_Addr usp): _pc(entry), _st(multitask ? ((exit ? SPIE : 0) | (usp ? SPP_U : SPP_S) | SUM) : ((exit ? MPIE : 0) | MPP_M)), _x1(exit), _usp(usp) {
             if(Traits<Build>::hysterically_debugged || Traits<Thread>::trace_idle) {
                                                                         _x5 =  5;  _x6 =  6;  _x7 =  7;  _x8 =  8;  _x9 =  9;
                 _x10 = 10; _x11 = 11; _x12 = 12; _x13 = 13; _x14 = 14; _x15 = 15; _x16 = 16; _x17 = 17; _x18 = 18; _x19 = 19;
@@ -116,7 +116,7 @@ public:
 
         friend OStream & operator<<(OStream & db, const Context & c) {
             db << hex
-               << "{sp="   << &c
+               << "{ksp="  << &c
                << ",usp="  << c._usp
                << ",pc="   << c._pc
                << ",st="   << c._st
@@ -329,15 +329,15 @@ public:
     using CPU_Common::ntohs;
 
     template<typename ... Tn>
-    static Context * init_stack(Log_Addr usp, Log_Addr sp, void (* exit)(), int (* entry)(Tn ...), Tn ... an) {
+    static Context * init_stack(Log_Addr usp, Log_Addr ksp, void (* exit)(), int (* entry)(Tn ...), Tn ... an) {
         // Multitasking scenarios use this method with USP != 0 for application threads, what causes two contexts to be pushed into the thread's stack.
         // The context pushed first (and popped last) is the "regular" one, with entry pointing to the thread's entry point.
         // The second context (popped first) is a dummy context that has first_dispatch as entry point. It is a system-level context (CPL=0),
         // so switch_context doesn't need to care for cross-level IRETs.
 
         // Real context
-        sp -= sizeof(Context);
-        Context * ctx = new(sp) Context(entry, exit, usp); // init_stack is called with usp = 0 for kernel threads
+        ksp -= sizeof(Context);
+        Context * ctx = new(ksp) Context(entry, exit, usp); // init_stack is called with usp = 0 for kernel threads
         init_stack_helper(&ctx->_x10, an ...); // x10 is a0
         return ctx;
     }
@@ -467,11 +467,17 @@ private:
 
 inline void CPU::Context::push(bool interrupt)
 {
-    ASM("       addi     sp, sp, %0             \n" : : "i"(-sizeof(Context))); // adjust SP for the pushes below
-if(multitask) {
-    ASM("       csrr     x3, sscratch           \n"     // SSCRATCH holds KSP in user-land and USP in kernel (USP = 0 for kernel threads)
-        "       sd       x3,    0(sp)           \n");   // push USP
+if(interrupt && multitask) {
+    // swap(KSP, USP) if coming from user mode (i.e. (sstatus & SSP) == SSP_U)
+    ASM("       csrr    x3, sstatus             \n"
+        "       andi    x3, x3, %0              \n"
+        "       bne     x3, zero, 1f            \n"     // if we are in supervisor mode, then don't swap KSP with USP
+        "       csrr    x3, sscratch            \n"
+        "       csrw    sscratch, sp            \n"
+        "       mv      sp, x3                  \n"
+        "1:                                     \n" : : "i"(SPP_S));
 }
+    ASM("       addi     sp, sp, %0             \n" : : "i"(-sizeof(Context))); // adjust SP for the pushes below
 if(interrupt) {
   if(multitask) {
     ASM("       csrr     x3,    sepc            \n"
@@ -493,8 +499,8 @@ if(multitask) {
     ASM("       csrr     x3, mstatus            \n");
 }
     ASM("       sd       x3,    8(sp)           \n"     // push ST
-        "       sd       x1,   16(sp)           \n"     // push RA
-        "       sd       x5,   24(sp)           \n"     // push x5-x31
+        "       sd       x1,   16(sp)           \n"     // push X1-X31
+        "       sd       x5,   24(sp)           \n"
         "       sd       x6,   32(sp)           \n"
         "       sd       x7,   40(sp)           \n"
         "       sd       x8,   48(sp)           \n"
@@ -520,11 +526,16 @@ if(multitask) {
         "       sd      x28,  208(sp)           \n"
         "       sd      x29,  216(sp)           \n"
         "       sd      x30,  224(sp)           \n"
-        "       sd      x31,  232(sp)           \n");
+        "       sd      x31,  232(sp)           \n"
+        "       csrr     x3, sscratch           \n"     // SSCRATCH holds KSP in user-land and USP in kernel (USP = 0 for kernel threads)
+        "       sd       x3,  240(sp)           \n");   // push USP
 }
 
 inline void CPU::Context::pop(bool interrupt)
 {
+if(interrupt) {
+    int_disable();                                      // atomize Context::pop() by disabling interrupts (SPIE will restore the flag on iret())
+}
     ASM("       ld       x3,    0(sp)           \n");   // pop PC into TMP
 if(interrupt) {
     ASM("       add      x3, x3, a0             \n");   // A0 is set by exception handlers to adjust [M|S]EPC to point to the next instruction if needed
@@ -534,14 +545,15 @@ if(multitask) {
 } else {
     ASM("       csrw     mepc, x3               \n");   // MEPC = PC
 }
-
-    ASM("       ld       x3,    8(sp)           \n");   // pop ST into TMP
-if(!interrupt & !multitask) {                           // [M|S]STATUS.[M|S]PP is automatically cleared on the [M|S]RET in the ISR, so we need to recover it here
-    ASM("       li       a0,     %0             \n"     // use A0 as a second TMP (it will be restored later) to adjust [M|S]STATUS.[M|S]PP
-        "       or       x3, x3, a0             \n" : : "i"(multitask ? SPP_S : MPP_M));
+    ASM("       ld       x3,  240(sp)           \n"     // pop USP into TMP
+        "       csrw    sscratch, x3            \n"     // SSCRATCH holds KSP in user-land and USP in kernel (USP = 0 for kernel threads)
+        "       ld       x3,    8(sp)           \n");   // pop ST into TMP
+if(!interrupt & !multitask) {                           // MSTATUS.MPP is automatically cleared on the MRET in the ISR, so we need to recover it here
+    ASM("       li      x10, %0                 \n"     // use X10 as a second TMP, since it will be restored later
+        "       or       x3, x3, x10            \n" : : "i"(MPP_M));
 }
-    ASM("       ld       x1,   16(sp)           \n"     // pop RA
-        "       ld       x5,   24(sp)           \n"     // pop x5-x31
+    ASM("       ld       x1,   16(sp)           \n"     // pop X1-X31
+        "       ld       x5,   24(sp)           \n"
         "       ld       x6,   32(sp)           \n"
         "       ld       x7,   40(sp)           \n"
         "       ld       x8,   48(sp)           \n"
@@ -573,6 +585,15 @@ if(multitask) {
     ASM("       csrw    sstatus, x3             \n");   // SSTATUS = ST
 } else {
     ASM("       csrw    mstatus, x3             \n");   // MSTATUS = ST
+}
+if(multitask && interrupt) {
+    // swap(KSP, USP) if going to user mode (i.e. (sstatus & SSP) == SSP_U)
+    ASM("       andi    x3, x3, %0              \n"
+        "       bne     x3, zero, 1f            \n"
+        "       csrr    x3, sscratch            \n"
+        "       csrw    sscratch, sp            \n"
+        "       mv      sp, x3                  \n"
+        "1:                                     \n" : : "i"(SPP_S));
 }
 }
 

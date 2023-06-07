@@ -12,7 +12,6 @@ template<> struct Traits<Machine_Common>: public Traits<Build>
 {
 protected:
     static const bool library = (Traits<Build>::MODE == Traits<Build>::LIBRARY);
-
 };
 
 template<> struct Traits<Machine>: public Traits<Machine_Common>
@@ -40,15 +39,15 @@ public:
 
     // Logical Memory
 #ifdef __rv32__
-    static const unsigned int APP_LOW           = library ? RAM_BASE : 0x20000000;              // 512 MB
-    static const unsigned int APP_HIGH          = library ? RAM_TOP  : RAM_BASE - 1;            // 2GB
+    static const unsigned long APP_LOW          = library ? RAM_BASE : 0x20000000;              // 512 MB
+    static const unsigned long APP_HIGH         = library ? RAM_TOP  : RAM_BASE - 1;            // 2GB
 
     static const unsigned long APP_CODE         = APP_LOW;
     static const unsigned long APP_DATA         = APP_CODE + 4 * 1024 * 1024;                   // APP_CODE + 4 MB
 
-    static const unsigned int PHY_MEM           = RAM_BASE;                                     // 2 GB (max 1536 MB of RAM)
-    static const unsigned int IO                = 0x00000000;                                   // 0 (max 512 MB of IO = MIO_TOP - MIO_BASE)
-    static const unsigned int SYS               = 0xff800000;                                   // 4 GB - 16 MB
+    static const unsigned long PHY_MEM          = RAM_BASE;                                     // 2 GB (max 1536 MB of RAM)
+    static const unsigned long IO               = 0x00000000;                                   // 0 (max 512 MB of IO = MIO_TOP - MIO_BASE)
+    static const unsigned long SYS              = 0xff800000;                                   // 4 GB - 16 MB
 #else
     static const unsigned long APP_LOW          = library ? RAM_BASE : 0xffffffc000000000;      // 256 GB ((highest address + 1) / 2 [RV64 uses sign-extended addresses, so this is 0x0000004000000000])
     static const unsigned long APP_HIGH         = 0xffffffffffffffff;                           // 512 GB (highest address)
@@ -69,6 +68,7 @@ public:
 
 template <> struct Traits<IC>: public Traits<Machine_Common>
 {
+    static const bool debugged = hysterically_debugged;
 };
 
 template <> struct Traits<Timer>: public Traits<Machine_Common>

@@ -47,7 +47,7 @@ public:
 
             APP  = (V | R | W | X | U | IAD),
             APPC = (V | R |     X | U | IAD),
-            APPD = (V | R | W | X | U | IAD),
+            APPD = (V | R | W     | U | IAD),
             SYS  = (V | R | W | X | IAD),
             IO   = (SYS | MIO),
             DMA  = (SYS | CT),
@@ -266,7 +266,7 @@ public:
                 Attacher * at = pde2phy(_pd->log()[i]);
                 if(at)
                     for(unsigned int j = 0; j < AT_ENTRIES; j++)
-                        if(unflag(ate2phy(at->log()[j & (AT_ENTRIES - 1)])) == unflag(chunk.pt()))
+                        if(unflag(ate2phy(at->log()[j])) == unflag(chunk.pt()))
                             return (i << PD_SHIFT) + (j << AT_SHIFT);
             }
             return Log_Addr(false);
@@ -305,12 +305,7 @@ public:
                 db<MMU>(WRN) << "MMU::Directory::detach(chunk=" << &chunk << ",addr=" << addr << ") [pt=" << chunk.pt() << "] failed!" << endl;
         }
 
-        Phy_Addr physical(Log_Addr addr) {
-            PD_Entry pde = (*_pd)[pdi(addr)];
-            Page_Table * pt = static_cast<Page_Table *>(pde2phy(pde));
-            PT_Entry pte = pt->log()[pti(addr)];
-            return pte | off(addr);
-        }
+        Phy_Addr physical(Log_Addr addr);
 
     private:
         bool attachable(Log_Addr addr, const Page_Table * pt, unsigned int pts, Page_Flags flags) {
@@ -490,7 +485,7 @@ public:
     static Page_Flags pde2flg(PT_Entry entry) { return (entry & Page_Flags::MASK); }
 
 #ifdef __setup__
-    // SETUP uses the MMU to build a primordial memory model before turning the MMU on, so no log vs phy adjustments are made
+    // SETUP may use the MMU to build a primordial memory model before turning the MMU on, so no log vs phy adjustments are made
     static Log_Addr phy2log(Phy_Addr phy) { return Log_Addr((RAM_BASE == PHY_MEM) ? phy : (RAM_BASE > PHY_MEM) ? phy : phy ); }
     static Phy_Addr log2phy(Log_Addr log) { return Phy_Addr((RAM_BASE == PHY_MEM) ? log : (RAM_BASE > PHY_MEM) ? log : log ); }
 #else
@@ -524,7 +519,7 @@ private:
     static Page_Directory * _master;
 };
 
-class MMU: public IF<Traits<System>::multitask || true, SV39_MMU, No_MMU>::Result {};
+class MMU: public IF<Traits<System>::multitask, SV39_MMU, No_MMU>::Result {};
 
 __END_SYS
 

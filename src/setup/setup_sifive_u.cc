@@ -192,11 +192,11 @@ void Setup::build_lm()
     db<Setup>(TRC) << "Setup::build_lm()" << endl;
 
     // Get boot image structure
-    si->lm.has_stp = (si->bm.setup_offset != -1u);
-    si->lm.has_ini = (si->bm.init_offset != -1u);
-    si->lm.has_sys = (si->bm.system_offset != -1u);
-    si->lm.has_app = (si->bm.application_offset != -1u);
-    si->lm.has_ext = (si->bm.extras_offset != -1u);
+    si->lm.has_stp = (si->bm.setup_offset != -1ul);
+    si->lm.has_ini = (si->bm.init_offset != -1ul);
+    si->lm.has_sys = (si->bm.system_offset != -1ul);
+    si->lm.has_app = (si->bm.application_offset != -1ul);
+    si->lm.has_ext = (si->bm.extras_offset != -1ul);
 
     // Check SETUP integrity and get the size of its segments
     if(si->lm.has_stp) {
@@ -736,7 +736,7 @@ void _entry() // machine mode
     if(Traits<System>::multitask) {
         CLINT::mtvec(CLINT::DIRECT, Memory_Map::INT_M2S); // setup a machine mode interrupt handler to forward timer interrupts (which cannot be delegated via mideleg)
         CPU::mideleg(CPU::SSI | CPU::STI | CPU::SEI);   // delegate supervisor interrupts to supervisor mode
-        CPU::medeleg(0xffff);                           // delegate all exceptions to supervisor mode
+        CPU::medeleg(0xf1ff);                           // delegate all exceptions to supervisor mode but ecalls
         CPU::mstatuss(CPU::MPP_S);                      // prepare jump into supervisor mode at mret
         CPU::sstatuss(CPU::SUM);                        // allows User Memory access in supervisor mode
     } else {
@@ -786,9 +786,12 @@ if(Traits<CPU>::WORD_SIZE == 32) {
 
     if((id & CLINT::INT_MASK) == CLINT::IRQ_MAC_TIMER) {
         Timer::reset();                 // MIP.MTI is a direct logic on (MTIME == MTIMECMP) and reseting the Timer (i.e. adjusting MTIMECMP) seems to be the only way to clear it
-        CPU::sies(CPU::STI);            // reenable STI, which is disabled by the supervisor's handler
         CPU::mips(CPU::STI);            // forward MTI as STI
         while(CPU::mip() & CPU::MTI);   // wait for MTI to go down (due to MTIMECMP adjustment) to avoid spurious interrupts
+    }
+    if(id == CPU::EXC_ENVS) {
+        CPU::mipc(CPU::STI);            // STI was handled in supervisor mode, so clear the corresponding pending bit
+        CPU::mepc(CPU::mepc() + 4);
     }
 
     // Restore context
