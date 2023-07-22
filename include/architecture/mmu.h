@@ -66,10 +66,11 @@ public:
             CWT  = 1 << 6, // Cache mode (0=write-back, 1=write-through)
             CT   = 1 << 7, // Contiguous (0=non-contiguous, 1=contiguous)
             IO   = 1 << 8, // Memory Mapped I/O (0=memory, 1=I/O)
-            SYS  = (PRE | RD | WR | EX),
-            APP  = (PRE | RD | WR | EX | USR),
+            SYSC = (PRE | RD | EX),
+            SYSD = (PRE | RD | WR),
             APPC = (PRE | RD | EX | USR),
-            APPD = (PRE | RD | WR | USR)
+            APPD = (PRE | RD | WR | USR),
+            DMA  = (SYSD | CD | CT)
         };
 
     public:

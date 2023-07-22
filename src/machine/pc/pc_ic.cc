@@ -13,7 +13,7 @@ __BEGIN_SYS
 APIC::Log_Addr APIC::_base;
 IC::Interrupt_Handler IC::_int_vector[IC::INTS];
 
-
+// This function has to be here (and not in pc_ic_init.cc) because it is used by SETUP, which cannot be linked against libinit.a
 void APIC::ipi_init(volatile int * status)
 {
     status[0] = 0;
@@ -72,7 +72,6 @@ void IC::dispatch(unsigned int i)
     if((i >= INT_FIRST_HARD) && (i <= INT_LAST_HARD))
         not_spurious = eoi(i);
     if(not_spurious) {
-
         if((i != INT_SYS_TIMER) || Traits<IC>::hysterically_debugged)
             db<IC>(TRC) << "IC::dispatch(i=" << i << ")" << endl;
 
@@ -888,13 +887,6 @@ void IC::exc_not(Reg eip, Reg cs, Reg eflags, Reg error)
 
 void IC::exc_pf(Reg eip, Reg cs, Reg eflags, Reg error)
 {
-    register Reg fr = CPU::fr();
-
-    if(CPU::cr2() == reinterpret_cast<CPU::Reg>(&__exit)) {
-        db<IC,Machine>(INF) << "IC::exc_pf: thread's final return!" << endl;
-       _exit(fr);
-    }
-
     db<IC,Machine>(WRN) << "IC::exc_pf[address=" << reinterpret_cast<void *>(CPU::cr2()) << "](cs=" << hex << cs << ",ip=" << reinterpret_cast<void *>(eip) << ",sp=" << CPU::sp() << ",fl=" << hex << eflags << dec << ",err=";
     if(error & (1 << 0))
         db<IC,Machine>(WRN) << "P";

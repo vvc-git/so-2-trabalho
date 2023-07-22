@@ -10,13 +10,9 @@ unsigned int CPU::_bus_clock;
 
 void CPU::Context::save() volatile
 {
-    ASM("       sd       x1,    0(a0)           \n");   // push RA as PC
-if(multitask) {
-    ASM("       csrr     x3,  sstatus           \n");
-} else {
-    ASM("       csrr     x3,  mstatus           \n");
-}
-    ASM("       sd       x3,    8(a0)           \n"     // push ST
+    ASM("       sd       x1,    0(a0)           \n"     // push RA as PC
+        "       csrr     x3,  mstatus           \n"
+        "       sd       x3,    8(a0)           \n"     // push ST
         "       sd       x1,   16(a0)           \n"     // push X1-X31
         "       sd       x5,   24(a0)           \n"
         "       sd       x6,   32(a0)           \n"
@@ -45,8 +41,6 @@ if(multitask) {
         "       sd      x29,  216(a0)           \n"
         "       sd      x30,  224(a0)           \n"
         "       sd      x31,  232(a0)           \n"
-        "       csrr     x3,  sscratch          \n"     // SSCRATCH = USP (SSCRATCH holds KSP in user-land and USP in kernel (USP = 0 for kernel threads))
-        "       sd       x3,  240(a0)           \n"     // push USP
         "       ret                             \n");
 }
 

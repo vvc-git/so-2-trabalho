@@ -7,42 +7,42 @@
 
 __BEGIN_SYS
 
-// Methods
-
-Condition::Condition() {
+Condition::Condition()
+{
     db<Synchronizer>(TRC) << "Condition() => " << this << endl;
 }
 
 
-Condition::~Condition() {
+Condition::~Condition()
+{
     db<Synchronizer>(TRC) << "~Condition(this=" << this << ")" << endl;
 }
 
 
-void Condition::wait() {
+void Condition::wait()
+{
     db<Synchronizer>(TRC) << "Condition::wait(this=" << this << ")" << endl;
 
     begin_atomic();
-    sleep();
-    end_atomic();
+    sleep(); // implicit end_atomic()
 }
 
 
-void Condition::signal() {
+void Condition::signal()
+{
     db<Synchronizer>(TRC) << "Condition::signal(this=" << this << ")" << endl;
 
     begin_atomic();
-    wakeup();
-    end_atomic();
+    wakeup(); // implicit end_atomic()
 }
 
 
-void Condition::broadcast() {
+void Condition::broadcast()
+{
     db<Synchronizer>(TRC) << "Condition::broadcast(this=" << this << ")" << endl;
 
     begin_atomic();
-    wakeup_all();
-    end_atomic();
+    wakeup_all(); // implicit end_atomic()
 }
 
 // This is an alternative implementation, which does impose ordering

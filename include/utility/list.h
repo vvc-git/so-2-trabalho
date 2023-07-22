@@ -95,7 +95,7 @@ namespace List_Elements
     {
     public:
         typedef T Object_Type;
-        typedef Rank Rank_Type;
+        typedef R Rank_Type;
         typedef Singly_Linked_Ordered Element;
 
     public:
@@ -175,7 +175,7 @@ namespace List_Elements
     {
     public:
         typedef T Object_Type;
-        typedef Rank Rank_Type;
+        typedef R Rank_Type;
         typedef Doubly_Linked_Ordered Element;
 
     public:
@@ -200,13 +200,42 @@ namespace List_Elements
         Element * _next;
     };
 
+    // Ordered List Element
+    template<typename T, typename R = Rank>
+    class Doubly_Linked_Typed
+    {
+    public:
+        typedef T Object_Type;
+        typedef R Rank_Type;
+        typedef Doubly_Linked_Typed Element;
+
+    public:
+        Doubly_Linked_Typed(const T * o,  const R & t = 0): _object(o), _type(t), _prev(0), _next(0) {}
+
+        T * object() const { return const_cast<T *>(_object); }
+
+        Element * prev() const { return _prev; }
+        Element * next() const { return _next; }
+        void prev(Element * e) { _prev = e; }
+        void next(Element * e) { _next = e; }
+
+        const R & type() const { return _type; }
+        void rank(const R & t) { _type = t; }
+
+    private:
+        const T * _object;
+        R _type;
+        Element * _prev;
+        Element * _next;
+    };
+
     // Scheduling List Element
     template<typename T, typename R = Rank>
     class Doubly_Linked_Scheduling
     {
     public:
         typedef T Object_Type;
-        typedef Rank Rank_Type;
+        typedef R Rank_Type;
         typedef Doubly_Linked_Scheduling Element;
 
     public:
@@ -993,6 +1022,14 @@ template<typename T,
           typename R = List_Element_Rank,
           typename El = List_Elements::Doubly_Linked_Ordered<T, R> >
 class Relative_List: public Ordered_List<T, R, El, true> {};
+
+
+// Doubly-Linked, Typed List
+template<typename T = void,
+          typename R = List_Element_Rank,
+          typename El = List_Elements::Doubly_Linked_Typed<T, R>,
+          bool relative = false>
+class Typed_List: public List<T, El> {};
 
 
 // Doubly-Linked, Scheduling List

@@ -10,7 +10,6 @@ __BEGIN_SYS
 class ARMv7: protected CPU_Common
 {
 protected:
-    static const bool multitask = Traits<System>::multitask;
     static const bool save_fpu  = Traits<FPU>::enabled && !Traits<FPU>::user_save;
 
 public:
@@ -223,7 +222,7 @@ public:
     {
     public:
         Context() {}
-        Context(Log_Addr usp, Log_Addr entry, Log_Addr exit): ARMv7::Context(FLAG_THUMB, entry | thumb, exit | thumb) {}
+        Context(Log_Addr entry, Log_Addr exit, Log_Addr usp): ARMv7::Context(FLAG_THUMB, entry | thumb, exit | thumb) {}
 
         static void pop(bool interrupt = false, bool stay_in_svc = false);
         static void push(bool interrupt = false, bool stay_in_svc = false);
@@ -400,26 +399,14 @@ public:
     };
 
     // CPU Context
-    class Multitask_Context
-    {
-    public:
-        Multitask_Context() {}
-        Multitask_Context(Log_Addr usp, Log_Addr ulr):  _usp(usp), _ulr(ulr) {}
-
-    public:
-        Reg _usp;
-        Reg _ulr;
-    };
-
-    class Context: public Multitask_Context, public ARMv7::Context
+    class Context: public ARMv7::Context
     {
     public:
         Context() {}
-        Context(Log_Addr usp, Log_Addr entry, Log_Addr exit): Multitask_Context(usp, exit), ARMv7::Context((multitask && usp) ? MODE_USR : MODE_SVC, entry, exit) {}
+        Context(Log_Addr entry, Log_Addr exit, Log_Addr usp): ARMv7::Context(MODE_SVC, entry, exit) {}
 
         static void pop(bool interrupt = false, bool stay_in_svc = true);
         static void push(bool interrupt = false, bool stay_in_svc = true);
-        static void first_dispatch() __attribute__((naked));
 
         friend OStream & operator<<(OStream & os, const Context & c) {
             os << hex
@@ -440,8 +427,6 @@ public:
                << ",sp="  << &c
                << ",lr="  << c._lr
                << ",pc="  << c._pc
-               << ",usp=" << c._usp
-               << ",ulr=" << c._ulr
                << "}" << dec;
             return os;
         }
@@ -563,13 +548,6 @@ inline void ARMv7_A::Context::push(bool interrupt, bool stay_in_svc)
          ASM("str r12, [sp, #56]");             // overwrite PC with the calculated address
          psr_to_tmp();
          ASM("push {r12}");                     // push PSR
-         if(multitask)
-             ASM("mrs     r12, lr_usr                                   \t\n\
-                  push    {r12}                 // push ULR             \t\n\
-                  mrs     r12, sp_usr                                   \t\n\
-                  push    {r12}                 // push USP             \t");
-         else
-              ASM("sub sp, #8");                // skip ULR and USP
          if(save_fpu)
              fpu_save();
     }
@@ -585,13 +563,6 @@ inline void ARMv7_A::Context::pop(bool interrupt, bool stay_in_svc)
     } else {
         if(save_fpu)
             fpu_restore();
-        if(multitask)
-	    ASM("pop     {r12}                          // pop USP      \t\n\
-                 msr     sp_usr, r12                    // set USP      \t\n\
-                 pop     {r12}                          // pop ULR      \t\n\
-                 msr     lr_usr, r12                    // set ULR      \t");
-        else
-            ASM("add sp, #8"); 				// skip ULR and USP
         ASM("pop {r12}");				// pop PSR
         if(stay_in_svc) {
             tmp_to_cpsr();
@@ -650,7 +621,7 @@ public:
     {
     public:
         Context() {}
-        Context(Log_Addr usp, Log_Addr entry, Log_Addr exit): Base::Context(usp, entry, exit) {}
+        Context(Log_Addr entry, Log_Addr exit, Log_Addr usp): Base::Context(entry, exit, usp) {}
 
         void save() volatile __attribute__ ((naked));
         void load() const volatile __attribute__ ((naked));
@@ -693,27 +664,11 @@ public:
 
     template<typename ... Tn>
     static Context * init_stack(Log_Addr usp, Log_Addr sp, void (* exit)(), int (* entry)(Tn ...), Tn ... an) {
-        // Real context
         sp -= sizeof(Context);
-        Context * ctx = new(sp) Context(usp, entry, exit); // init_stack is called with USP = 0 for kernel threads
+        Context * ctx = new(sp) Context(entry, exit, usp); // init_stack is called with USP = 0 for kernel threads
         init_stack_helper(&ctx->_r0, an ...);
-        
-#ifdef __kernel__
-        // Dummy context
-        if(usp) { // multitask
-            sp -= sizeof(Context);
-            ctx = new(sp) Context(0, &Context::first_dispatch, exit);
-        }
-#endif
         return ctx;
     }
-
-    // In ARMv7, the main thread of each task gets parameters over registers, not the stack, and they are initialized by init_stack.
-    template<typename ... Tn>
-    static Log_Addr init_user_stack(Log_Addr usp, void (* exit)(), Tn ... an) { return usp; }
-
-    static void syscall(void * message);
-    static void syscalled();
 
     using CPU_Common::htole64;
     using CPU_Common::htole32;

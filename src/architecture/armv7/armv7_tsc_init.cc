@@ -22,17 +22,15 @@ void TSC::init()
 
     // time-out interrupt will be registered later at IC::init(), because IC hasn't been initialized yet
 #else
-    if(CPU::id() == 0) {
-        // Disable counting before programming
-        reg(GTCLR) = 0;
+    // Disable counting before programming
+    reg(GTCLR) = 0;
 
-        // Set timer to 0
-        reg(GTCTRL) = 0;
-        reg(GTCTRH) = 0;
+    // Set timer to 0
+    reg(GTCTRL) = 0;
+    reg(GTCTRH) = 0;
 
-        // Re-enable counting
-        reg(GTCLR) = 1;
-    }
+    // Re-enable counting
+    reg(GTCLR) = 1;
 #endif
 }
 

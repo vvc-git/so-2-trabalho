@@ -233,7 +233,7 @@ int main(int argc, char **argv)
     fprintf(out, "    Adding application \"%s\":", argv[optind + 2]);
     image_size += put_file(fd_img, argv[optind + 2]);
     if((argc - optind) == 3) // single APP
-        si.bm.extras_offset = -1;
+        si.bm.extras_offset = -1UL;
     else { // multiple APPs or data
         si.bm.extras_offset = image_size - boot_size;
         struct stat file_stat;

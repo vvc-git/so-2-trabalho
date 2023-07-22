@@ -237,12 +237,12 @@ class Timer: public Timer_Common
     friend class Init_System;
 
 protected:
+    static const unsigned int CHANNELS = 3;
+    static const unsigned int FREQUENCY = Traits<Timer>::FREQUENCY;
+
     typedef i8253 Engine;
     typedef Engine::Count Count;
     typedef IC::Interrupt_Id Interrupt_Id;
-
-    static const unsigned int CHANNELS = 3;
-    static const unsigned int FREQUENCY = Traits<Timer>::FREQUENCY;
 
 protected:
     Timer(Channel channel, Hertz frequency, const Handler & handler, bool retrigger = true)

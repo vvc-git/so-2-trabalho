@@ -18,7 +18,7 @@ private:
 protected:
     static const unsigned int CHANNELS = 6;
     static const unsigned int FIXED = 0;
-    static const unsigned int EVENTS = Traits_Tokens::PMU_Event::LAST_EVENT;
+    static const unsigned int EVENTS = PMU_Event::LAST_EVENT;
 
 
 public:

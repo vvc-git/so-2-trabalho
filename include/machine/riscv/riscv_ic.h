@@ -14,13 +14,15 @@ class CLINT
 {
 private:
     typedef CPU::Reg Reg;
+    typedef CPU::Reg32 Reg32;
+    typedef CPU::Reg64 Reg64;
     typedef CPU::Phy_Addr Phy_Addr;
     typedef CPU::Log_Addr Log_Addr;
 
 public:
     static const unsigned int IRQS = 16;
 
-    // Interrupts (mcause with interrupt = 1)
+    // Interrupts ([M|S]CAUSE with interrupt = 1)
     enum : unsigned long {
         IRQ_USR_SOFT            = 0,
         IRQ_SUP_SOFT            = 1,
@@ -38,12 +40,9 @@ public:
 
     // Registers offsets from CLINT_BASE
     enum {                                // Description
-        MSIP                    = 0x0000, // Generate machine mode software interrupts (IPIs); each HART is offseted by 4 bytes from MSIP
-        MTIMECMP                = 0x4000, // Compare (32-bit, per hart register)
-        MTIME                   = 0xbff8, // Counter (lower 32 bits, shared by all harts)
-        MTIMEH                  = 0xbffc, // Counter (upper 32 bits, shared by all harts)
-        MSIP_CORE_OFFSET        = 4,      // Offset in bytes from MSIP for each hart's software interrupt trigger register
-        MTIMECMP_CORE_OFFSET    = 8       // Offset in bytes from MTIMECMP for each hart's compare register
+        MSIP                    = 0x0000, // Per-HART 32-bit software interrupts (IPI) trigger; each HART is offset by 4 bytes from MSIP
+        MTIMECMP                = 0x4000, // Per-HART 64-bit timer compare register; lower 32 bits stored first; each HART is offset by 8 bytes from MTIMECMP
+        MTIME                   = 0xbff8, // Timer counter shared by all HARTs lower 32 bits stored first
     };
 
     // MTVEC modes
@@ -64,16 +63,8 @@ public:
         return value;
     }
 
-    static void stvec(Mode mode, Log_Addr base) {
-    	Reg tmp = (base & -4UL) | (Reg(mode) & 0x3);
-        ASM("csrw stvec, %0" : : "r"(tmp) : "cc");
-    }
-
-    static Reg stvec() {
-        Reg value;
-        ASM("csrr %0, stvec" : "=r"(value) : : );
-        return value;
-    }
+    static Reg64 mtime() { return *reinterpret_cast<Reg64 *>(Memory_Map::CLINT_BASE + MTIME); }
+    static void  mtimecmp(Reg64 v) { *reinterpret_cast<Reg64 *>(Memory_Map::CLINT_BASE + MTIMECMP) = v; }
 };
 
 class IC: private IC_Common, private CLINT
@@ -84,8 +75,6 @@ class IC: private IC_Common, private CLINT
 private:
     typedef CPU::Reg Reg;
 
-    static const bool multitask = Traits<System>::multitask;
-
 public:
     static const unsigned int EXCS = CPU::EXCEPTIONS;
     static const unsigned int IRQS = CLINT::IRQS;
@@ -95,8 +84,7 @@ public:
     using IC_Common::Interrupt_Handler;
 
     enum {
-        INT_SYSCALL     = CPU::EXC_ENVU,
-        INT_SYS_TIMER   = EXCS + (multitask ? IRQ_SUP_TIMER : IRQ_MAC_TIMER)
+        INT_SYS_TIMER = EXCS + IRQ_MAC_TIMER
     };
 
 public:
@@ -115,10 +103,7 @@ public:
 
     static void enable() {
         db<IC>(TRC) << "IC::enable()" << endl;
-        if(multitask)
-            CPU::sie(CPU::SSI | CPU::STI | CPU::SEI);
-        else
-            CPU::mie(CPU::MSI | CPU::MTI | CPU::MEI);
+        CPU::mie(CPU::MSI | CPU::MTI | CPU::MEI);
     }
 
     static void enable(Interrupt_Id i) {
@@ -130,11 +115,8 @@ public:
 
     static void disable() {
         db<IC>(TRC) << "IC::disable()" << endl;
-        if(multitask)
-            CPU::siec(CPU::SSI | CPU::STI | CPU::SEI);
-        else
-            CPU::miec(CPU::MSI | CPU::MTI | CPU::MEI);
-}
+        CPU::miec(CPU::MSI | CPU::MTI | CPU::MEI);
+    }
 
     static void disable(Interrupt_Id i) {
         db<IC>(TRC) << "IC::disable(int=" << i << ")" << endl;
@@ -145,7 +127,7 @@ public:
 
     static Interrupt_Id int_id() {
         // Id is retrieved from [m|s]cause even if mip has the equivalent bit up, because only [m|s]cause can tell if it is an interrupt or an exception
-        Reg id = (multitask) ? CPU::scause() : CPU::mcause();
+        Reg id = CPU::mcause();
         if(id & INTERRUPT)
             return irq2int(id & INT_MASK);
         else
@@ -159,7 +141,6 @@ private:
     static void dispatch();
 
     // Logical handlers
-    static void syscall(Interrupt_Id i);
     static void int_not(Interrupt_Id i);
     static void exception(Interrupt_Id i);
 
@@ -167,8 +148,6 @@ private:
     static void entry() __attribute((naked, aligned(4)));
 
     static void init();
-
-    static volatile CPU::Reg32 & reg(unsigned int o) { return reinterpret_cast<volatile CPU::Reg32 *>(Memory_Map::CLINT_BASE)[o / sizeof(CPU::Reg32)]; }
 
 private:
     static Interrupt_Handler _int_vector[INTS];

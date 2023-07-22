@@ -34,35 +34,23 @@ public:
 
     // Physical Memory at Boot
     static const unsigned long BOOT             = NOT_USED;
-    static const unsigned long SETUP            = library ? NOT_USED : RAM_BASE;                // RAM_BASE (will be part of the free memory at INIT, using a logical address identical to physical eliminate SETUP relocation)
-    static const unsigned long IMAGE            = 0x80100000;                                   // RAM_BASE + 1 MB (will be part of the free memory at INIT, defines the maximum image size; if larger than 3 MB then adjust at SETUP)
+    static const unsigned long SETUP            = NOT_USED;
+    static const unsigned long IMAGE            = NOT_USED;
 
     // Logical Memory
-#ifdef __rv32__
-    static const unsigned long APP_LOW          = library ? RAM_BASE : 0x20000000;              // 512 MB
-    static const unsigned long APP_HIGH         = library ? RAM_TOP  : RAM_BASE - 1;            // 2GB
+    static const unsigned long APP_LOW          = RAM_BASE;
+    static const unsigned long APP_HIGH         = RAM_TOP;
 
     static const unsigned long APP_CODE         = APP_LOW;
     static const unsigned long APP_DATA         = APP_CODE + 4 * 1024 * 1024;                   // APP_CODE + 4 MB
 
-    static const unsigned long PHY_MEM          = RAM_BASE;                                     // 2 GB (max 1536 MB of RAM)
-    static const unsigned long IO               = 0x00000000;                                   // 0 (max 512 MB of IO = MIO_TOP - MIO_BASE)
-    static const unsigned long SYS              = 0xff800000;                                   // 4 GB - 16 MB
-#else
-    static const unsigned long APP_LOW          = library ? RAM_BASE : 0xffffffc000000000;      // 256 GB ((highest address + 1) / 2 [RV64 uses sign-extended addresses, so this is 0x0000004000000000])
-    static const unsigned long APP_HIGH         = 0xffffffffffffffff;                           // 512 GB (highest address)
-
-    static const unsigned long APP_CODE         = APP_LOW;
-    static const unsigned long APP_DATA         = APP_CODE + 4 * 1024 * 1024;                   // APP_CODE + 4 MB
-
-    static const unsigned long PHY_MEM          = RAM_BASE;                                     // 2 GB (max 256 GB of RAM)
-    static const unsigned long IO               = 0x0000000000000000;                           // 0 (max 512 MB of IO = MIO_TOP - MIO_BASE)
-    static const unsigned long SYS              = 0x0000000020000000;                           // 128 GB
-#endif
+    static const unsigned long PHY_MEM          = NOT_USED;
+    static const unsigned long IO               = NOT_USED;
+    static const unsigned long SYS              = NOT_USED;
 
     // Default Sizes and Quantities
     static const unsigned int MAX_THREADS       = 15;
-    static const unsigned int STACK_SIZE        = 256 * 1024;
+    static const unsigned int STACK_SIZE        = 16 * 1024;
     static const unsigned int HEAP_SIZE         = 4 * 1024 * 1024;
 };
 

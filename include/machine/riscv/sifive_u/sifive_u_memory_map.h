@@ -9,9 +9,6 @@ __BEGIN_SYS
 
 struct Memory_Map
 {
-private:
-    static const bool multitask = Traits<System>::multitask;
-
 public:
     enum : unsigned long {
         NOT_USED        = Traits<Machine>::NOT_USED,
@@ -21,10 +18,7 @@ public:
         RAM_TOP         = Traits<Machine>::RAM_TOP,
         MIO_BASE        = Traits<Machine>::MIO_BASE,
         MIO_TOP         = Traits<Machine>::MIO_TOP,
-        LAST_PAGE       = RAM_TOP + 1 - 4096,
-        INT_M2S         = LAST_PAGE,   		// with multitasking, the last page is used by the _int_m2s() machine mode interrupt forwarder installed by SETUP before going into supervisor mode; code and stack share the same page, with code at the bottom and the stack at the top
-        FLAT_MEM_MAP    = LAST_PAGE,       	// in LIBRARY mode, the last page is used for a single-level mapping of the whole memory space
-        BOOT_STACK      = LAST_PAGE - Traits<Machine>::STACK_SIZE, // will be used as the stack's base, not the stack pointer
+        BOOT_STACK      = RAM_TOP + 1 - Traits<Machine>::STACK_SIZE, // will be used as the stack's base, not the stack pointer
         FREE_BASE       = RAM_BASE,
         FREE_TOP        = BOOT_STACK,
 
@@ -61,15 +55,15 @@ public:
         IO              = Traits<Machine>::IO,
 
         SYS             = Traits<Machine>::SYS,
-        SYS_CODE        = multitask ? SYS + 0x00000000 : NOT_USED,
-        SYS_INFO        = multitask ? SYS + 0x00100000 : NOT_USED,
-        SYS_PT          = multitask ? SYS + 0x00101000 : NOT_USED,
-        SYS_PD          = multitask ? SYS + 0x00102000 : NOT_USED,
-        SYS_DATA        = multitask ? SYS + 0x00103000 : NOT_USED,
-        SYS_STACK       = multitask ? SYS + 0x00200000 : NOT_USED,
-        INIT            = multitask ? SYS_STACK        : NOT_USED,
-        SYS_HEAP        = multitask ? SYS + 0x00400000 : NOT_USED,
-        SYS_HIGH        = multitask ? SYS + 0x5fffffff : NOT_USED
+        SYS_CODE        = NOT_USED,
+        SYS_INFO        = NOT_USED,
+        SYS_PT          = NOT_USED,
+        SYS_PD          = NOT_USED,
+        SYS_DATA        = NOT_USED,
+        SYS_STACK       = NOT_USED,
+        INIT            = NOT_USED,
+        SYS_HEAP        = NOT_USED,
+        SYS_HIGH        = NOT_USED
     };
 };
 

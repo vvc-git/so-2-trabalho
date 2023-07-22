@@ -8,8 +8,7 @@ void Machine::pre_init(System_Info * si)
 {
     Engine::pre_init();
 
-    if(CPU::id() == 0)
-        Display::init();
+    Display::init();
 
     db<Init, Machine>(TRC) << "Machine::pre_init()" << endl;
 

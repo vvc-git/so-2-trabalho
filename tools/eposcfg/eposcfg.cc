@@ -195,7 +195,7 @@ void populate_strings()
     snprintf(string, STRING_SIZE, "%i", Traits<Build>::NODES);
     set_token_value("NODES", string);
 
-    snprintf(string, STRING_SIZE, "%i", Traits<CPU>::CLOCK);
+    snprintf(string, STRING_SIZE, iformat, Traits<CPU>::CLOCK);
     set_token_value("CLOCK", string);
 
     snprintf(string, STRING_SIZE, "%i", Traits<CPU>::WORD_SIZE);

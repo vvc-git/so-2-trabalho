@@ -31,7 +31,7 @@ public:
     class Page_Flags
     {
     public:
-        enum {
+        enum : unsigned long {
             PRE  = 1 <<  0, // Present (0=not-present, 1=present)
             WR   = 1 <<  1, // Writable (0=read-only, 1=read-write)
             USR  = 1 <<  2, // Access Control (0=supervisor, 1=user)
@@ -146,6 +146,8 @@ public:
     class Chunk
     {
     public:
+        Chunk(const Chunk & c): _free(false), _from(c._from), _to(c._to), _pts(c._pts), _flags(c._flags), _pt(c._pt) {} // avoid freeing memory when temporaries are created
+
         Chunk(unsigned long bytes, Flags flags, Color color = WHITE)
         : _free(true), _from(0), _to(pages(bytes)), _pts(Common::pts(_to - _from)), _flags(Page_Flags(flags)), _pt(calloc(_pts, WHITE)) {
             if(_flags & Page_Flags::CT)
@@ -231,6 +233,8 @@ public:
     class Directory
     {
     public:
+        Directory(const Directory & d): _free(false), _pd(d._pd) {} // avoid freeing memory when temporaries are created
+
         Directory(): _free(true), _pd(calloc(1, WHITE)) {
             for(unsigned int i = 0; i < PD_ENTRIES; i++)
                 if(!((i >= pdi(APP_LOW)) && (i <= pdi(APP_HIGH))))
@@ -313,17 +317,18 @@ public:
     class DMA_Buffer: public Chunk
     {
     public:
-        DMA_Buffer(unsigned long s) : Chunk(s, Page_Flags::DMA) {
+        DMA_Buffer(unsigned long s): Chunk(s, Flags::DMA) {
             Directory dir(current());
             _log_addr = dir.attach(*this);
-            db<MMU>(TRC) << "MMU::DMA_Buffer() => " << *this << endl;
+            db<MMU>(TRC) << "MMU::DMA_Buffer(s=" << s << ") => " << this << endl;
+            db<MMU>(INF) << "MMU::DMA_Buffer=" << *this << endl;
         }
 
-        DMA_Buffer(unsigned long s, Log_Addr d): Chunk(s, Page_Flags::DMA) {
+        DMA_Buffer(unsigned long s, Log_Addr d): Chunk(s, Flags::DMA) {
             Directory dir(current());
             _log_addr = dir.attach(*this);
             memcpy(_log_addr, d, s);
-            db<MMU>(TRC) << "MMU::DMA_Buffer(phy=" << *this << " <= " << d << endl;
+            db<MMU>(TRC) << "MMU::DMA_Buffer(s=" << s << ") => " << this << endl;
         }
 
         Log_Addr log_address() const { return _log_addr; }

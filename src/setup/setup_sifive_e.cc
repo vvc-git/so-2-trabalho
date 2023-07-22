@@ -8,8 +8,6 @@
 extern "C" {
     void _start();
 
-    void _int_entry();
-
     // SETUP entry point is in .init (and not in .text), so it will be linked first and will be the first function after the ELF header in the image
     void _entry() __attribute__ ((used, naked, section(".init")));
     void _setup();
@@ -56,11 +54,15 @@ Setup::Setup()
 {
     CPU::int_disable(); // interrupts will be re-enabled at init_end
 
-    Display::init();
-
     si = reinterpret_cast<System_Info *>(&__boot_time_system_info);
-    if(si->bm.n_cpus > Traits<Machine>::CPUS)
-        si->bm.n_cpus = Traits<Machine>::CPUS;
+
+    // SETUP doesn't handle global constructors, so we need to manually initialize any object with a non-empty default constructor
+    new (&kout) OStream;
+    new (&kerr) OStream;
+
+    Display::init();
+    kout << endl;
+    kerr << endl;
 
     db<Setup>(TRC) << "Setup(si=" << reinterpret_cast<void *>(si) << ",sp=" << CPU::sp() << ")" << endl;
     db<Setup>(INF) << "Setup:si=" << *si << endl;
@@ -78,13 +80,10 @@ void Setup::say_hi()
     db<Setup>(TRC) << "Setup::say_hi()" << endl;
     db<Setup>(INF) << "System_Info=" << *si << endl;
 
-    if(si->bm.application_offset == -1U)
-        db<Setup>(ERR) << "No APPLICATION in boot image, you don't need EPOS!" << endl;
-
     kout << "This is EPOS!\n" << endl;
     kout << "Setting up this machine as follows: " << endl;
     kout << "  Mode:         " << ((Traits<Build>::MODE == Traits<Build>::LIBRARY) ? "library" : (Traits<Build>::MODE == Traits<Build>::BUILTIN) ? "built-in" : "kernel") << endl;
-    kout << "  Processor:    " << Traits<Machine>::CPUS << " x RV32 at " << Traits<CPU>::CLOCK / 1000000 << " MHz (BUS clock = " << Traits<CPU>::CLOCK / 1000000 << " MHz)" << endl;
+    kout << "  Processor:    " << Traits<Machine>::CPUS << " x RV" << Traits<CPU>::WORD_SIZE << " at " << Traits<CPU>::CLOCK / 1000000 << " MHz (BUS clock = " << Traits<CPU>::CLOCK / 1000000 << " MHz)" << endl;
     kout << "  Machine:      SiFive-E" << endl;
     kout << "  Memory:       " << (RAM_TOP + 1 - RAM_BASE) / 1024 << " KB [" << reinterpret_cast<void *>(RAM_BASE) << ":" << reinterpret_cast<void *>(RAM_TOP) << "]" << endl;
     kout << "  User memory:  " << (FREE_TOP - FREE_BASE) / 1024 << " KB [" << reinterpret_cast<void *>(FREE_BASE) << ":" << reinterpret_cast<void *>(FREE_TOP) << "]" << endl;
@@ -123,8 +122,6 @@ using namespace EPOS::S;
 void _entry() // machine mode
 {
     CPU::mstatusc(CPU::MIE);                            // disable interrupts (they will be reenabled at Init_End)
-    CPU::mies(CPU::MSI);                                // enable interrupts at CLINT so IPI and timer can be triggered
-    CLINT::mtvec(CLINT::DIRECT, _int_entry);            // setup a preliminary machine mode interrupt handler pointing it to _int_entry
 
     CPU::sp(Memory_Map::BOOT_STACK + Traits<Machine>::STACK_SIZE - sizeof(long)); // set this hart stack
 
@@ -138,8 +135,5 @@ void _entry() // machine mode
 
 void _setup() // supervisor mode
 {
-    kerr  << endl;
-    kout  << endl;
-
     Setup setup;
 }

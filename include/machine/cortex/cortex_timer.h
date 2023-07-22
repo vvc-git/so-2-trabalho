@@ -19,11 +19,11 @@ class Timer: public System_Timer_Engine
     friend IC;                  // for eoi()
 
 protected:
-    typedef System_Timer_Engine Engine;
-    typedef IC_Common::Interrupt_Id Interrupt_Id;
-
     static const unsigned int CHANNELS = 2;
     static const unsigned int FREQUENCY = Traits<Timer>::FREQUENCY;
+
+    typedef System_Timer_Engine Engine;
+    typedef IC_Common::Interrupt_Id Interrupt_Id;
 
 protected:
     Timer(Channel channel, Hertz frequency, const Handler & handler, bool retrigger = true)

@@ -11,9 +11,6 @@ class CPU: protected CPU_Common
 {
     friend class Init_System; // for CPU::init()
 
-private:
-    static const bool multitask = Traits<System>::multitask;
-
 public:
     // CPU Native Data Types
     using CPU_Common::Reg8;
@@ -59,7 +56,7 @@ public:
         SD              = 1L<< 63       // Status Dirty = (FS | XS)
     };
 
-    // Interrupt-Enable, Interrupt-Pending and Machine Cause Registers ([m|s]ie, [m|s]ip, and [m|s]cause when interrupt bit is set)
+    // Interrupt-Enable, Interrupt-Pending and Machine Cause Registers ([M|S]IE, [M|S]IP, and [M|S]CAUSE when interrupt bit is set)
     enum {
         SSI             = 1 << 1,       // Supervisor Software Interrupt
         MSI             = 1 << 3,       // Machine Software Interrupt
@@ -102,7 +99,7 @@ public:
         // Contexts are loaded with [m|s]ret, which gets pc from [m|s]epc and updates some bits of [m|s]status, that's why _st is initialized with [M|S]PIE and [M|S]PP
         // Kernel threads are created with usp = 0 and have SPP_S set
         // Dummy contexts for the first execution of each thread (both kernel and user) are created with exit = 0 and SPIE cleared (no interrupts until the second context is popped)
-        Context(Log_Addr entry, Log_Addr exit, Log_Addr usp): _pc(entry), _st(multitask ? ((exit ? SPIE : 0) | (usp ? SPP_U : SPP_S) | SUM) : ((exit ? MPIE : 0) | MPP_M)), _x1(exit), _usp(usp) {
+        Context(Log_Addr entry, Log_Addr exit): _pc(entry), _st((exit ? MPIE : 0) | MPP_M), _x1(exit) {
             if(Traits<Build>::hysterically_debugged || Traits<Thread>::trace_idle) {
                                                                         _x5 =  5;  _x6 =  6;  _x7 =  7;  _x8 =  8;  _x9 =  9;
                 _x10 = 10; _x11 = 11; _x12 = 12; _x13 = 13; _x14 = 14; _x15 = 15; _x16 = 16; _x17 = 17; _x18 = 18; _x19 = 19;
@@ -116,8 +113,7 @@ public:
 
         friend OStream & operator<<(OStream & db, const Context & c) {
             db << hex
-               << "{ksp="  << &c
-               << ",usp="  << c._usp
+               << "{sp="   << &c
                << ",pc="   << c._pc
                << ",st="   << c._st
                << ",lr="   << c._x1
@@ -155,7 +151,6 @@ public:
     private:
         static void pop(bool interrupt = false);  // interrupt or context switch?
         static void push(bool interrupt = false); // interrupt or context switch?
-        static void first_dispatch() __attribute__ ((naked));
 
     private:
         Reg _pc;      // pc
@@ -192,7 +187,6 @@ public:
         Reg _x29;     // t4
         Reg _x30;     // t5
         Reg _x31;     // t6
-        Reg _usp;     // usp (used with multitasking)
     };
 
     // Interrupt Service Routines
@@ -218,7 +212,7 @@ public:
     static Log_Addr fr() { Reg r; ASM("mv %0, a0" :  "=r"(r)); return r; }
     static void fr(Reg r) {       ASM("mv a0, %0" : : "r"(r) :); }
 
-    static unsigned int id() { return multitask ? tp() : mhartid(); } // SiFive-U always has 2 cores, but core 0 does not feature an MMU, so we halt it and let core 1 run in a single-core configuration; id must be 1 for CLINT offsets and similar things.
+    static unsigned int id() { return 0; }
     static unsigned int cores() { return 1; }
 
     using CPU_Common::clock;
@@ -226,9 +220,9 @@ public:
     using CPU_Common::max_clock;
     using CPU_Common::bus_clock;
 
-    static void int_enable()  { multitask ? sint_enable()  : mint_enable(); }
-    static void int_disable() { multitask ? sint_disable() : mint_disable(); }
-    static bool int_enabled() { return multitask ? (sstatus() & SIE) : (mstatus() & MIE); }
+    static void int_enable()  { mint_enable(); }
+    static void int_disable() { mint_disable(); }
+    static bool int_enabled() { return (mstatus() & MIE); }
     static bool int_disabled() { return !int_enabled(); }
 
     static void halt() { ASM("wfi"); }
@@ -237,9 +231,6 @@ public:
     static void fpu_restore();
 
     static void switch_context(Context ** o, Context * n) __attribute__ ((naked));
-
-    static void syscall(void * message);
-    static void syscalled(unsigned int int_id);
 
     template<typename T>
     static T tsl(volatile T & lock) {
@@ -329,40 +320,30 @@ public:
     using CPU_Common::ntohs;
 
     template<typename ... Tn>
-    static Context * init_stack(Log_Addr usp, Log_Addr ksp, void (* exit)(), int (* entry)(Tn ...), Tn ... an) {
-        // Multitasking scenarios use this method with USP != 0 for application threads, what causes two contexts to be pushed into the thread's stack.
-        // The context pushed first (and popped last) is the "regular" one, with entry pointing to the thread's entry point.
-        // The second context (popped first) is a dummy context that has first_dispatch as entry point. It is a system-level context (CPL=0),
-        // so switch_context doesn't need to care for cross-level IRETs.
-
-        // Real context
-        ksp -= sizeof(Context);
-        Context * ctx = new(ksp) Context(entry, exit, usp); // init_stack is called with usp = 0 for kernel threads
+    static Context * init_stack(Log_Addr usp, Log_Addr sp, void (* exit)(), int (* entry)(Tn ...), Tn ... an) {
+        sp -= sizeof(Context);
+        Context * ctx = new(sp) Context(entry, exit);
         init_stack_helper(&ctx->_x10, an ...); // x10 is a0
         return ctx;
     }
 
-    // In RISC-V, the main thread of each task gets parameters over registers, not the stack, and they are initialized by init_stack.
-    template<typename ... Tn>
-    static Log_Addr init_user_stack(Log_Addr usp, void (* exit)(), Tn ... an) { return usp; }
-
 public:
     // RISC-V 64 specifics
-    static Reg  status()   { return multitask ? sstatus()   : mstatus(); }
-    static void status(Status st) { multitask ? sstatus(st) : mstatus(st); }
+    static Reg  status()   { return mstatus(); }
+    static void status(Status st) { mstatus(st); }
 
-    static Reg  ie()     { return multitask ? sie()         : mie(); }
-    static void ie(Reg r)       { multitask ? sie(r)        : mie(r); }
+    static Reg  ie()     { return mie(); }
+    static void ie(Reg r)       { mie(r); }
 
-    static Reg  ip()     { return multitask ? sip()         : mip(); }
-    static void ip(Reg r)       { multitask ? sip(r)        : mip(r); }
+    static Reg  ip()     { return mip(); }
+    static void ip(Reg r)       { mip(r); }
 
-    static Reg  cause()  { return multitask ? scause()      : mcause(); }
+    static Reg  cause()  { return mcause(); }
 
-    static Reg  tval()   { return multitask ? stval()       : mtval(); }
+    static Reg  tval()   { return mtval(); }
 
-    static Reg  epc()    { return multitask ? sepc()        : mepc(); }
-    static void epc(Reg r)      { multitask ? sepc(r)       : mepc(r); }
+    static Reg  epc()    { return mepc(); }
+    static void epc(Reg r)      { mepc(r); }
 
     static Reg  tp() { Reg r; ASM("mv %0, x4" : "=r"(r) :); return r; }
     static void tp(Reg r) {   ASM("mv x4, %0" : : "r"(r) :); }
@@ -374,13 +355,13 @@ public:
     static void a1(Reg r) {   ASM("mv a1, %0" : : "r"(r) :); }
 
     static void ecall() { ASM("ecall"); }
-    static void iret() { multitask ? sret() : mret(); }
+    static void iret() { mret(); }
 
     // Machine mode
     static void mint_enable()  { ASM("csrsi mstatus, %0" : : "i"(MIE) : "cc"); }
     static void mint_disable() { ASM("csrci mstatus, %0" : : "i"(MIE) : "cc"); }
 
-    static Reg mhartid() { Reg r; ASM("csrr %0, mhartid" : "=r"(r) : : "memory", "cc"); return r & 0x3; }
+    static Reg mhartid() { Reg r; ASM("csrr %0, mhartid" : "=r"(r) : : "memory", "cc"); return r; }
 
     static void mscratch(Reg r)   { ASM("csrw mscratch, %0" : : "r"(r) : "cc"); }
     static Reg  mscratch() { Reg r; ASM("csrr %0, mscratch" :  "=r"(r) : : ); return r; }
@@ -447,9 +428,6 @@ public:
 
     static void sret() { ASM("sret"); }
 
-    static void satp(Reg r) { ASM("csrw satp, %0" : : "r"(r) : "cc"); }
-    static Reg  satp() { Reg r; ASM("csrr %0, satp" :  "=r"(r) : : ); return r; }
-
 private:
     template<typename Head, typename ... Tail>
     static void init_stack_helper(Log_Addr sp, Head head, Tail ... tail) {
@@ -467,37 +445,14 @@ private:
 
 inline void CPU::Context::push(bool interrupt)
 {
-if(interrupt && multitask) {
-    // swap(KSP, USP) if coming from user mode (i.e. (sstatus & SSP) == SSP_U)
-    ASM("       csrr    x3, sstatus             \n"
-        "       andi    x3, x3, %0              \n"
-        "       bne     x3, zero, 1f            \n"     // if we are in supervisor mode, then don't swap KSP with USP
-        "       csrr    x3, sscratch            \n"
-        "       csrw    sscratch, sp            \n"
-        "       mv      sp, x3                  \n"
-        "1:                                     \n" : : "i"(SPP_S));
-}
     ASM("       addi     sp, sp, %0             \n" : : "i"(-sizeof(Context))); // adjust SP for the pushes below
 if(interrupt) {
-  if(multitask) {
-    ASM("       csrr     x3,    sepc            \n"
-        "       sd       x3,    0(sp)           \n");   // push SEPC as PC on interrupts
-  } else {
     ASM("       csrr     x3,    mepc            \n"
         "       sd       x3,    0(sp)           \n");   // push MEPC as PC on interrupts
-  }
 } else {
     ASM("       sd       x1,    0(sp)           \n");   // push RA as PC on context switches
 }
-if(!interrupt && multitask) {
-    ASM("       li       x3,      %0            \n"
-        "       csrs     sstatus, x3            \n": : "i"(SPP_S));   // set SPP_S inside the kernel; the push(true) on IC::entry() has already saved the correct value to eventually return to the application
-}
-if(multitask) {
-    ASM("       csrr     x3, sstatus            \n");
-} else {
-    ASM("       csrr     x3, mstatus            \n");
-}
+    ASM("       csrr     x3,  mstatus           \n");
     ASM("       sd       x3,    8(sp)           \n"     // push ST
         "       sd       x1,   16(sp)           \n"     // push X1-X31
         "       sd       x5,   24(sp)           \n"
@@ -526,9 +481,10 @@ if(multitask) {
         "       sd      x28,  208(sp)           \n"
         "       sd      x29,  216(sp)           \n"
         "       sd      x30,  224(sp)           \n"
-        "       sd      x31,  232(sp)           \n"
-        "       csrr     x3, sscratch           \n"     // SSCRATCH holds KSP in user-land and USP in kernel (USP = 0 for kernel threads)
-        "       sd       x3,  240(sp)           \n");   // push USP
+        "       sd      x31,  232(sp)           \n");
+if(interrupt) {
+    ASM("       mv       x3, sp                 \n");   // leave TMP pointing the context to easy subsequent access to the saved context
+}
 }
 
 inline void CPU::Context::pop(bool interrupt)
@@ -540,15 +496,9 @@ if(interrupt) {
 if(interrupt) {
     ASM("       add      x3, x3, a0             \n");   // A0 is set by exception handlers to adjust [M|S]EPC to point to the next instruction if needed
 }
-if(multitask) {
-    ASM("       csrw     sepc, x3               \n");   // SEPC = PC
-} else {
     ASM("       csrw     mepc, x3               \n");   // MEPC = PC
-}
-    ASM("       ld       x3,  240(sp)           \n"     // pop USP into TMP
-        "       csrw    sscratch, x3            \n"     // SSCRATCH holds KSP in user-land and USP in kernel (USP = 0 for kernel threads)
-        "       ld       x3,    8(sp)           \n");   // pop ST into TMP
-if(!interrupt & !multitask) {                           // MSTATUS.MPP is automatically cleared on the MRET in the ISR, so we need to recover it here
+    ASM("       ld       x3,    8(sp)           \n");   // pop ST into TMP
+if(!interrupt) {                                        // MSTATUS.MPP is automatically cleared on the MRET in the ISR, so we need to recover it here
     ASM("       li      x10, %0                 \n"     // use X10 as a second TMP, since it will be restored later
         "       or       x3, x3, x10            \n" : : "i"(MPP_M));
 }
@@ -581,20 +531,7 @@ if(!interrupt & !multitask) {                           // MSTATUS.MPP is automa
         "       ld      x30,  224(sp)           \n"
         "       ld      x31,  232(sp)           \n"
         "       addi    sp, sp, %0              \n" : : "i"(sizeof(Context))); // complete the pops above by adjusting SP
-if(multitask) {
-    ASM("       csrw    sstatus, x3             \n");   // SSTATUS = ST
-} else {
     ASM("       csrw    mstatus, x3             \n");   // MSTATUS = ST
-}
-if(multitask && interrupt) {
-    // swap(KSP, USP) if going to user mode (i.e. (sstatus & SSP) == SSP_U)
-    ASM("       andi    x3, x3, %0              \n"
-        "       bne     x3, zero, 1f            \n"
-        "       csrr    x3, sscratch            \n"
-        "       csrw    sscratch, sp            \n"
-        "       mv      sp, x3                  \n"
-        "1:                                     \n" : : "i"(SPP_S));
-}
 }
 
 inline CPU::Reg64 htole64(CPU::Reg64 v) { return CPU::htole64(v); }

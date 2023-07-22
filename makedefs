@@ -109,13 +109,13 @@ ARCH_ENDIANESS		= $(ARCH_$(call GETTK,ENDIANESS,$(ARCH_TRAITS)))
 ARCH_WORD_SIZE		= $(call GETTK,WORD_SIZE,$(ARCH_TRAITS))
 ARCH_CLOCK		= $(call GETTK,CLOCK,$(ARCH_TRAITS))
 CC_M_FLAG		= -m$(ARCH_WORD_SIZE)
-QEMU_DEBUG      = -D $(addsuffix .log,$(APPLICATION)) -d int,mmu
+#QEMU_DEBUG      = -D $(addsuffix .log,$(APPLICATION)) -d int,mmu
 
 # Machine specifics
 pc_CC_FLAGS		= $(CC_M_FLAG) -Wa,--32
 pc_AS_FLAGS		:= --32
 pc_LD_FLAGS		:= -m elf_i386
-pc_EMULATOR		= qemu-system-i386 $(QEMU_DEBUG) -smp $(CPUS) -m $(MEM_SIZE) -nographic -no-reboot -drive format=raw,index=0,if=floppy,read-only=on,file=
+pc_EMULATOR		= qemu-system-i386 $(QEMU_DEBUG) -no-acpi -smp $(CPUS) -m $(MEM_SIZE) -nographic -no-reboot -drive format=raw,index=0,if=floppy,read-only=on,file=
 pc_DEBUGGER		:= gdb
 pc_FLASHER		:=
 pc_MAGIC		:= --nmagic
@@ -221,7 +221,7 @@ riscv_DEBUGGER		:= $(COMP_PREFIX)gdb
 riscv_FLASHER		:= 
 riscv_MAGIC		:= --nmagic
 riscv_CODE_NAME		:= .init
-riscv_DATA_NAME		:= .data
+riscv_DATA_NAME		:= .sdata
 riscv_IMG_SUFFIX	:= .img
 endif
 
@@ -332,7 +332,7 @@ TEE		:= tee
 ifndef DISPLAY
 TERM		:= sh -c
 else
-TERM		:= konsole -e
+TERM		:= xterm -e
 endif
 
 TOUCH		:= touch

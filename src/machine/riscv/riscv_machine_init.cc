@@ -6,11 +6,7 @@ __BEGIN_SYS
 
 void Machine::pre_init(System_Info * si)
 {
-    // Adjust stvec to point to _int_entry's logical address
-    if(Traits<System>::multitask)
-        CLINT::stvec(CLINT::DIRECT, &IC::entry);
-    else
-        CLINT::mtvec(CLINT::DIRECT, &IC::entry);
+    CLINT::mtvec(CLINT::DIRECT, &IC::entry);
 
     Display::init();
 

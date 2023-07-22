@@ -146,10 +146,6 @@ private:
     Time_Base _time;
 };
 
-typedef unsigned long Hertz;
-typedef unsigned long PPM; // parts per million
-typedef unsigned long long PPB; // parts per billion
-
 __END_UTIL
 
 __BEGIN_SYS

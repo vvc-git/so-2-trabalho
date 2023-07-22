@@ -30,9 +30,6 @@ extern OStream kout, kerr;
 class Setup
 {
 private:
-    // System Traits
-    static const bool multitask = Traits<System>::multitask;
-
     // Physical memory map
     static const unsigned long RAM_BASE         = Memory_Map::RAM_BASE;
     static const unsigned long RAM_TOP          = Memory_Map::RAM_TOP;
@@ -90,7 +87,6 @@ private:
 
     void setup_idt();
     void setup_gdt();
-    void setup_tss();
     void setup_sys_pt();
     void setup_app_pt();
     void setup_sys_pd();
@@ -119,6 +115,10 @@ volatile bool Setup::paging_ready = false;
 Setup::Setup(char * boot_image)
 {
     CPU::int_disable(); // interrupts will be re-enabled at init_end
+
+    // SETUP doesn't handle global constructors, so we need to manually initialize any object with a non-empty default constructor
+    new (&kout) OStream;
+    new (&kerr) OStream;
 
     Display::init();
     VGA::init(VGA_PHY); // Display can be Serial_Display, so VGA here!
@@ -170,9 +170,6 @@ Setup::Setup(char * boot_image)
 
     // Load EPOS parts (e.g. INIT, SYSTEM, APP) and adjust pointers that will still be used to their logical addresses
     load_parts();
-
-    // Configure a TSS for system calls and inter-level interrupt handling
-    setup_tss();
 
     db<Setup>(INF) << "Setup::pc=" << CPU::pc() << endl;
     db<Setup>(INF) << "Setup::sp=" << CPU::sp() << endl;
@@ -248,18 +245,9 @@ void Setup::build_lm()
             db<Setup>(WRN) << "APP ELF image has no data segment!" << endl;
             si->lm.app_data = MMU::align_page(APP_DATA);
         }
-        if(Traits<System>::multiheap) { // Application heap in data segment
-            si->lm.app_data_size = MMU::align_page(si->lm.app_data_size);
-            si->lm.app_stack = si->lm.app_data + si->lm.app_data_size;
-            si->lm.app_data_size += MMU::align_page(Traits<Application>::STACK_SIZE);
-            si->lm.app_heap = si->lm.app_data + si->lm.app_data_size;
-            si->lm.app_data_size += MMU::align_page(Traits<Application>::HEAP_SIZE);
-        }
         if(si->lm.has_ext) { // Check for EXTRA data in the boot image
             si->lm.app_extra = si->lm.app_data + si->lm.app_data_size;
             si->lm.app_extra_size = si->bm.img_size - si->bm.extras_offset;
-            if(Traits<System>::multiheap)
-                si->lm.app_extra_size = MMU::align_page(si->lm.app_extra_size);
             si->lm.app_data_size += si->lm.app_extra_size;
         } else {
             si->lm.app_extra = ~0U;
@@ -701,36 +689,6 @@ void Setup::enable_paging()
 }
 
 
-void Setup::setup_tss()
-{
-    // Get current CPU's TSS logical address (after enabling paging)
-    unsigned int cpu_id = CPU::id();
-    TSS * tss = reinterpret_cast<TSS *>(TSS0 + cpu_id * sizeof(Page));
-
-    db<Setup>(TRC) << "Setup::setup_tss(tss" << cpu_id << "=" << Log_Addr(tss) << ")" << endl;
-
-    // Clear TSS
-    memset(tss, 0, sizeof(Page));
-
-    // Configure only the segment selectors and the kernel stack
-    tss->ss0 = CPU::SEL_SYS_DATA;
-    tss->esp0 = SYS_STACK + Traits<System>::STACK_SIZE * (CPU::id() + 1) - 2 * sizeof(int); // APs' tss->esp will be reconfigured later by CPU::Context::load()
-    tss->cs = (CPU::GDT_SYS_CODE << 3) | CPU::PL_APP;
-    tss->ss3 = (CPU::GDT_APP_DATA << 3) | CPU::PL_APP;
-    tss->ds = tss->ss3;
-    tss->es = tss->ss3;
-    tss->fs = tss->ss3;
-    tss->gs = tss->ss3;
-
-    // Load TR with TSS
-    CPU::Reg16 tr = ((CPU::GDT_TSS0 + cpu_id) << 3) | CPU::PL_SYS;
-    CPU::tr(tr);
-    tr = CPU::tr();
-
-    db<Setup>(INF) << "Setup::setup_tss:tr=" << tr << ",tss" << cpu_id << "={ss0=" << tss->ss0 << ",esp0=" << Log_Addr(tss->esp0) << "}" << endl;
-}
-
-
 void Setup::load_parts()
 {
     db<Setup>(TRC) << "Setup::load_parts()" << endl;
@@ -840,27 +798,13 @@ void Setup::adjust_perms()
 void Setup::call_next()
 {
     // Check for next stage and obtain the entry point
-    Log_Addr pc;
-    if(si->lm.has_ini) {
-        db<Setup>(TRC) << "Executing system's global constructors ..." << endl;
-        reinterpret_cast<void (*)()>((void *)si->lm.sys_entry)();
-        pc = si->lm.ini_entry;
-    } else if(si->lm.has_sys)
-        pc = si->lm.sys_entry;
-    else
-        pc = si->lm.app_entry;
+    Log_Addr pc = si->lm.app_entry;
 
     // Arrange a stack for each CPU to support stage transition
     // The 2 integers on the stacks are room for the return address
     Log_Addr sp = SYS_STACK + Traits<System>::STACK_SIZE - 2 * sizeof(int);
 
-    db<Setup>(TRC) << "Setup::call_next(pc=" << pc << ",sp=" << sp << ") => ";
-    if(si->lm.has_ini)
-        db<Setup>(TRC) << "INIT" << endl;
-    else if(si->lm.has_sys)
-        db<Setup>(TRC) << "SYSTEM" << endl;
-    else
-        db<Setup>(TRC) << "APPLICATION" << endl;
+    db<Setup>(TRC) << "Setup::call_next(pc=" << pc << ",sp=" << sp << ") => APPLICATION" << endl;
 
     db<Setup>(INF) << "SETUP ends here!" << endl;
 
@@ -868,11 +812,9 @@ void Setup::call_next()
     CPU::sp(sp);
     static_cast<void (*)()>(pc)();
 
-    if(multitask) {
-        // This will only happen when INIT was called and Thread was disabled
-        // Note we don't have the original stack here anymore!
-        reinterpret_cast<void (*)()>(si->lm.app_entry)();
-    }
+    // This will only happen when INIT was called and Thread was disabled
+    // Note we don't have the original stack here anymore!
+    reinterpret_cast<void (*)()>(si->lm.app_entry)();
 
     // SETUP is now part of the free memory and this point should never be reached, but, just in case ... :-)
     db<Setup>(ERR) << "OS failed to init!" << endl;

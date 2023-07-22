@@ -19,10 +19,10 @@ class Timer: private Timer_Common, private CLINT
     friend class Init_System;
 
 protected:
-    typedef IC_Common::Interrupt_Id Interrupt_Id;
-
     static const unsigned int CHANNELS = 2;
     static const unsigned int FREQUENCY = Traits<Timer>::FREQUENCY;
+
+    typedef IC_Common::Interrupt_Id Interrupt_Id;
 
 public:
     using Timer_Common::Tick;
@@ -77,11 +77,7 @@ public:
     void handler(const Handler & handler) { _handler = handler; }
 
 private:
-    static volatile CPU::Reg64 & reg64(unsigned int o) { return reinterpret_cast<volatile CPU::Reg64 *>(Memory_Map::CLINT_BASE)[o / sizeof(CPU::Reg64)]; }
-
-    static void config(const Hertz & frequency) {
-        reg64(MTIMECMP + MTIMECMP_CORE_OFFSET * CPU::id()) = reg64(MTIME) + (CLOCK / frequency);
-    }
+    static void config(const Hertz & frequency) { mtimecmp(mtime() + (CLOCK / frequency)); }
 
     static void int_handler(Interrupt_Id i);
 

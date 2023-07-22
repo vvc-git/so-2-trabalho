@@ -282,7 +282,7 @@ class Intel_Sandy_Bridge_PMU: public Intel_PMU_V3
 protected:
     static const unsigned int CHANNELS = 7;
     static const unsigned int FIXED = 3;
-    static const unsigned int EVENTS = Traits_Tokens::PMU_Event::LAST_EVENT; // 233
+    static const unsigned int EVENTS = PMU_Event::LAST_EVENT; // 233
 
 public:
     // Layout of IA32_PEBS_ENABLE MSR figure 18-28

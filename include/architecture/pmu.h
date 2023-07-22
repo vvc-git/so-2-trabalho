@@ -7,11 +7,11 @@
 
 __BEGIN_SYS
 
-class PMU_Common: public Traits_Tokens::PMU_Event
+class PMU_Common
 {
 public:
     typedef unsigned int Channel;
-    typedef unsigned int Event;
+    typedef unsigned long Event;
     typedef unsigned long long Count;
 
     enum Flags {

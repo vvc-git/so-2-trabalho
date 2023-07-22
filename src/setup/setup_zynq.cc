@@ -57,25 +57,25 @@ private:
 
 private:
     System_Info * si;
-
-    static volatile bool paging_ready;
 };
-
-volatile bool Setup::paging_ready = false;
 
 Setup::Setup()
 {
-    CPU::int_disable(); // interrupts will be re-enabled at init_end
-    Display::init();
-
     si = reinterpret_cast<System_Info *>(&__boot_time_system_info);
-
-    db<Setup>(TRC) << "Setup(si=" << reinterpret_cast<void *>(si) << ",sp=" << CPU::sp() << ")" << endl;
-    db<Setup>(INF) << "Setup:si=" << *si << endl;
 
     // Reserve memory for the FLAT_PAGE_TABLE if needed by hidding the respective memory from the system
     if(FLAT_PAGE_TABLE != Memory_Map::NOT_USED)
         si->bm.mem_top = FLAT_PAGE_TABLE - 1;
+
+    // SETUP doesn't handle global constructors, so we need to manually initialize any object with a non-empty default constructor
+    new (&kout) OStream;
+    new (&kerr) OStream;
+    Display::init();
+    kout << endl;
+    kerr << endl;
+
+    db<Setup>(TRC) << "Setup(si=" << reinterpret_cast<void *>(si) << ",sp=" << CPU::sp() << ")" << endl;
+    db<Setup>(INF) << "Setup:si=" << *si << endl;
 
     // Print basic facts about this EPOS instance
     say_hi();
@@ -86,10 +86,7 @@ Setup::Setup()
     // Enable paging
     enable_paging();
 
-    // Signalizes other CPUs that paging is up
-    paging_ready = true;
-
-    // SETUP ends here, so let's transfer control to next stage (INIT or APP)
+    // SETUP ends here, so let's transfer control to the next stage (INIT or APP)
     call_next();
 }
 
@@ -184,9 +181,8 @@ void Setup::call_next()
     // In library mode, we'll continue using the BOOT stacks until we reach the first application
     _start();
 
-    // SETUP is now part of the free memory and this point should never be
-    // reached, but, just in case ... :-)
-    panic();
+    // SETUP is now part of the free memory and this point should never be reached, but, just in case ... :-)
+    db<Setup>(ERR) << "OS failed to init!" << endl;
 }
 
 __END_SYS
@@ -219,10 +215,14 @@ void _entry()
 
 void _reset()
 {
-    // Configure a stack for SVC mode, which will be used until the first Thread is created
     CPU::int_disable(); // interrupts will be re-enabled at init_end
+
+    if(CPU::id() != 0)
+        CPU::halt();
+
+    // Configure a stack for SVC mode, which will be used until the first Thread is created
     CPU::mode(CPU::MODE_SVC); // enter SVC mode (with interrupts disabled)
-    CPU::sp(Memory_Map::BOOT_STACK + Traits<Machine>::STACK_SIZE * (CPU::id() + 1) - sizeof(long));
+    CPU::sp(Memory_Map::BOOT_STACK + Traits<Machine>::STACK_SIZE - sizeof(long));
 
     // After a reset, we copy the vector table to 0x0000 to get a cleaner memory map (it is originally at 0x8000)
     // An alternative would be to set vbar address via mrc p15, 0, r1, c12, c0, 0

@@ -28,8 +28,10 @@ void Machine::reboot()
         reset[0] = 0x5555;
 #endif
 
-        CPU::int_disable();
-        CPU::halt();
+        while(true) {
+            CPU::int_disable();
+            CPU::halt();
+        }
     } else {
         poweroff();
     }
@@ -44,8 +46,10 @@ void Machine::poweroff()
         reset[0] = 0x5555;
 #endif
 
-        CPU::int_disable();
-        CPU::halt();
+        while(true) {
+            CPU::int_disable();
+            CPU::halt();
+        }
 }
 
 __END_SYS
