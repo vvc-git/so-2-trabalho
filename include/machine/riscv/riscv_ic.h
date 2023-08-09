@@ -103,7 +103,7 @@ public:
 
     static void enable() {
         db<IC>(TRC) << "IC::enable()" << endl;
-        CPU::mie(CPU::MSI | CPU::MTI | CPU::MEI);
+        CPU::mie(CPU::MSI | CPU::MTI); // TODO: external interrupts should be treated by PLIC (not implemented yet), so not enabled for now
     }
 
     static void enable(Interrupt_Id i) {
