@@ -6,6 +6,7 @@
 #include <architecture.h>
 #include <network/ethernet.h>
 #include <utility/convert.h>
+#include <architecture/rv64/rv64_cpu.h>
 
 class GEM {
 protected:
@@ -217,6 +218,6 @@ public:
   };
 };
 
-class VisionFive2_NIC : public NIC<Ethernet>, private GEM {};
+class VisionFive2_NIC : public NIC<Ethernet>, public GEM {};
 
 #endif

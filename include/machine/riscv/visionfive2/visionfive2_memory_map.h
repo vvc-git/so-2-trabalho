@@ -34,6 +34,7 @@ public:
         SPI0_BASE       = 0x10060000,   // RW A         64KB
         SPI1_BASE       = 0x10070000,   // RW A         64KB
         SPI2_BASE       = 0x10080000,   // RW A         64KB
+        NIC_BASE        = 0x10090000,   // RW A         64KB        EthernetMAC
         SPDIF_BASE      = 0x100a0000,   // RW A         64KB
         UART3_BASE      = 0x12000000,   // RW A         64KB
         UART4_BASE      = 0x12010000,   // RW A         64KB
@@ -57,6 +58,7 @@ public:
         OTPC_BASE       = 0x17050000,   // RW A         64KB
         GPU_BASE        = 0x18000000,   // RW A         1MB
         ROM_BASE        = 0x2a000000,   // RX           32KB        Boot ROM
+        
 
         // Physical Memory at Boot
         BOOT            = Traits<Machine>::BOOT,
