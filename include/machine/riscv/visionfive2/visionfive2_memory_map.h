@@ -34,7 +34,6 @@ public:
         SPI0_BASE       = 0x10060000,   // RW A         64KB
         SPI1_BASE       = 0x10070000,   // RW A         64KB
         SPI2_BASE       = 0x10080000,   // RW A         64KB
-        NIC_BASE        = 0x10090000,   // RW A         64KB        EthernetMAC
         SPDIF_BASE      = 0x100a0000,   // RW A         64KB
         UART3_BASE      = 0x12000000,   // RW A         64KB
         UART4_BASE      = 0x12010000,   // RW A         64KB
@@ -54,6 +53,7 @@ public:
         SDIO1_BASE      = 0x16020000,   // RW A         64KB
         GMAC0_BASE      = 0x16030000,   // RW A         64KB
         GMAC1_BASE      = 0x16040000,   // RW A         64KB
+        MAC_DMA_BASE    = 0x16050000,   // RW A         64KB
         RTC_BASE        = 0x17040000,   // RW A         64KB
         OTPC_BASE       = 0x17050000,   // RW A         64KB
         GPU_BASE        = 0x18000000,   // RW A         1MB
