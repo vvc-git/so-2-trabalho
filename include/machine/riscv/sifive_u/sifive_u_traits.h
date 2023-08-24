@@ -113,6 +113,27 @@ template<> struct Traits<Scratchpad>: public Traits<Machine_Common>
     static const bool enabled = false;
 };
 
+/*
+template<> struct Traits<Ethernet>: public Traits<Machine_Common>
+{
+    typedef LIST<GEM, GEM> DEVICES;
+    static const unsigned int UNITS = DEVICES::Length;
+
+    static const bool enabled = (Traits<Build>::NODES > 1) && (UNITS > 0);
+
+    static const bool promiscuous = false;
+};
+
+template<> struct Traits<GEM>: public Traits<Ethernet>
+{
+    static const unsigned int UNITS = DEVICES::Count<GEM>::Result;
+    static const bool enabled = Traits<Ethernet>::enabled && (UNITS > 0);
+
+    static const unsigned int SEND_BUFFERS = 4; // per unit
+    static const unsigned int RECEIVE_BUFFERS = 8192; // no descriptor, just a memory block of 8192 bits
+};
+*/
+
 __END_SYS
 
 #endif
