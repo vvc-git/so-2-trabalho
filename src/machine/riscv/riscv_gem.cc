@@ -1,6 +1,5 @@
 #include <machine/machine.h>
-#include <machine/risv/riscv_nic.h>
-#include <process.h>
+#include <machine/riscv/riscv_gem.h>
 #include <system.h>
 #include <time.h>
 

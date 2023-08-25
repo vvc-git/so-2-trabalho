@@ -1,5 +1,5 @@
 #include <machine/machine.h>
-#include <machine/riscv/riscv_nic.h>
+#include <machine/riscv/riscv_gem.h>
 #include <system.h>
 
 __BEGIN_SYS
@@ -31,7 +31,7 @@ SiFive_U_NIC::SiFive_U_NIC(DMA_Buffer *dma_buf) {
   for (unsigned int i = 0; i < RX_BUFS; i++) {
     _rx_buffer[i] = new (log) Buffer(this, &_rx_ring[i]);
     _rx_ring[i].phy_addr = phy;
-    _rx_ring[i].size = reinterpret_cast<CPU::Reg16>(-sizeof(Frame)); // 2's comp.
+    _rx_ring[i].size = Reg16(-sizeof(Frame)); // 2's comp.
     _rx_ring[i].misc = 0;
     _rx_ring[i].status = Desc::OWN; // Owned by NIC
 
