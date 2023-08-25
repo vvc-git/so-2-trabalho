@@ -67,6 +67,25 @@ public:
     static void  mtimecmp(Reg64 v) { *reinterpret_cast<Reg64 *>(Memory_Map::CLINT_BASE + MTIMECMP) = v; }
 };
 
+class PLIC
+{
+private:
+    typedef CPU::Reg Reg;
+    typedef CPU::Reg32 Reg32;
+    typedef CPU::Reg64 Reg64;
+    typedef CPU::Phy_Addr Phy_Addr;
+    typedef CPU::Log_Addr Log_Addr;
+
+public: // PUBLIC METHODS
+
+public: // PUBLIC ATTRIBUTES
+
+private: // PRIVATE METHODS
+
+private: // PRIVATE ATTRIBUTES
+
+};
+
 class IC: private IC_Common, private CLINT
 {
     friend class Setup;
