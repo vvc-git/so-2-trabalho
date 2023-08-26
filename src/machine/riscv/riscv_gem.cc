@@ -122,16 +122,18 @@ SiFive_U_NIC::alloc(const Address &dst, const Protocol &prot, unsigned int once,
 }
 
 void SiFive_U_NIC::reset() {
-  reg(NWCFG) = 0x00080000;
-  reg(NWSR) = 0x00000006;
-  reg(DMACR) = 0x00020784;
-  reg(IMR) = 0x07ffffff;
-  reg(TXPAUSE) = 0x0000ffff;
-  reg(DESCONF) = 0x02D00111;
-  reg(DESCONF2) = 0x2ab10000 | reg(JUMBOMAXLEN);
-  reg(DESCONF5) = 0x002f2045;
-  reg(DESCONF6) = DESCONF6_64B_MASK;
-  reg(ISR) = 0x00000000;
+//TODO: check if there more registers to reset
+  reg(NWCTRL) = 0;
+  reg(NWCFG) = _32_BITS_SIZE;
+  reg(NWCTRL) = CLEAR_STATS_REGS
+  reg(TXSTATUS) = TX_STAT_ALL;
+  reg(RXSTATUS) = RX_STAT_ALL;
+  reg(IDR) = INTR_ALL;
+  reg(HASHL) = 0;
+  reg(HASHH) = 0;
+  reg(TXQBASE) = 0;
+  reg(RXQBASE) = 0;
+
 }
 
 __END_SYS
