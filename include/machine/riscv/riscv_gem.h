@@ -147,6 +147,7 @@ public:
   // Network Control Register bits
   enum {
     TXSTART = 1 << 9,   /**< Transmit start */
+    CLEAR_STATS_REGS = 1 << 5, /**< Clear stats bit */
     TX_EN = 1 << 3,     /**< Transmit enable */
     RX_EN = 1 << 2,     /**< Receive enable */
     LOCALLOOP = 1 << 1, /**< Local loopback */
@@ -154,6 +155,7 @@ public:
 
   // Network Configuration Register bits
   enum {
+    _32_BITS_SIZE = 0 << 21  /**< 32 bits size */
     STRIP_FCS = 0x20000, /**< Strip FCS field */
     LERR_DISC = 0x10000, /**< Discard RX frames with len err */
     BUFF_OFST_M = 0xC00, /**< Receive buffer offset mask */
@@ -166,6 +168,28 @@ public:
     JUMBO_FRAME = 0x8,   /**< Jumbo frame enable */
   };
 
+  /* Transmit Status Register bits*/
+  enum {
+    TX_STAT_HRESP_NOT_OK	=	1 << 8,
+    TX_STAT_LATE_COLL	=	1 << 7,
+    TX_STAT_UNDERRUN	=		1 << 6,
+    TX_STAT_COMPLETE	=		1 << 5,
+    TX_STAT_CORRUPT_AHB_ERR	=	1 << 4,
+    TX_STAT_GO	=		1 << 3,
+    TX_STAT_RETRY_LIMIT_EXC	=	1 << 2,
+    TX_STAT_COLLISION	=	1 << 1,
+    TX_STAT_USED_BIT_READ	=	1 << 0,
+    TX_STAT_ALL		=	0x1ff
+  }
+
+  enum {
+    RX_STAT_HRESP_NOT_OK = 1 << 3,
+    RX_STAT_OVERRUN = 1 << 2,
+    RX_STAT_FRAME_RECD = 1 << 1,
+    RX_STAT_BUF_NOT_AVAIL = 1 << 0,
+    RX_STAT_ALL = 0xf
+  }
+  
   // RO register bits masks
   enum {
     NWCTRL_RO_MASK = 0xFFF80000,
@@ -196,7 +220,33 @@ public:
     INT_AMBA_ERR = 0x40,
     INT_TXUSED = 0x08,
     INT_RXUSED = 0x04,
-    INT_RXCMPL = 0x02
+    INT_RXCMPL = 0x02,
+    INTR_TSU_SEC_INCR = 1 << 26,
+    INTR_PDELAY_RESP_TX = 1 << 25,
+    INTR_PDELAY_REQ_TX = 1 << 24,
+    INTR_PDELAY_RESP_RX = 1 << 23,
+    INTR_PDELAY_REQ_RX = 1 << 22,
+    INTR_SYNX_TX = 1 << 21,
+    INTR_DELAY_REQ_TX = 1 << 20,
+    INTR_SYNC_RX = 1 << 19,
+    INTR_DELAY_REQ_RX = 1 << 18,
+    INTR_PARTNER_PG_RX = 1 << 17,
+    INTR_AUTONEG_COMPL = 1 << 16,
+    INTR_EXT_INTR = 1 << 15,
+    INTR_PAUSE_TX = 1 << 14,
+    INTR_PAUSE_ZERO = 1 << 13,
+    INTR_PAUSE_NONZEROQ_RX = 1 << 12,
+    INTR_HRESP_NOT_OK = 1 << 11,
+    INTR_RX_OVERRUN = 1 << 10,
+    INTR_LINK_CHNG = 1 << 9,
+    INTR_TX_COMPLETE = 1 << 7,
+    INTR_TX_CORRUPT_AHB_ERR = 1 << 6,
+    INTR_RETRY_EX_LATE_COLLISION = 1 << 5,
+    INTR_TX_USED_READ = 1 << 3,
+    INTR_RX_USED_READ = 1 << 2,
+    INTR_RX_COMPLETE = 1 << 1,
+    INTR_MGMT_SENT = 1 << 0,
+    INTR_ALL = 0x7FFFEFF
   };
 
   // Transmit and Receive Descriptors (in the Ring Buffers)
