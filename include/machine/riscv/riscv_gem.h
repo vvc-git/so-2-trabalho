@@ -155,17 +155,18 @@ public:
 
   // Network Configuration Register bits
   enum {
-    _32_BITS_SIZE = 0 << 21, /**< 32 bits size */
-    STRIP_FCS = 0x20000,     /**< Strip FCS field */
-    LERR_DISC = 0x10000,     /**< Discard RX frames with len err */
-    BUFF_OFST_M = 0xC00,     /**< Receive buffer offset mask */
-    BUFF_OFST_S = 14,        /**< Receive buffer offset shift */
-    RCV_1538 = 0x100,        /**< Receive 1538 byte frames */
-    UCAST_HASH = 0x80,       /**< Accept unicast hash match */
-    MCAST_HASH = 0x40,       /**< Accept multicast hash match */
-    BCAST_REJ = 0x20,        /**< Reject broadcast frames */
-    PROMISC = 0x10,          /**< Promiscuous mode */
-    JUMBO_FRAME = 0x8,       /**< Jumbo frame enable */
+    _32_BITS_SIZE = 0 << 21  /**< 32 bits size */
+    _64_BITS_SIZE = 1 << 21,  /**< 64 bits size */
+    STRIP_FCS = 0x20000, /**< Strip FCS field */
+    LERR_DISC = 0x10000, /**< Discard RX frames with len err */
+    BUFF_OFST_M = 0xC00, /**< Receive buffer offset mask */
+    BUFF_OFST_S = 14,    /**< Receive buffer offset shift */
+    RCV_1538 = 0x100,    /**< Receive 1538 byte frames */
+    UCAST_HASH = 0x80,   /**< Accept unicast hash match */
+    MCAST_HASH = 0x40,   /**< Accept multicast hash match */
+    BCAST_REJ = 0x20,    /**< Reject broadcast frames */
+    PROMISC = 0x10,      /**< Promiscuous mode */
+    JUMBO_FRAME = 0x8,   /**< Jumbo frame enable */
   };
 
   /* Transmit Status Register bits*/
