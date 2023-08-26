@@ -77,6 +77,7 @@ class RTL8139;
 class C905;
 class E100;
 class M95;
+class SiFive_U_NIC;
 class IEEE802_15_4_NIC;
 class Ethernet_NIC;
 

@@ -201,15 +201,9 @@ public:
 
   // Transmit and Receive Descriptors (in the Ring Buffers)
   struct Desc {
-    enum {
-      OWN = 0x8000,
-      ERR = 0x4000,
-      STP = 0x0200,
-      ENP = 0x0100,
-      BPE = 0x0080
-    };
 
     Reg32 phy_addr;
+    volatile Reg32 ctrl;
     volatile Reg16 size; // 2's complement
     volatile Reg16 status;
     volatile Reg32 misc;
@@ -218,7 +212,7 @@ public:
 
   // Receive Descriptor
   struct Rx_Desc : public Desc {
-    enum { BUFF = 0x0400, CRC = 0x0800, OFLO = 0x1000, FRAM = 0x2000 };
+    enum { OWN = 1 << 0, WRAP = 1 << 1, EOF = 1 << 15, SOF = 1 << 14 };
 
     friend Debug &operator<<(Debug &db, const Rx_Desc &d) {
       db << "{" << hex << d.phy_addr << dec << "," << 65536 - d.size << ","
@@ -229,6 +223,8 @@ public:
 
   // Transmit Descriptor
   struct Tx_Desc : public Desc {
+    enum { OWN = 1U << 31, WRAP = 1 << 30, LAST_BUF = 1 << 15 };
+
     friend Debug &operator<<(Debug &db, const Tx_Desc &d) {
       db << "{" << hex << d.phy_addr << dec << "," << 65536 - d.size << ","
          << hex << d.status << "," << d.misc << dec << "}";
@@ -247,9 +243,13 @@ class SiFive_U_NIC : public NIC<Ethernet>, private GEM {
   friend class Machine_Common;
 
 private:
+  // Mode
+  static const bool promiscuous = Traits<SiFive_U_NIC>::promiscuous;
+
   // Transmit and Receive Ring sizes
-  static const unsigned int TX_BUFS = 1;
-  static const unsigned int RX_BUFS = 1;
+  static const unsigned int UNITS = Traits<SiFive_U_NIC>::UNITS;
+  static const unsigned int TX_BUFS = Traits<SiFive_U_NIC>::SEND_BUFFERS;
+  static const unsigned int RX_BUFS = Traits<SiFive_U_NIC>::RECEIVE_BUFFERS;
 
   // Size of the DMA Buffer that will host the ring buffers and the init block
   static const unsigned int DMA_BUFFER_SIZE =
@@ -269,7 +269,7 @@ private:
           // pass it to the interrupt handler
 
 protected:
-  SiFive_U_NIC(DMA_Buffer *dma_buf);
+  SiFive_U_NIC(unsigned int unit, DMA_Buffer *dma_buf);
 
 public:
   ~SiFive_U_NIC();
@@ -316,9 +316,18 @@ private:
   void handle_int();
 
   // TODO: Compiler not recognizing type?
-  // static void int_handler(IC::Interrupt_Id interrupt);
+  static void int_handler(IC::Interrupt_Id interrupt);
 
-  static void init();
+  static void init(unsigned int unit);
+
+  static SiFive_U_NIC *get_by_interrupt(unsigned int interrupt) {
+    for (unsigned int i = 0; i < UNITS; i++)
+      if (_devices[i].interrupt == interrupt)
+        return _devices[i].device;
+    db<SiFive_U_NIC>(WRN) << "SiFive_U_NIC::get_by_interrupt(" << interrupt
+                          << ") => no device bound!" << endl;
+    return 0;
+  };
 
 private:
   Configuration _configuration;
@@ -336,6 +345,8 @@ private:
 
   Buffer *_rx_buffer[RX_BUFS];
   Buffer *_tx_buffer[TX_BUFS];
+
+  static Device _devices[UNITS];
 };
 
 __END_SYS

@@ -4,8 +4,14 @@
 
 __BEGIN_SYS
 
-SiFive_U_NIC::SiFive_U_NIC(DMA_Buffer *dma_buf) {
+SiFive_U_NIC::SiFive_U_NIC(unsigned int unit, DMA_Buffer *dma_buf) {
   db<SiFive_U_NIC>(TRC) << "SiFive_U_NIC(dma=" << dma_buf << ")" << endl;
+
+  _configuration.unit = unit;
+  _configuration.timer_frequency = TSC::frequency();
+  _configuration.timer_accuracy = TSC::accuracy() / 1000; // PPB -> PPM
+  if (!_configuration.timer_accuracy)
+    _configuration.timer_accuracy = 1;
 
   _dma_buf = dma_buf;
 
@@ -17,15 +23,15 @@ SiFive_U_NIC::SiFive_U_NIC(DMA_Buffer *dma_buf) {
   _rx_cur = 0;
   _rx_ring = log;
   _rx_ring_phy = phy;
-  log += RX_BUFS * align128(sizeof(Rx_Desc));
-  phy += RX_BUFS * align128(sizeof(Rx_Desc));
+  log += RX_BUFS * (sizeof(Rx_Desc));
+  phy += RX_BUFS * (sizeof(Rx_Desc));
 
   // Tx_Desc Ring
   _tx_cur = 0;
   _tx_ring = log;
   _tx_ring_phy = phy;
-  log += TX_BUFS * align128(sizeof(Tx_Desc));
-  phy += TX_BUFS * align128(sizeof(Tx_Desc));
+  log += TX_BUFS * (sizeof(Tx_Desc));
+  phy += TX_BUFS * (sizeof(Tx_Desc));
 
   // Rx_Buffer Ring
   for (unsigned int i = 0; i < RX_BUFS; i++) {
@@ -33,10 +39,10 @@ SiFive_U_NIC::SiFive_U_NIC(DMA_Buffer *dma_buf) {
     _rx_ring[i].phy_addr = phy;
     _rx_ring[i].size = Reg16(-sizeof(Frame)); // 2's comp.
     _rx_ring[i].misc = 0;
-    _rx_ring[i].status = Desc::OWN; // Owned by NIC
+    _rx_ring[i].ctrl = Rx_Desc::OWN; // Owned by NIC
 
-    log += align128(sizeof(Buffer));
-    phy += align128(sizeof(Buffer));
+    log += (sizeof(Buffer));
+    phy += (sizeof(Buffer));
   }
 
   // Tx_Buffer Ring
@@ -45,30 +51,34 @@ SiFive_U_NIC::SiFive_U_NIC(DMA_Buffer *dma_buf) {
     _tx_ring[i].phy_addr = phy;
     _tx_ring[i].size = 0;
     _tx_ring[i].misc = 0;
-    _tx_ring[i].status = 0; // Owned by host
+    _tx_ring[i].ctrl = 0; // Owned by host
 
-    log += align128(sizeof(Buffer));
-    phy += align128(sizeof(Buffer));
+    log += (sizeof(Buffer));
+    phy += (sizeof(Buffer));
   }
 
   // Reset device
   reset();
 }
 
-void SiFive_U_NIC::init() {
+void SiFive_U_NIC::init(unsigned int unit) {
   db<Init, SiFive_U_NIC>(TRC) << "SiFive_U_NIC::init()" << endl;
 
   // Allocate a DMA Buffer for init block, rx and tx rings
   DMA_Buffer *dma_buf = new (SYSTEM) DMA_Buffer(DMA_BUFFER_SIZE);
 
   // Initialize the device
-  new (SYSTEM) SiFive_U_NIC(dma_buf);
+  SiFive_U_NIC *dev = new (SYSTEM) SiFive_U_NIC(unit, dma_buf);
+
+  // Register the device
+  _devices[unit].device = dev;
+  _devices[unit].interrupt = INT_ID;
 
   // Install interrupt handler
-  IC::int_vector(INT_ID, &int_handler);
+  IC::int_vector(_devices[unit].interrupt, &int_handler);
 
   // Enable interrupts for device
-  IC::enable(INT_ID);
+  IC::enable(_devices[unit].interrupt);
 }
 
 __END_SYS
