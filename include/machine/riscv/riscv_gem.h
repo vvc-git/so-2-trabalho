@@ -1,7 +1,7 @@
 // EPOS RISC-V VisionFive 2 (GEM) Ethernet NIC Mediator Declarations
 
-#ifndef __risc_v_nic_h
-#define __risc_v_nic_h
+#ifndef __riscv_gem_h
+#define __riscv_gem_h
 
 #include <architecture.h>
 #include <network/ethernet.h>
@@ -146,41 +146,41 @@ public:
 
   // Network Control Register bits
   enum {
-    TXSTART = 1 << 9,   /**< Transmit start */
+    TXSTART = 1 << 9,          /**< Transmit start */
     CLEAR_STATS_REGS = 1 << 5, /**< Clear stats bit */
-    TX_EN = 1 << 3,     /**< Transmit enable */
-    RX_EN = 1 << 2,     /**< Receive enable */
-    LOCALLOOP = 1 << 1, /**< Local loopback */
+    TX_EN = 1 << 3,            /**< Transmit enable */
+    RX_EN = 1 << 2,            /**< Receive enable */
+    LOCALLOOP = 1 << 1,        /**< Local loopback */
   };
 
   // Network Configuration Register bits
   enum {
-    _32_BITS_SIZE = 0 << 21  /**< 32 bits size */
-    STRIP_FCS = 0x20000, /**< Strip FCS field */
-    LERR_DISC = 0x10000, /**< Discard RX frames with len err */
-    BUFF_OFST_M = 0xC00, /**< Receive buffer offset mask */
-    BUFF_OFST_S = 14,    /**< Receive buffer offset shift */
-    RCV_1538 = 0x100,    /**< Receive 1538 byte frames */
-    UCAST_HASH = 0x80,   /**< Accept unicast hash match */
-    MCAST_HASH = 0x40,   /**< Accept multicast hash match */
-    BCAST_REJ = 0x20,    /**< Reject broadcast frames */
-    PROMISC = 0x10,      /**< Promiscuous mode */
-    JUMBO_FRAME = 0x8,   /**< Jumbo frame enable */
+    _32_BITS_SIZE = 0 << 21, /**< 32 bits size */
+    STRIP_FCS = 0x20000,     /**< Strip FCS field */
+    LERR_DISC = 0x10000,     /**< Discard RX frames with len err */
+    BUFF_OFST_M = 0xC00,     /**< Receive buffer offset mask */
+    BUFF_OFST_S = 14,        /**< Receive buffer offset shift */
+    RCV_1538 = 0x100,        /**< Receive 1538 byte frames */
+    UCAST_HASH = 0x80,       /**< Accept unicast hash match */
+    MCAST_HASH = 0x40,       /**< Accept multicast hash match */
+    BCAST_REJ = 0x20,        /**< Reject broadcast frames */
+    PROMISC = 0x10,          /**< Promiscuous mode */
+    JUMBO_FRAME = 0x8,       /**< Jumbo frame enable */
   };
 
   /* Transmit Status Register bits*/
   enum {
-    TX_STAT_HRESP_NOT_OK	=	1 << 8,
-    TX_STAT_LATE_COLL	=	1 << 7,
-    TX_STAT_UNDERRUN	=		1 << 6,
-    TX_STAT_COMPLETE	=		1 << 5,
-    TX_STAT_CORRUPT_AHB_ERR	=	1 << 4,
-    TX_STAT_GO	=		1 << 3,
-    TX_STAT_RETRY_LIMIT_EXC	=	1 << 2,
-    TX_STAT_COLLISION	=	1 << 1,
-    TX_STAT_USED_BIT_READ	=	1 << 0,
-    TX_STAT_ALL		=	0x1ff
-  }
+    TX_STAT_HRESP_NOT_OK = 1 << 8,
+    TX_STAT_LATE_COLL = 1 << 7,
+    TX_STAT_UNDERRUN = 1 << 6,
+    TX_STAT_COMPLETE = 1 << 5,
+    TX_STAT_CORRUPT_AHB_ERR = 1 << 4,
+    TX_STAT_GO = 1 << 3,
+    TX_STAT_RETRY_LIMIT_EXC = 1 << 2,
+    TX_STAT_COLLISION = 1 << 1,
+    TX_STAT_USED_BIT_READ = 1 << 0,
+    TX_STAT_ALL = 0x1ff
+  };
 
   enum {
     RX_STAT_HRESP_NOT_OK = 1 << 3,
@@ -188,8 +188,8 @@ public:
     RX_STAT_FRAME_RECD = 1 << 1,
     RX_STAT_BUF_NOT_AVAIL = 1 << 0,
     RX_STAT_ALL = 0xf
-  }
-  
+  };
+
   // RO register bits masks
   enum {
     NWCTRL_RO_MASK = 0xFFF80000,
@@ -255,9 +255,6 @@ public:
     Reg32 phy_addr;
     volatile Reg32 ctrl;
     volatile Reg16 size; // 2's complement
-    volatile Reg16 status;
-    volatile Reg32 misc;
-    volatile Reg32 reserved;
   };
 
   // Receive Descriptor
@@ -266,7 +263,7 @@ public:
 
     friend Debug &operator<<(Debug &db, const Rx_Desc &d) {
       db << "{" << hex << d.phy_addr << dec << "," << 65536 - d.size << ","
-         << hex << d.status << "," << d.misc << dec << "}";
+         << hex << d.ctrl << dec << "}";
       return db;
     }
   };
@@ -277,7 +274,7 @@ public:
 
     friend Debug &operator<<(Debug &db, const Tx_Desc &d) {
       db << "{" << hex << d.phy_addr << dec << "," << 65536 - d.size << ","
-         << hex << d.status << "," << d.misc << dec << "}";
+         << hex << d.ctrl << dec << "}";
       return db;
     }
   };
@@ -360,13 +357,15 @@ public:
     };
   }
 
+  static SiFive_U_NIC *get(unsigned int unit = 0) { return get_by_unit(unit); }
+
 private:
   void receive();
   void reset();
   void handle_int();
 
-  // TODO: Compiler not recognizing type?
-  static void int_handler(IC::Interrupt_Id interrupt);
+  // TODO: Change to Interrupt_Id and fix compiler error
+  static void int_handler(unsigned int interrupt);
 
   static void init(unsigned int unit);
 
@@ -378,6 +377,11 @@ private:
                           << ") => no device bound!" << endl;
     return 0;
   };
+
+  static SiFive_U_NIC *get_by_unit(unsigned int unit) {
+    assert(unit < UNITS);
+    return _devices[unit].device;
+  }
 
 private:
   Configuration _configuration;

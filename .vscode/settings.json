@@ -1,0 +1,20 @@
+{
+  "files.associations": {
+    "*.html": "html",
+    "bitset": "cpp",
+    "memory": "cpp",
+    "random": "cpp",
+    "future": "cpp",
+    "istream": "cpp",
+    "mutex": "cpp",
+    "optional": "cpp",
+    "ranges": "cpp",
+    "array": "cpp",
+    "tuple": "cpp",
+    "utility": "cpp",
+    "variant": "cpp",
+    "*.tcc": "cpp",
+    "string_view": "cpp",
+    "initializer_list": "cpp"
+  }
+}

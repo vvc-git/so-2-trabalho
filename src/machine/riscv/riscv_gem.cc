@@ -116,7 +116,7 @@ SiFive_U_NIC::alloc(const Address &dst, const Protocol &prot, unsigned int once,
     // Wait for the next buffer to become free and seize it
     unsigned int i = _tx_cur;
     for (bool locked = false; !locked;) {
-      for (; _tx_ring[i].status & Tx_Desc::OWN; ++i %= TX_BUFS)
+      for (; _tx_ring[i].ctrl & Tx_Desc::OWN; ++i %= TX_BUFS)
         ;
       locked = _tx_buffer[i]->lock();
     }
@@ -156,7 +156,7 @@ void SiFive_U_NIC::receive() {
       Frame *frame = buf->frame();
 
       // For the upper layers, size will represent the size of frame->data<T>()
-      buf->size((desc->misc & 0x00000fff) - sizeof(Header) - sizeof(CRC));
+      buf->size((desc->size & 0x00003fff) - sizeof(Header) - sizeof(CRC));
 
       db<SiFive_U_NIC>(TRC)
           << "SiFive_U_NIC::receive: frame = " << *frame << endl;
@@ -217,35 +217,36 @@ bool SiFive_U_NIC::reconfigure(const Configuration *c = 0) {
   return ret;
 }
 
-void SiFive_U_NIC::free(Buffer * buf)
-{
-    db<SiFive_U_NIC>(TRC) << "SiFive_U_NIC::free(buf=" << buf << ")" << endl;
+void SiFive_U_NIC::free(Buffer *buf) {
+  db<SiFive_U_NIC>(TRC) << "SiFive_U_NIC::free(buf=" << buf << ")" << endl;
 
-    db<SiFive_U_NIC>(INF) << "SiFive_U_NIC::free:buf=" << buf << " => " << *buf << endl;
+  db<SiFive_U_NIC>(INF) << "SiFive_U_NIC::free:buf=" << buf << " => " << *buf
+                        << endl;
 
-    for(Buffer::Element * el = buf->link(); el; el = el->next()) {
-        buf = el->object();
-        Rx_Desc * desc = reinterpret_cast<Rx_Desc *>(buf->back());
+  for (Buffer::Element *el = buf->link(); el; el = el->next()) {
+    buf = el->object();
+    Rx_Desc *desc = reinterpret_cast<Rx_Desc *>(buf->back());
 
-        _statistics.rx_packets++;
-        _statistics.rx_bytes += buf->size();
+    _statistics.rx_packets++;
+    _statistics.rx_bytes += buf->size();
 
-        // Release the buffer to the NIC
-        desc->size = Reg16(-sizeof(Frame)); // 2's comp.
-        desc->ctrl = Rx_Desc::OWN; // Owned by NIC
+    // Release the buffer to the NIC
+    desc->size = Reg16(-sizeof(Frame)); // 2's comp.
+    desc->ctrl = Rx_Desc::OWN;          // Owned by NIC
 
-        // Release the buffer to the OS
-        buf->unlock();
+    // Release the buffer to the OS
+    buf->unlock();
 
-        db<SiFive_U_NIC>(INF) << "SiFive_U_NIC::free:desc=" << desc << " => " << *desc << endl;
-    }
+    db<SiFive_U_NIC>(INF) << "SiFive_U_NIC::free:desc=" << desc << " => "
+                          << *desc << endl;
+  }
 }
 
 void SiFive_U_NIC::reset() {
-//TODO: check if there more registers to reset
+  // TODO: check if there more registers to reset
   reg(NWCTRL) = 0;
   reg(NWCFG) = _32_BITS_SIZE;
-  reg(NWCTRL) = CLEAR_STATS_REGS
+  reg(NWCTRL) = CLEAR_STATS_REGS;
   reg(TXSTATUS) = TX_STAT_ALL;
   reg(RXSTATUS) = RX_STAT_ALL;
   reg(IDR) = INTR_ALL;
@@ -254,6 +255,50 @@ void SiFive_U_NIC::reset() {
   reg(TXQBASE) = 0;
   reg(RXQBASE) = 0;
 
+  // Set the MAC address
+  for (int i = 0; i < 4; i++) _configuration.address[i] = reg(SPADDR1L + i);
+  for (int i = 0; i < 2; i++) _configuration.address[i + 4] = reg(SPADDR1H + i);
+  db<SiFive_U_NIC>(INF) << "SiFive_U_NIC::reset: MAC=" << _configuration.address << endl;
+}
+
+int SiFive_U_NIC::receive(Address * src, Protocol * prot, void * data, unsigned int size)
+{
+    db<SiFive_U_NIC>(TRC) << "SiFive_U_NIC::receive(s=" << *src << ",p=" << hex << *prot << dec << ",d=" << data << ",s=" << size << ") => " << endl;
+
+    // Wait for a received frame and seize it
+    unsigned int i = _rx_cur;
+    for(bool locked = false; !locked; ) {
+        for(; _rx_ring[i].ctrl & Rx_Desc::OWN; ++i %= RX_BUFS);
+        locked = _rx_buffer[i]->lock();
+    }
+    _rx_cur = (i + 1) % RX_BUFS;
+    Buffer * buf = _rx_buffer[i];
+    Rx_Desc * desc = &_rx_ring[i];
+
+    // Disassemble the Ethernet frame
+    Frame * frame = buf->frame();
+    *src = frame->src();
+    *prot = frame->prot();
+
+    // For the upper layers, size will represent the size of frame->data<T>()
+    buf->size((desc->size & 0x00003fff) - sizeof(Header) - sizeof(CRC));
+
+    // Copy the data
+    memcpy(data, frame->data<void>(), (buf->size() > size) ? size : buf->size());
+
+    // Release the buffer to the NIC
+    desc->ctrl = Rx_Desc::OWN;
+
+    _statistics.rx_packets++;
+    _statistics.rx_bytes += buf->size();
+
+    db<SiFive_U_NIC>(INF) << "SiFive_U_NIC::receive:desc[" << i << "]=" << desc << " => " << *desc << endl;
+
+    int tmp = buf->size();
+
+    buf->unlock();
+
+    return tmp;
 }
 
 void SiFive_U_NIC::handle_int() {
@@ -272,7 +317,7 @@ void SiFive_U_NIC::handle_int() {
   };
 }
 
-void SiFive_U_NIC::int_handler(IC::Interrupt_Id interrupt) {
+void SiFive_U_NIC::int_handler(unsigned int interrupt) {
   SiFive_U_NIC *dev = get_by_interrupt(interrupt);
 
   if (!dev) {

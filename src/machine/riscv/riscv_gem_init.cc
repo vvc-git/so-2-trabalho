@@ -38,7 +38,6 @@ SiFive_U_NIC::SiFive_U_NIC(unsigned int unit, DMA_Buffer *dma_buf) {
     _rx_buffer[i] = new (log) Buffer(this, &_rx_ring[i]);
     _rx_ring[i].phy_addr = phy;
     _rx_ring[i].size = Reg16(-sizeof(Frame)); // 2's comp.
-    _rx_ring[i].misc = 0;
     _rx_ring[i].ctrl = Rx_Desc::OWN; // Owned by NIC
 
     log += (sizeof(Buffer));
@@ -50,7 +49,6 @@ SiFive_U_NIC::SiFive_U_NIC(unsigned int unit, DMA_Buffer *dma_buf) {
     _tx_buffer[i] = new (log) Buffer(this, &_tx_ring[i]);
     _tx_ring[i].phy_addr = phy;
     _tx_ring[i].size = 0;
-    _tx_ring[i].misc = 0;
     _tx_ring[i].ctrl = 0; // Owned by host
 
     log += (sizeof(Buffer));
