@@ -9,8 +9,7 @@
 
 __BEGIN_SYS
 
-class GEM
-{
+class GEM {
 protected:
   typedef CPU::Reg8 Reg8;
   typedef CPU::Reg16 Reg16;
@@ -25,8 +24,7 @@ protected:
 
 public:
   // Register offsets
-  enum
-  {
+  enum {
     NWCTRL = 0x000,      /**< Network Control reg */
     NWCFG = 0x004,       /**< Network Config reg */
     NWSR = 0x008,        /**< Network Status reg */
@@ -69,39 +67,39 @@ public:
     TXMCCNT = 0x110,     /**< Error-free Multicast Frame counter */
     TXPAUSECNT = 0x114,  /**< Pause Frames Transmitted Counter */
     TX64CNT = 0x118,     /**< Error-free 64 byte Frames Transmitted counter */
-    TX65CNT = 0x11C,     /**< Error-free 65-127 byte Frames Transmitted counter */
-    TX128CNT = 0x120,    /**< Error-free 128-255 byte Frames Transmitted counter */
-    TX256CNT = 0x124,    /**< Error-free 256-511 byte Frames transmitted counter */
+    TX65CNT = 0x11C,  /**< Error-free 65-127 byte Frames Transmitted counter */
+    TX128CNT = 0x120, /**< Error-free 128-255 byte Frames Transmitted counter */
+    TX256CNT = 0x124, /**< Error-free 256-511 byte Frames transmitted counter */
     TX512CNT =
         0x128, /**< Error-free 512-1023 byte Frames transmitted counter */
     TX1024CNT =
-        0x12C,              /**< Error-free 1024-1518 byte Frames transmitted counter */
-    TX1519CNT = 0x130,      /**< Error-free larger than 1519 byte Frames transmitted
-                                counter */
-    TXURUNCNT = 0x134,      /**< TX under run error counter */
-    SNGLCOLLCNT = 0x138,    /**< Single Collision Frame Counter */
-    MULTICOLLCNT = 0x13C,   /**< Multiple Collision Frame Counter */
-    EXCESSCOLLCNT = 0x140,  /**< Excessive Collision Frame Counter */
-    LATECOLLCNT = 0x144,    /**< Late Collision Frame Counter */
-    TXDEFERCNT = 0x148,     /**< Deferred Transmission Frame Counter */
-    TXCSENSECNT = 0x14C,    /**< Transmit Carrier Sense Error Counter */
-    OCTRXL = 0x150,         /**< Octets Received register Low */
-    OCTRXH = 0x154,         /**< Octets Received register High */
-    RXCNT = 0x158,          /**< Error-free Frames Received Counter */
-    RXBROADCNT = 0x15C,     /**< Error-free Broadcast Frames Received Counter */
-    RXMULTICNT = 0x160,     /**< Error-free Multicast Frames Received Counter */
-    RXPAUSECNT = 0x164,     /**< Pause Frames Received Counter */
-    RX64CNT = 0x168,        /**< Error-free 64 byte Frames Received Counter */
-    RX65CNT = 0x16C,        /**< Error-free 65-127 byte Frames Received Counter */
-    RX128CNT = 0x170,       /**< Error-free 128-255 byte Frames Received Counter */
-    RX256CNT = 0x174,       /**< Error-free 256-512 byte Frames Received Counter */
-    RX512CNT = 0x178,       /**< Error-free 512-1023 byte Frames Received Counter */
-    RX1024CNT = 0x17C,      /**< Error-free 1024-1518 byte Frames Received Counter */
-    RX1519CNT = 0x180,      /**< Error-free 1519-max byte Frames Received Counter */
-    RXUNDRCNT = 0x184,      /**< Undersize Frames Received Counter */
-    RXOVRCNT = 0x188,       /**< Oversize Frames Received Counter */
-    RXJABCNT = 0x18C,       /**< Jabbers Received Counter */
-    RXFCSCNT = 0x190,       /**< Frame Check Sequence Error Counter */
+        0x12C, /**< Error-free 1024-1518 byte Frames transmitted counter */
+    TX1519CNT = 0x130, /**< Error-free larger than 1519 byte Frames transmitted
+                           counter */
+    TXURUNCNT = 0x134, /**< TX under run error counter */
+    SNGLCOLLCNT = 0x138,   /**< Single Collision Frame Counter */
+    MULTICOLLCNT = 0x13C,  /**< Multiple Collision Frame Counter */
+    EXCESSCOLLCNT = 0x140, /**< Excessive Collision Frame Counter */
+    LATECOLLCNT = 0x144,   /**< Late Collision Frame Counter */
+    TXDEFERCNT = 0x148,    /**< Deferred Transmission Frame Counter */
+    TXCSENSECNT = 0x14C,   /**< Transmit Carrier Sense Error Counter */
+    OCTRXL = 0x150,        /**< Octets Received register Low */
+    OCTRXH = 0x154,        /**< Octets Received register High */
+    RXCNT = 0x158,         /**< Error-free Frames Received Counter */
+    RXBROADCNT = 0x15C,    /**< Error-free Broadcast Frames Received Counter */
+    RXMULTICNT = 0x160,    /**< Error-free Multicast Frames Received Counter */
+    RXPAUSECNT = 0x164,    /**< Pause Frames Received Counter */
+    RX64CNT = 0x168,       /**< Error-free 64 byte Frames Received Counter */
+    RX65CNT = 0x16C,   /**< Error-free 65-127 byte Frames Received Counter */
+    RX128CNT = 0x170,  /**< Error-free 128-255 byte Frames Received Counter */
+    RX256CNT = 0x174,  /**< Error-free 256-512 byte Frames Received Counter */
+    RX512CNT = 0x178,  /**< Error-free 512-1023 byte Frames Received Counter */
+    RX1024CNT = 0x17C, /**< Error-free 1024-1518 byte Frames Received Counter */
+    RX1519CNT = 0x180, /**< Error-free 1519-max byte Frames Received Counter */
+    RXUNDRCNT = 0x184, /**< Undersize Frames Received Counter */
+    RXOVRCNT = 0x188,  /**< Oversize Frames Received Counter */
+    RXJABCNT = 0x18C,  /**< Jabbers Received Counter */
+    RXFCSCNT = 0x190,  /**< Frame Check Sequence Error Counter */
     RXLENGTHCNT = 0x194,    /**< Length Field Error Counter */
     RXSYMBCNT = 0x198,      /**< Symbol Error Counter */
     RXALIGNCNT = 0x19C,     /**< Alignment Error Counter */
@@ -135,8 +133,7 @@ public:
   };
 
   // Design configuration registers
-  enum
-  {
+  enum {
     DESCONF = 0x280,
     DESCONF2 = 0x284,
     DESCONF3 = 0x288,
@@ -148,17 +145,15 @@ public:
   };
 
   // Network Control Register bits
-  enum
-  {
-    TXSTART = 0x200, /**< Transmit start */
-    TX_EN = 0x8,     /**< Transmit enable */
-    RX_EN = 0x4,     /**< Receive enable */
-    LOCALLOOP = 0x2, /**< Local loopback */
+  enum {
+    TXSTART = 1 << 9,   /**< Transmit start */
+    TX_EN = 1 << 3,     /**< Transmit enable */
+    RX_EN = 1 << 2,     /**< Receive enable */
+    LOCALLOOP = 1 << 1, /**< Local loopback */
   };
 
   // Network Configuration Register bits
-  enum
-  {
+  enum {
     STRIP_FCS = 0x20000, /**< Strip FCS field */
     LERR_DISC = 0x10000, /**< Discard RX frames with len err */
     BUFF_OFST_M = 0xC00, /**< Receive buffer offset mask */
@@ -172,8 +167,7 @@ public:
   };
 
   // RO register bits masks
-  enum
-  {
+  enum {
     NWCTRL_RO_MASK = 0xFFF80000,
     NWSTATUS_RO_MASK = 0xFFFFFFFF,
     DMACFG_RO_MASK = 0x8E00F000,
@@ -187,23 +181,17 @@ public:
   };
 
   // Write 1 to clear register bits masks
-  enum
-  {
-    TXSTATUS_CLEAR_MASK = 0x000001F7,
-    RXSTATUS_CLEAR_MASK = 0x0000000F
-  };
+  enum { TXSTATUS_CLEAR_MASK = 0x000001F7, RXSTATUS_CLEAR_MASK = 0x0000000F };
 
   // WO register bits masks
-  enum
-  {
+  enum {
     NWCTRL_WO_MASK = 0x00073E60,
     IER_WO_MASK = 0x07FFFFFF,
     IDR_WO_MASK = 0x07FFFFFF
   };
 
   // Interrupt register bits
-  enum
-  {
+  enum {
     INT_TXCMPL = 0x80, /**< Transmit complete */
     INT_AMBA_ERR = 0x40,
     INT_TXUSED = 0x08,
@@ -212,10 +200,8 @@ public:
   };
 
   // Transmit and Receive Descriptors (in the Ring Buffers)
-  struct Desc
-  {
-    enum
-    {
+  struct Desc {
+    enum {
       OWN = 0x8000,
       ERR = 0x4000,
       STP = 0x0200,
@@ -231,18 +217,10 @@ public:
   };
 
   // Receive Descriptor
-  struct Rx_Desc : public Desc
-  {
-    enum
-    {
-      BUFF = 0x0400,
-      CRC = 0x0800,
-      OFLO = 0x1000,
-      FRAM = 0x2000
-    };
+  struct Rx_Desc : public Desc {
+    enum { BUFF = 0x0400, CRC = 0x0800, OFLO = 0x1000, FRAM = 0x2000 };
 
-    friend Debug &operator<<(Debug &db, const Rx_Desc &d)
-    {
+    friend Debug &operator<<(Debug &db, const Rx_Desc &d) {
       db << "{" << hex << d.phy_addr << dec << "," << 65536 - d.size << ","
          << hex << d.status << "," << d.misc << dec << "}";
       return db;
@@ -250,42 +228,47 @@ public:
   };
 
   // Transmit Descriptor
-  struct Tx_Desc : public Desc
-  {
-    friend Debug &operator<<(Debug &db, const Tx_Desc &d)
-    {
+  struct Tx_Desc : public Desc {
+    friend Debug &operator<<(Debug &db, const Tx_Desc &d) {
       db << "{" << hex << d.phy_addr << dec << "," << 65536 - d.size << ","
          << hex << d.status << "," << d.misc << dec << "}";
       return db;
     }
   };
 
-  static volatile Reg32 &reg(unsigned int o)
-  {
+  static volatile Reg32 &reg(unsigned int o) {
     return reinterpret_cast<volatile Reg32 *>(
         Memory_Map::ETH_BASE)[o / sizeof(Reg32)];
   }
 };
 
-class SiFive_U_NIC : public NIC<Ethernet>, public GEM
-{
+class SiFive_U_NIC : public NIC<Ethernet>, private GEM {
+
+  friend class Machine_Common;
+
 private:
   // Transmit and Receive Ring sizes
   static const unsigned int TX_BUFS = 1;
   static const unsigned int RX_BUFS = 1;
 
   // Size of the DMA Buffer that will host the ring buffers and the init block
-  static const unsigned int DMA_BUFFER_SIZE = RX_BUFS * ((sizeof(Rx_Desc) + 15) & ~15U) + TX_BUFS * ((sizeof(Tx_Desc) + 15) & ~15U) +
-                                              RX_BUFS * ((sizeof(Buffer) + 15) & ~15U) + TX_BUFS * ((sizeof(Buffer) + 15) & ~15U);
+  static const unsigned int DMA_BUFFER_SIZE =
+      RX_BUFS * ((sizeof(Rx_Desc) + 15) & ~15U) +
+      TX_BUFS * ((sizeof(Tx_Desc) + 15) & ~15U) +
+      RX_BUFS * ((sizeof(Buffer) + 15) & ~15U) +
+      TX_BUFS * ((sizeof(Buffer) + 15) & ~15U);
 
   // Interrupt dispatching binding
-  struct Device
-  {
+  struct Device {
     SiFive_U_NIC *device;
     unsigned int interrupt;
   };
 
-public:
+  static const unsigned int INT_ID =
+      53; // TODO: verify if this is the correct interrupt number and how to
+          // pass it to the interrupt handler
+
+protected:
   SiFive_U_NIC(DMA_Buffer *dma_buf);
 
 public:
@@ -299,24 +282,43 @@ public:
   int send(Buffer *buf);
   void free(Buffer *buf);
 
-  virtual void attach(Observer *o, const Protocol &p)
-  {
+  const Address &address() { return _configuration.address; }
+  void address(const Address &address) {
+    _configuration.address = address;
+    _configuration.selector = Configuration::ADDRESS;
+    reconfigure(&_configuration);
+  }
+
+  bool reconfigure(const Configuration *c);
+  const Configuration &configuration() { return _configuration; }
+
+  const Statistics &statistics() {
+    _statistics.time_stamp = TSC::time_stamp();
+    return _statistics;
+  }
+
+  virtual void attach(Observer *o, const Protocol &p) {
     db<SiFive_U_NIC>(TRC) << "GEM::attach(p=" << p << ")" << endl;
     NIC<Ethernet>::attach(o, p);
     reg(NWCTRL) = reg(NWCTRL) | RX_EN; // enable receive int
   }
 
-  virtual void detach(Observer *o, const Protocol &p)
-  {
+  virtual void detach(Observer *o, const Protocol &p) {
     NIC<Ethernet>::detach(o, p);
-    if (!observers())
-    {
+    if (!observers()) {
       reg(NWCTRL) = reg(NWCTRL) & ~RX_EN; // disable receive int
     };
   }
 
 private:
+  void receive();
   void reset();
+  void handle_int();
+
+  // TODO: Compiler not recognizing type?
+  // static void int_handler(IC::Interrupt_Id interrupt);
+
+  static void init();
 
 private:
   Configuration _configuration;

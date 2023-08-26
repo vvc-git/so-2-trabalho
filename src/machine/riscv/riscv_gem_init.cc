@@ -55,4 +55,20 @@ SiFive_U_NIC::SiFive_U_NIC(DMA_Buffer *dma_buf) {
   reset();
 }
 
+void SiFive_U_NIC::init() {
+  db<Init, SiFive_U_NIC>(TRC) << "SiFive_U_NIC::init()" << endl;
+
+  // Allocate a DMA Buffer for init block, rx and tx rings
+  DMA_Buffer *dma_buf = new (SYSTEM) DMA_Buffer(DMA_BUFFER_SIZE);
+
+  // Initialize the device
+  new (SYSTEM) SiFive_U_NIC(dma_buf);
+
+  // Install interrupt handler
+  IC::int_vector(INT_ID, &int_handler);
+
+  // Enable interrupts for device
+  IC::enable(INT_ID);
+}
+
 __END_SYS
