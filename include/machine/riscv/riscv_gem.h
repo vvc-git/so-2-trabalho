@@ -155,7 +155,8 @@ public:
 
   // Network Configuration Register bits
   enum {
-    _32_BITS_SIZE = 0 << 21  /**< 32 bits size */
+    _32_BITS_SIZE = 0 << 21,  /**< 32 bits size */
+    _64_BITS_SIZE = 1 << 21,  /**< 64 bits size */
     STRIP_FCS = 0x20000, /**< Strip FCS field */
     LERR_DISC = 0x10000, /**< Discard RX frames with len err */
     BUFF_OFST_M = 0xC00, /**< Receive buffer offset mask */

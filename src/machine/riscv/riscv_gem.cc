@@ -244,8 +244,8 @@ void SiFive_U_NIC::free(Buffer * buf)
 void SiFive_U_NIC::reset() {
 //TODO: check if there more registers to reset
   reg(NWCTRL) = 0;
-  reg(NWCFG) = _32_BITS_SIZE;
-  reg(NWCTRL) = CLEAR_STATS_REGS
+  reg(NWCFG) = _64_DBUS_WIDTH_SIZE;
+  reg(NWCTRL) = CLEAR_STATS_REGS;
   reg(TXSTATUS) = TX_STAT_ALL;
   reg(RXSTATUS) = RX_STAT_ALL;
   reg(IDR) = INTR_ALL;
