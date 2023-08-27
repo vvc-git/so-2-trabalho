@@ -51,6 +51,70 @@ public:
         INDEXED = 1
     };
 
+    enum Source {
+        L2_CACHE            = 1,
+        UART0               = 4,
+        UART1               = 5,
+        QSPI2               = 6,
+        GPIO                = 7,
+        DMA                 = 23,
+        DDR_SUBSYSTEM       = 31,
+        CHIPLINK_MSI        = 32,
+        PWM0                = 42,
+        PWM1                = 46,
+        I2C                 = 50,
+        QSPI0               = 51,
+        QSPI1               = 52,
+        GIGABIT_ETHERNET    = 53,
+        };
+
+public: // PUBLIC METHODS
+
+    // Get the next available interrupt. This is the "claim" process.
+    // The PLIC will automatically sort by priority and hand us the
+    // ID of the interrupt.
+    static Reg32 next() {
+        // The claim register is filled with the highest-priority, enabled interrupt.
+        unsigned int claim_no = getClaimReg();
+        return claim_no;
+    }
+
+    // Complete a pending interrupt by id. The id should come
+    // from the next() function above.
+    static void complete(unsigned int id) {
+        Reg32 complete_reg = getClaimReg();
+        complete_reg = id;
+    }
+
+    // Set the global threshold. The threshold can be a value [0..7].
+    // The PLIC will mask any interrupts at or below the given threshold.
+    // This means that a threshold of 7 will mask ALL interrupts and
+    // a threshold of 0 will allow ALL interrupts.
+    static void set_threshold(unsigned int tsh) {
+        unsigned int const actual_tsh = tsh & 7;
+        Reg32 tsh_reg = getThresholdReg();
+        tsh_reg = actual_tsh;
+    }
+
+    // Enable a given interrupt ID.
+    static void enable(unsigned int id) {
+        Reg32 enables = getEnableReg(id);
+        int actualId = 1 << id;
+
+        // The register is a 32-bit register, so that gives us enables
+        // for interrupt 31 through 1 (0 is hardwired to 0).
+        enables = (enables | actualId);
+    }
+
+    // Set a given interrupt priority to the given priority.
+    static void set_priority() {
+
+    }
+
+    static void handle_interrupt() {
+
+    }
+
 public:
     static void mtvec(Mode mode, Phy_Addr base) {
     	Reg tmp = (base & -4UL) | (Reg(mode) & 0x3);
