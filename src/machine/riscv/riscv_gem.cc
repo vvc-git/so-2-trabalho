@@ -302,6 +302,64 @@ void SiFive_U_NIC::reset() {
                         << endl;
 }
 
+void SiFive_U_NIC::phy_init()
+{
+  db<SiFive_U_NIC>(TRC) << "SiFive_U_NIC::phy_init()" << endl;
+  /*1. Detect the PHY address. Read the PHY identifier fields in PHY registers 2 and 3 for all the
+    PHY addresses ranging from 1 to 32. The register contents are valid for a valid PHY
+    address.
+    2. Advertise the relevant speed/duplex settings. These bits can be set to suit the system.
+    Refer to the PHY vendor data sheet for more information.
+    3. Configure the PHY as applicable. This could include options to set PHY mode, timing
+    options in the PHY, or others as applicable to the system. Refer to the PHY vendor data
+    sheet for more information.
+    4. Wait for completion of auto-negotiation. Read the PHY status register. Refer to the PHY
+    vendor data sheet for more information.
+    5. Update the controller with auto-negotiated speed and duplex settings. Read the
+    relevant PHY registers to determine the negotiated speed and duplex. Set the speed in
+    gem.network_config[gigabit_mode_enable], gem.network_config[speed] bits, and the
+    duplex in gem.network_config[full_duplex]*/
+    }
+
+
+/* Almost sure this methods don't belong into the NIC class, might be part of something like de PCI on intel*/
+static int SiFive_U_NIC::Phy_write(int data)
+{ 
+  //Check to see that no MDIO operation is in progress. Read until gem.net_status[man_done] = 1
+  assert((reg(NWSR) & (NET_STAT_PHY_MGMT_DONE)) != 0)
+
+  //Write to PHY_MAINT write operation + the data, not sure if this is correct
+  reg(PHYMNTNC) = PHY_MAINT_OP_WRITE | PHY_MAINT_REG_ADDR | PHY_MAINT_PHY_ADDR | data & PHY_MAINT_DATA_MASK ;
+
+  /* Wait for completion. */
+  while ((reg(NWSR) & (NET_STAT_PHY_MGMT_DONE)) == 0) {
+    DELAY(5);
+  }
+  return 0;
+}
+
+static int SiFive_U_NIC::Phy_read()
+{
+  int val;
+  //Check to see that no MDIO operation is in progress. Read until gem.net_status[man_done] = 1
+  assert((reg(NWSR) & (NET_STAT_PHY_MGMT_DONE)) != 0)
+
+  //Write to PHY_MAINT read operation, not sure if this is correct
+  reg(PHYMNTNC) = PHY_MAINT_OP_READ | PHY_MAINT_REG_ADDR | PHY_MAINT_PHY_ADDR;
+
+  /* Wait for completion. */
+  while ((reg(NWSR) & (NET_STAT_PHY_MGMT_DONE)) == 0) {
+    DELAY(5);
+  }
+
+  /*read from register*/
+  val = reg(NWSR) & PHY_MAINT_DATA_MASK;
+
+  return val;
+}
+
+
+
 int SiFive_U_NIC::receive(Address *src, Protocol *prot, void *data,
                           unsigned int size) {
   db<SiFive_U_NIC>(TRC) << "SiFive_U_NIC::receive(s=" << *src << ",p=" << hex

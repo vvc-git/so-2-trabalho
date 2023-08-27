@@ -170,6 +170,11 @@ public:
     DBUS_WIDTH_MASK = 3 << 21,  /**< DBUS width mask */
   };
 
+  // Network Status Register bits
+  enum {
+    NET_STAT_PHY_MGMT_DONE	=	1 << 2,
+  }
+
   // DMA Configuration Register bits
   enum {
     AHB_FIXED_BURST_LEN_16 = 16 << 0,
@@ -213,6 +218,17 @@ public:
     IMR_RO_MASK = 0xFFFFFFFF,
     MODID_RO_MASK = 0x000000FF,
   };
+
+  //PHY Maintaince register bits
+
+  enum {
+    PHY_MAINT_PHY_ADDR = 23,
+    PHY_MAINT_REG_ADDR = 18,
+    PHY_MAINT_OP_MASK	= 3 << 28,
+    PHY_MAINT_OP_READ	= 2 << 28,
+    PHY_MAINT_OP_WRITE	=	1 << 28,
+    PHY_MAINT_DATA_MASK = 0xffff
+  }
 
   // Write 1 to clear register bits masks
   enum { TXSTATUS_CLEAR_MASK = 0x000001F7, RXSTATUS_CLEAR_MASK = 0x0000000F };
@@ -391,6 +407,7 @@ public:
 private:
   void receive();
   void reset();
+  void phy_init();
   void handle_int();
 
   // TODO: Change to Interrupt_Id and fix compiler error
