@@ -120,6 +120,16 @@ void IC::exception(Interrupt_Id id)
     CPU::fr(4); // since exceptions do not increment PC, tell CPU::Context::pop(true) to perform PC = PC + 4 on return
 }
 
+void IC::external(Interrupt_Id id)
+{
+    if (id == 11 + EXCS) {
+        db<IC>(WRN) << "IC got external interruption. Sending to PLIC" << endl;
+        Interrupt_Id externalId = PLIC::next();
+        PLIC::handle(externalId);
+        PLIC::complete(externalId);
+    }
+}
+
 __END_SYS
 
 static void print_context(bool push) {
