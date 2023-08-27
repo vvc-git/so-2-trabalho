@@ -29,13 +29,13 @@ public:
     NWCFG = 0x004,       /**< Network Config reg */
     NWSR = 0x008,        /**< Network Status reg */
     USERIO = 0x00C,      /**< User IO reg */
-    DMACR = 0x010,       /**< DMA Control reg */
+    DMACFG = 0x010,       /**< DMA Config reg */
     TXSTATUS = 0x014,    /**< TX Status reg */
     RXQBASE = 0x018,     /**< RX Q Base address reg */
     TXQBASE = 0x01C,     /**< TX Q Base address reg */
     RXSTATUS = 0x020,    /**< RX Status reg */
     ISR = 0x024,         /**< Interrupt Status reg */
-    IER = 0x028,         /**< Interrupt Enable reg */
+    INT_ENR = 0x028,         /**< Interrupt Enable reg */
     IDR = 0x02C,         /**< Interrupt Disable reg */
     IMR = 0x030,         /**< Interrupt Mask reg */
     PHYMNTNC = 0x034,    /**< Phy Maintaince reg */
@@ -156,19 +156,26 @@ public:
 
   // Network Configuration Register bits
   enum {
-    _32_DBUS_WIDTH_SIZE = 0 << 21, /**< 32 bits size */
-    _64_DBUS_WIDTH_SIZE = 1 << 21, /**< 64 bits size */
+    SPEED_100 = 1 << 0,   /**< Speed 100 */
+    FULL_DUPLEX = 1 << 1, /**< Full duplex */
+    PROMISC = 1 << 4,     /**< Promiscuous mode */
+    _1536_RX_EN = 1 << 8, /**< 1536 byte receive enable */
+    GIGE_EN = 1 << 10,          /**< Gigabit Ethernet enable */
     MDC_DIV_48 = 3 << 18,          /**< MDC clock divider 48 */
     STRIP_FCS = 0x20000,     /**< Strip FCS field */
-    LERR_DISC = 0x10000,     /**< Discard RX frames with len err */
-    BUFF_OFST_M = 0xC00,     /**< Receive buffer offset mask */
-    BUFF_OFST_S = 14,        /**< Receive buffer offset shift */
-    RCV_1538 = 0x100,        /**< Receive 1538 byte frames */
-    UCAST_HASH = 0x80,       /**< Accept unicast hash match */
-    MCAST_HASH = 0x40,       /**< Accept multicast hash match */
-    BCAST_REJ = 0x20,        /**< Reject broadcast frames */
-    PROMISC = 0x10,          /**< Promiscuous mode */
-    JUMBO_FRAME = 0x8,       /**< Jumbo frame enable */
+    RX_BUF_OFFSET = 2 << 14,  /**< RX buffer offset for Ethernet */
+    MDC_CLK_DIV_MASK = 7 << 18, /**< MDC clock divider mask */
+    _32_DBUS_WIDTH_SIZE = 0 << 21, /**< 32 bits size */
+    _64_DBUS_WIDTH_SIZE = 1 << 21, /**< 64 bits size */
+    DBUS_WIDTH_MASK = 3 << 21,  /**< DBUS width mask */
+  };
+
+  // DMA Configuration Register bits
+  enum {
+    AHB_FIXED_BURST_LEN_16 = 16 << 0,
+    RX_PKT_MEMSZ_SEL_8K = 3 << 8, 
+    TX_PKT_MEMSZ_SEL = 1 << 10,
+    DMA_ADDR_BUS_64 = 1 << 30,
   };
 
   /* Transmit Status Register bits*/
@@ -255,8 +262,9 @@ public:
   // Transmit and Receive Descriptors (in the Ring Buffers)
   struct Desc {
 
-    Reg32 phy_addr;
+    volatile Reg32 w0;
     volatile Reg32 ctrl;
+    Reg32 phy_addr;
   };
 
   // Receive Descriptor
@@ -289,7 +297,7 @@ public:
       SIZE_MASK = 0x1fff
     };
 
-    void update_size(unsigned int size) {
+    inline void update_size(unsigned int size) {
       ctrl = (ctrl & ~SIZE_MASK) | (size & SIZE_MASK);
     }
 
@@ -321,10 +329,10 @@ private:
 
   // Size of the DMA Buffer that will host the ring buffers and the init block
   static const unsigned int DMA_BUFFER_SIZE =
-      RX_BUFS * ((sizeof(Rx_Desc) + 15) & ~15U) +
-      TX_BUFS * ((sizeof(Tx_Desc) + 15) & ~15U) +
-      RX_BUFS * ((sizeof(Buffer) + 15) & ~15U) +
-      TX_BUFS * ((sizeof(Buffer) + 15) & ~15U);
+      RX_BUFS * ((sizeof(Rx_Desc) + 3) & ~3U) +
+      TX_BUFS * ((sizeof(Tx_Desc) + 3) & ~3U) +
+      RX_BUFS * ((sizeof(Buffer) + 3) & ~3U) +
+      TX_BUFS * ((sizeof(Buffer) + 3) & ~3U);
 
   // Interrupt dispatching binding
   struct Device {
@@ -410,11 +418,11 @@ private:
 
   DMA_Buffer *_dma_buf;
 
-  int _rx_cur;
+  long _rx_cur;
   Rx_Desc *_rx_ring;
   Phy_Addr _rx_ring_phy;
 
-  int _tx_cur;
+  long _tx_cur;
   Tx_Desc *_tx_ring;
   Phy_Addr _tx_ring_phy;
 
