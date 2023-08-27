@@ -51,6 +51,48 @@ public:
         INDEXED = 1
     };
 
+
+public:
+    static void mtvec(Mode mode, Phy_Addr base) {
+    	Reg tmp = (base & -4UL) | (Reg(mode) & 0x3);
+        ASM("csrw mtvec, %0" : : "r"(tmp) : "cc");
+    }
+
+    static Reg mtvec() {
+        Reg value;
+        ASM("csrr %0, mtvec" : "=r"(value) : : );
+        return value;
+    }
+
+    static Reg64 mtime() { return *reinterpret_cast<Reg64 *>(Memory_Map::CLINT_BASE + MTIME); }
+    static void  mtimecmp(Reg64 v) { *reinterpret_cast<Reg64 *>(Memory_Map::CLINT_BASE + MTIMECMP) = v; }
+};
+
+class PLIC
+{
+private:
+    typedef CPU::Reg Reg;
+    typedef CPU::Reg32 Reg32;
+    typedef CPU::Reg64 Reg64;
+    typedef CPU::Phy_Addr Phy_Addr;
+    typedef CPU::Log_Addr Log_Addr;
+
+public:
+    // Registers offsets from PLIC_CPU_BASE
+    enum {                                  // Description
+        PLIC_PENDING_1      = 0x001000,     // PLIC Interrupt Pending Register 1 (pending1)
+        PLIC_PENDING_2      = 0x001004,     // PLIC Interrupt Pending Register 2 (pending2)
+        PLIC_INT_ENABLE_1   = 0x002000,     // PLIC Interrupt Enable Register 1 (enable1) for Hart 0 M-Mode
+        PLIC_INT_ENABLE_2   = 0x002404,     // PLIC Interrupt Enable Register 2 (enable2) for Hart 4 S-Mode
+        PLIC_THRESHOLD      = 0x200000,     // PLIC Interrupt Priority Threshold Register (threshold)
+        PLIC_CLAIM          = 0x200004,     // PLIC Claim/Complete Register (claim)
+    };
+
+    enum Mode {
+        MACHINE = 0,
+        SUPERVISOR = 1,
+    };
+
     enum Source {
         L2_CACHE            = 1,
         UART0               = 4,
@@ -114,47 +156,6 @@ public: // PUBLIC METHODS
     static void handle_interrupt() {
 
     }
-
-public:
-    static void mtvec(Mode mode, Phy_Addr base) {
-    	Reg tmp = (base & -4UL) | (Reg(mode) & 0x3);
-        ASM("csrw mtvec, %0" : : "r"(tmp) : "cc");
-    }
-
-    static Reg mtvec() {
-        Reg value;
-        ASM("csrr %0, mtvec" : "=r"(value) : : );
-        return value;
-    }
-
-    static Reg64 mtime() { return *reinterpret_cast<Reg64 *>(Memory_Map::CLINT_BASE + MTIME); }
-    static void  mtimecmp(Reg64 v) { *reinterpret_cast<Reg64 *>(Memory_Map::CLINT_BASE + MTIMECMP) = v; }
-};
-
-class PLIC
-{
-private:
-    typedef CPU::Reg Reg;
-    typedef CPU::Reg32 Reg32;
-    typedef CPU::Reg64 Reg64;
-    typedef CPU::Phy_Addr Phy_Addr;
-    typedef CPU::Log_Addr Log_Addr;
-
-public:
-    // Registers offsets from PLIC_CPU_BASE
-    enum {                                  // Description
-        PLIC_PENDING_1      = 0x001000,     // PLIC Interrupt Pending Register 1 (pending1)
-        PLIC_PENDING_2      = 0x001004,     // PLIC Interrupt Pending Register 2 (pending2)
-        PLIC_INT_ENABLE_1   = 0x002000,     // PLIC Interrupt Enable Register 1 (enable1) for Hart 0 M-Mode
-        PLIC_INT_ENABLE_2   = 0x002404,     // PLIC Interrupt Enable Register 2 (enable2) for Hart 4 S-Mode
-        PLIC_THRESHOLD      = 0x200000,     // PLIC Interrupt Priority Threshold Register (threshold)
-        PLIC_CLAIM          = 0x200004,     // PLIC Claim/Complete Register (claim)
-    };
-
-    enum Mode {
-        MACHINE = 0,
-        SUPERVISOR = 1,
-    };
 
 private:
     static volatile Reg32 & getPriorityReg(unsigned int id) {
