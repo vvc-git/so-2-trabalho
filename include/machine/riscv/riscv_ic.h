@@ -110,8 +110,7 @@ public:
         GIGABIT_ETHERNET    = 53,
         };
 
-public: // PUBLIC METHODS
-
+public:
     // Get the next available interrupt. This is the "claim" process.
     // The PLIC will automatically sort by priority and hand us the
     // ID of the interrupt.
@@ -124,8 +123,7 @@ public: // PUBLIC METHODS
     // Complete a pending interrupt by id. The id should come
     // from the next() function above.
     static void complete(unsigned int id) {
-        Reg32 complete_reg = getClaimReg();
-        complete_reg = id;
+        getClaimReg() = id;
     }
 
     // Set the global threshold. The threshold can be a value [0..7].
@@ -134,8 +132,7 @@ public: // PUBLIC METHODS
     // a threshold of 0 will allow ALL interrupts.
     static void set_threshold(unsigned int tsh) {
         unsigned int const actual_tsh = tsh & 7;
-        Reg32 tsh_reg = getThresholdReg();
-        tsh_reg = actual_tsh;
+         getThresholdReg() = actual_tsh;
     }
 
     // Enable a given interrupt ID.
@@ -145,16 +142,20 @@ public: // PUBLIC METHODS
 
         // The register is a 32-bit register, so that gives us enables
         // for interrupt 31 through 1 (0 is hardwired to 0).
-        enables = (enables | actualId);
+        getEnableReg(id) = (enables | actualId);
     }
 
     // Set a given interrupt priority to the given priority.
-    static void set_priority() {
-
+    static void set_priority(unsigned int id, unsigned int priority) {
+        unsigned int actualPriority = priority & 7; // 7 is the max priority
+        getPriorityReg(id) = actualPriority; // Set the priority
     }
 
-    static void handle_interrupt() {
-
+    static void handle(unsigned int id) {
+        switch (id) {
+            // Implement handlers for each interrupt ID here.
+            // If they need to be handled by each device's driver, then call their handler here.
+        }
     }
 
 private:
@@ -225,7 +226,8 @@ private:
 public:
     static const unsigned int EXCS = CPU::EXCEPTIONS;
     static const unsigned int IRQS = CLINT::IRQS;
-    static const unsigned int INTS = EXCS + IRQS;
+    static const unsigned int EIRQS = PLIC::EIRQS;
+    static const unsigned int INTS = EXCS + IRQS + EIRQS;
 
     using IC_Common::Interrupt_Id;
     using IC_Common::Interrupt_Handler;
@@ -238,7 +240,7 @@ public:
     IC() {}
 
     static Interrupt_Handler int_vector(Interrupt_Id i) {
-        assert(i < INTS);
+        assert(i < INTS); // We need this not to be "<" but "<=" because we need to be able to access the last external interrupt, and zero from claim is when there is no pending interrupt.
         return _int_vector[i];
     }
 
@@ -290,6 +292,7 @@ private:
     // Logical handlers
     static void int_not(Interrupt_Id i);
     static void exception(Interrupt_Id i);
+    static void external(Interrupt_Id i);
 
     // Physical handler
     static void entry() __attribute((naked, aligned(4)));
