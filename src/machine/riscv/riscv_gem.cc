@@ -13,11 +13,18 @@ SiFive_U_NIC::~SiFive_U_NIC() {
 
 int SiFive_U_NIC::send(const Address &dst, const Protocol &prot,
                        const void *data, unsigned int size) {
+
+  db<SiFive_U_NIC>(TRC) << "SiFive_U_NIC::send(s=" << _configuration.address
+                        << ",d=" << dst << ",p=" << hex << prot << dec
+                        << ",d=" << data << ",s=" << size << ")" << endl;
+
   // Wait for a buffer to become free and seize it
   unsigned int i = _tx_cur;
   for (bool locked = false; !locked;) {
-    for (; _tx_ring[i].ctrl & Tx_Desc::OWN; ++i %= TX_BUFS)
-      ;
+    for (; _tx_ring[i].ctrl & Tx_Desc::OWN; ++i %= TX_BUFS) {
+      db<SiFive_U_NIC>(INF) << "SiFive_U_NIC::send:desc[" << i << "]=" << &_tx_ring[i]
+                            << " => " << _tx_ring[i] << endl;
+    }
     locked = _tx_buffer[i]->lock();
   }
   _tx_cur = (i + 1) %
@@ -25,6 +32,10 @@ int SiFive_U_NIC::send(const Address &dst, const Protocol &prot,
                      // scanning the ring buffer from the beginning. Losing a
                      // write in a race condition is assumed to be harmless. The
                      // FINC + CAS alternative seems too expensive.
+
+  db<SiFive_U_NIC>(INF) << "SiFive_U_NIC::send:buf=" << _tx_buffer[i]
+                        << " => " << *_tx_buffer[i] << endl;
+  
   Tx_Desc *desc = &_tx_ring[i];
   Buffer *buf = _tx_buffer[i];
 
@@ -35,10 +46,10 @@ int SiFive_U_NIC::send(const Address &dst, const Protocol &prot,
   // Assemble the Ethernet frame
   new (buf->frame()) Frame(_configuration.address, dst, prot, data, size);
 
-  desc->size = -(size + sizeof(Header)); // 2's comp.
+  desc->update_size(size + sizeof(Header));
 
   // Status must be set last, since it can trigger a send
-  desc->ctrl = Tx_Desc::OWN;
+  desc->ctrl |= Tx_Desc::OWN;
 
   reg(NWCTRL) |= TXSTART;
 
@@ -68,10 +79,10 @@ int SiFive_U_NIC::send(Buffer *buf) {
     db<SiFive_U_NIC>(INF) << "SiFive_U_NIC::send:buf=" << buf << " => " << *buf
                           << endl;
 
-    desc->size = -(buf->size() + sizeof(Header)); // 2's comp.
+    desc->update_size(buf->size() + sizeof(Header)); // 2's comp.
 
     // Status must be set last, since it can trigger a send
-    desc->ctrl = Tx_Desc::OWN;
+    desc->ctrl |= Tx_Desc::OWN;
 
     reg(NWCTRL) |= TXSTART;
 
@@ -156,7 +167,7 @@ void SiFive_U_NIC::receive() {
       Frame *frame = buf->frame();
 
       // For the upper layers, size will represent the size of frame->data<T>()
-      buf->size((desc->size & 0x00003fff) - sizeof(Header) - sizeof(CRC));
+      buf->size((desc->ctrl & Rx_Desc::SIZE_MASK) - sizeof(Header) - sizeof(CRC));
 
       db<SiFive_U_NIC>(TRC)
           << "SiFive_U_NIC::receive: frame = " << *frame << endl;
@@ -231,8 +242,8 @@ void SiFive_U_NIC::free(Buffer *buf) {
     _statistics.rx_bytes += buf->size();
 
     // Release the buffer to the NIC
-    desc->size = Reg16(-sizeof(Frame)); // 2's comp.
-    desc->ctrl = Rx_Desc::OWN;          // Owned by NIC
+    desc->update_size(sizeof(Frame));
+    desc->ctrl |= Rx_Desc::OWN;          // Owned by NIC
 
     // Release the buffer to the OS
     buf->unlock();
@@ -254,9 +265,19 @@ void SiFive_U_NIC::reset() {
   reg(TXQBASE) = 0;
   reg(RXQBASE) = 0;
 
+  reg(NWCFG) |= MDC_DIV_48;
+  reg(NWCTRL) = CTRL_MGMT_PORT_EN;
+
   // Set the MAC address
-  for (int i = 0; i < 4; i++) _configuration.address[i] = reg(SPADDR1L + i);
-  for (int i = 0; i < 2; i++) _configuration.address[i + 4] = reg(SPADDR1H + i);
+  unsigned int low = reg(SPADDR1L);
+  unsigned int high = reg(SPADDR1H);
+  _configuration.address[0] = low & 0xFF;
+  _configuration.address[1] = (low >> 8) & 0xFF;
+  _configuration.address[2] = (low >> 16) & 0xFF;
+  _configuration.address[3] = (low >> 24) & 0xFF;
+  _configuration.address[4] = high & 0xFF;
+  _configuration.address[5] = (high >> 8) & 0xFF;
+  
   db<SiFive_U_NIC>(INF) << "SiFive_U_NIC::reset: MAC=" << _configuration.address << endl;
 }
 
@@ -280,7 +301,7 @@ int SiFive_U_NIC::receive(Address * src, Protocol * prot, void * data, unsigned 
     *prot = frame->prot();
 
     // For the upper layers, size will represent the size of frame->data<T>()
-    buf->size((desc->size & 0x00003fff) - sizeof(Header) - sizeof(CRC));
+    buf->size((desc->ctrl & Rx_Desc::SIZE_MASK) - sizeof(Header) - sizeof(CRC));
 
     // Copy the data
     memcpy(data, frame->data<void>(), (buf->size() > size) ? size : buf->size());

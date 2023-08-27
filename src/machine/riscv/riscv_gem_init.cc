@@ -23,36 +23,36 @@ SiFive_U_NIC::SiFive_U_NIC(unsigned int unit, DMA_Buffer *dma_buf) {
   _rx_cur = 0;
   _rx_ring = log;
   _rx_ring_phy = phy;
-  log += RX_BUFS * (sizeof(Rx_Desc));
-  phy += RX_BUFS * (sizeof(Rx_Desc));
+  log += RX_BUFS * align32(sizeof(Rx_Desc));
+  phy += RX_BUFS * align32(sizeof(Rx_Desc));
 
   // Tx_Desc Ring
   _tx_cur = 0;
   _tx_ring = log;
   _tx_ring_phy = phy;
-  log += TX_BUFS * (sizeof(Tx_Desc));
-  phy += TX_BUFS * (sizeof(Tx_Desc));
+  log += TX_BUFS * align32(sizeof(Tx_Desc));
+  phy += TX_BUFS * align32(sizeof(Tx_Desc));
 
   // Rx_Buffer Ring
   for (unsigned int i = 0; i < RX_BUFS; i++) {
     _rx_buffer[i] = new (log) Buffer(this, &_rx_ring[i]);
     _rx_ring[i].phy_addr = phy;
-    _rx_ring[i].size = Reg16(-sizeof(Frame)); // 2's comp.
-    _rx_ring[i].ctrl = Rx_Desc::OWN; // Owned by NIC
+    _rx_ring[i].update_size(sizeof(Frame)); 
+    _rx_ring[i].ctrl |= Rx_Desc::OWN; // Owned by NIC
 
-    log += (sizeof(Buffer));
-    phy += (sizeof(Buffer));
+    log += align32(sizeof(Buffer));
+    phy += align32(sizeof(Buffer));
   }
 
   // Tx_Buffer Ring
   for (unsigned int i = 0; i < TX_BUFS; i++) {
     _tx_buffer[i] = new (log) Buffer(this, &_tx_ring[i]);
     _tx_ring[i].phy_addr = phy;
-    _tx_ring[i].size = 0;
-    _tx_ring[i].ctrl = 0; // Owned by host
+    _tx_ring[i].update_size(0); // Clear size
+    _tx_ring[i].ctrl &= ~Tx_Desc::OWN; // Owned by host
 
-    log += (sizeof(Buffer));
-    phy += (sizeof(Buffer));
+    log += align32(sizeof(Buffer));
+    phy += align32(sizeof(Buffer));
   }
 
   // Reset device
@@ -62,7 +62,7 @@ SiFive_U_NIC::SiFive_U_NIC(unsigned int unit, DMA_Buffer *dma_buf) {
 void SiFive_U_NIC::init(unsigned int unit) {
   db<Init, SiFive_U_NIC>(TRC) << "SiFive_U_NIC::init()" << endl;
 
-  // Allocate a DMA Buffer for init block, rx and tx rings
+  // Allocate a DMA Buffer for rx and tx rings
   DMA_Buffer *dma_buf = new (SYSTEM) DMA_Buffer(DMA_BUFFER_SIZE);
 
   // Initialize the device

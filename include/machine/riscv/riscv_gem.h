@@ -148,6 +148,7 @@ public:
   enum {
     TXSTART = 1 << 9,          /**< Transmit start */
     CLEAR_STATS_REGS = 1 << 5, /**< Clear stats bit */
+    CTRL_MGMT_PORT_EN = 1 << 4, /**< Control management port enable */
     TX_EN = 1 << 3,            /**< Transmit enable */
     RX_EN = 1 << 2,            /**< Receive enable */
     LOCALLOOP = 1 << 1,        /**< Local loopback */
@@ -155,18 +156,19 @@ public:
 
   // Network Configuration Register bits
   enum {
-    _32_BITS_SIZE = 0 << 21  /**< 32 bits size */
-    _64_BITS_SIZE = 1 << 21,  /**< 64 bits size */
-    STRIP_FCS = 0x20000, /**< Strip FCS field */
-    LERR_DISC = 0x10000, /**< Discard RX frames with len err */
-    BUFF_OFST_M = 0xC00, /**< Receive buffer offset mask */
-    BUFF_OFST_S = 14,    /**< Receive buffer offset shift */
-    RCV_1538 = 0x100,    /**< Receive 1538 byte frames */
-    UCAST_HASH = 0x80,   /**< Accept unicast hash match */
-    MCAST_HASH = 0x40,   /**< Accept multicast hash match */
-    BCAST_REJ = 0x20,    /**< Reject broadcast frames */
-    PROMISC = 0x10,      /**< Promiscuous mode */
-    JUMBO_FRAME = 0x8,   /**< Jumbo frame enable */
+    _32_DBUS_WIDTH_SIZE = 0 << 21, /**< 32 bits size */
+    _64_DBUS_WIDTH_SIZE = 1 << 21, /**< 64 bits size */
+    MDC_DIV_48 = 3 << 18,          /**< MDC clock divider 48 */
+    STRIP_FCS = 0x20000,     /**< Strip FCS field */
+    LERR_DISC = 0x10000,     /**< Discard RX frames with len err */
+    BUFF_OFST_M = 0xC00,     /**< Receive buffer offset mask */
+    BUFF_OFST_S = 14,        /**< Receive buffer offset shift */
+    RCV_1538 = 0x100,        /**< Receive 1538 byte frames */
+    UCAST_HASH = 0x80,       /**< Accept unicast hash match */
+    MCAST_HASH = 0x40,       /**< Accept multicast hash match */
+    BCAST_REJ = 0x20,        /**< Reject broadcast frames */
+    PROMISC = 0x10,          /**< Promiscuous mode */
+    JUMBO_FRAME = 0x8,       /**< Jumbo frame enable */
   };
 
   /* Transmit Status Register bits*/
@@ -180,7 +182,7 @@ public:
     TX_STAT_RETRY_LIMIT_EXC = 1 << 2,
     TX_STAT_COLLISION = 1 << 1,
     TX_STAT_USED_BIT_READ = 1 << 0,
-    TX_STAT_ALL = 0x1ff
+    TX_STAT_ALL = 0xff,
   };
 
   enum {
@@ -188,7 +190,7 @@ public:
     RX_STAT_OVERRUN = 1 << 2,
     RX_STAT_FRAME_RECD = 1 << 1,
     RX_STAT_BUF_NOT_AVAIL = 1 << 0,
-    RX_STAT_ALL = 0xf
+    RX_STAT_ALL = 0x0f,
   };
 
   // RO register bits masks
@@ -202,7 +204,7 @@ public:
     RXSTATUS_RO_MASK = 0xFFFFFFF0,
     ISR_RO_MASK = 0xFFFFFFFF, // Clear on read
     IMR_RO_MASK = 0xFFFFFFFF,
-    MODID_RO_MASK = 0x000000FF
+    MODID_RO_MASK = 0x000000FF,
   };
 
   // Write 1 to clear register bits masks
@@ -255,27 +257,45 @@ public:
 
     Reg32 phy_addr;
     volatile Reg32 ctrl;
-    volatile Reg16 size; // 2's complement
   };
 
   // Receive Descriptor
   struct Rx_Desc : public Desc {
-    enum { OWN = 1 << 0, WRAP = 1 << 1, EOF = 1 << 15, SOF = 1 << 14 };
+    enum {
+      OWN = 1 << 0,
+      WRAP = 1 << 1,
+      EOF = 1 << 15,
+      SOF = 1 << 14,
+      SIZE_MASK = 0x3fff
+    };
+
+    void update_size(unsigned int size) {
+      ctrl = (ctrl & ~SIZE_MASK) | (size & SIZE_MASK);
+    }
 
     friend Debug &operator<<(Debug &db, const Rx_Desc &d) {
-      db << "{" << hex << d.phy_addr << dec << "," << 65536 - d.size << ","
-         << hex << d.ctrl << dec << "}";
+      db << "{" << hex << d.phy_addr << dec << ","
+         << 65536 - (d.ctrl & SIZE_MASK) << "," << hex << d.ctrl << dec << "}";
       return db;
     }
   };
 
   // Transmit Descriptor
   struct Tx_Desc : public Desc {
-    enum { OWN = 1U << 31, WRAP = 1 << 30, LAST_BUF = 1 << 15 };
+    enum {
+      OWN = 1U << 31,
+      WRAP = 1 << 30,
+      LAST_BUF = 1 << 15,
+      SIZE_MASK = 0x1fff
+    };
+
+    void update_size(unsigned int size) {
+      ctrl = (ctrl & ~SIZE_MASK) | (size & SIZE_MASK);
+    }
 
     friend Debug &operator<<(Debug &db, const Tx_Desc &d) {
-      db << "{" << hex << d.phy_addr << dec << "," << 65536 - d.size << ","
-         << hex << d.ctrl << dec << "}";
+      db << "{" << hex << d.phy_addr << dec << ","
+         << 65536 - (d.ctrl & SIZE_MASK) << "," << hex << d.ctrl << dec << "}";
       return db;
     }
   };
@@ -313,7 +333,7 @@ private:
   };
 
   static const unsigned int INT_ID =
-      53; // TODO: verify if this is the correct interrupt number and how to
+      31; // TODO: verify if this is the correct interrupt number and how to
           // pass it to the interrupt handler
 
 protected:
