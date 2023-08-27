@@ -18,8 +18,11 @@ void IC::init()
         _int_vector[i] = &exception;
 
     // Set all interrupt handlers to int_not()
-    for(Interrupt_Id i = EXCS; i < INTS; i++)
+    for(Interrupt_Id i = EXCS; i < EXCS+IRQS; i++)
         _int_vector[i] = &int_not;
+
+    for (Interrupt_Id i = INTS-EIRQS; i < INTS; i++)
+        _int_vector[i] = &external;
 }
 
 __END_SYS
