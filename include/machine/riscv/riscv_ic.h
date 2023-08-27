@@ -76,14 +76,77 @@ private:
     typedef CPU::Phy_Addr Phy_Addr;
     typedef CPU::Log_Addr Log_Addr;
 
-public: // PUBLIC METHODS
+public:
+    // Registers offsets from PLIC_CPU_BASE
+    enum {                                  // Description
+        PLIC_PENDING_1      = 0x001000,     // PLIC Interrupt Pending Register 1 (pending1)
+        PLIC_PENDING_2      = 0x001004,     // PLIC Interrupt Pending Register 2 (pending2)
+        PLIC_INT_ENABLE_1   = 0x002000,     // PLIC Interrupt Enable Register 1 (enable1) for Hart 0 M-Mode
+        PLIC_INT_ENABLE_2   = 0x002404,     // PLIC Interrupt Enable Register 2 (enable2) for Hart 4 S-Mode
+        PLIC_THRESHOLD      = 0x200000,     // PLIC Interrupt Priority Threshold Register (threshold)
+        PLIC_CLAIM          = 0x200004,     // PLIC Claim/Complete Register (claim)
+    };
 
-public: // PUBLIC ATTRIBUTES
+    enum Mode {
+        MACHINE = 0,
+        SUPERVISOR = 1,
+    };
 
-private: // PRIVATE METHODS
+private:
+    static volatile Reg32 & getPriorityReg(unsigned int id) {
+        return reinterpret_cast<volatile Reg32 *>(Memory_Map::PLIC_CPU_BASE)[id * 4];
+    }
 
-private: // PRIVATE ATTRIBUTES
+    static volatile Reg32 & getThresholdReg() {
+        Reg hartId = CPU::mhartid();
+        Reg mode = CPU::mstatus() & 0x1800;
 
+        Mode hartMode = (mode == 0x1800) ? SUPERVISOR : MACHINE;
+
+        if (hartId == 0) {
+            return reinterpret_cast<volatile Reg32 *>(Memory_Map::PLIC_CPU_BASE)[PLIC_THRESHOLD/sizeof(Reg32)];
+        }
+        else {
+            return reinterpret_cast<volatile Reg32 *>(Memory_Map::PLIC_CPU_BASE)[(PLIC_THRESHOLD + 0x1000 + 0x2000 * (hartId - 1) + 0x1000*hartMode)/sizeof(Reg32)];
+        }
+    }
+
+    static volatile Reg32 & getClaimReg() {
+        Reg hartId = CPU::mhartid();
+        Reg mode = CPU::mstatus() & 0x1800;
+
+        Mode hartMode = (mode == 0x1800) ? SUPERVISOR : MACHINE;
+
+        if (hartId == 0) {
+            return reinterpret_cast<volatile Reg32 *>(Memory_Map::PLIC_CPU_BASE)[PLIC_CLAIM/sizeof(Reg32)];
+        }
+        else {
+            return reinterpret_cast<volatile Reg32 *>(Memory_Map::PLIC_CPU_BASE)[((PLIC_CLAIM + 0x1000) + 0x2000 * (hartId - 1) + (0x1000*hartMode))/sizeof(Reg32)];
+        }
+    }
+
+    static bool isPending(unsigned int id) {
+        Reg32 pendingReg;
+
+        if (id < 32) {
+            pendingReg = *reinterpret_cast<Reg32 *>(Memory_Map::PLIC_CPU_BASE + PLIC_PENDING_1);
+        }
+        else {
+            pendingReg = *reinterpret_cast<Reg32 *>(Memory_Map::PLIC_CPU_BASE + PLIC_PENDING_2);
+        }
+        int actualId = 1 << id;
+
+        return ((pendingReg & actualId) != 0);
+    }
+
+    static volatile Reg32 & getEnableReg(unsigned int id) {
+        if (id < 32) {
+            return reinterpret_cast<volatile Reg32 *>(Memory_Map::PLIC_CPU_BASE)[PLIC_INT_ENABLE_1/sizeof(Reg32)];
+        }
+        else {
+            return reinterpret_cast<volatile Reg32 *>(Memory_Map::PLIC_CPU_BASE)[PLIC_INT_ENABLE_2/sizeof(Reg32)];
+        }
+    }
 };
 
 class IC: private IC_Common, private CLINT
