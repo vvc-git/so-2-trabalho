@@ -329,10 +329,10 @@ private:
 
   // Size of the DMA Buffer that will host the ring buffers and the init block
   static const unsigned int DMA_BUFFER_SIZE =
-      RX_BUFS * ((sizeof(Rx_Desc) + 3) & ~3U) +
-      TX_BUFS * ((sizeof(Tx_Desc) + 3) & ~3U) +
-      RX_BUFS * ((sizeof(Buffer) + 3) & ~3U) +
-      TX_BUFS * ((sizeof(Buffer) + 3) & ~3U);
+      RX_BUFS * ((sizeof(Rx_Desc) + 15) & ~15U) +
+      TX_BUFS * ((sizeof(Tx_Desc) + 15) & ~15U) +
+      RX_BUFS * ((sizeof(Buffer) + 15) & ~15U) +
+      TX_BUFS * ((sizeof(Buffer) + 15) & ~15U);
 
   // Interrupt dispatching binding
   struct Device {
