@@ -173,13 +173,14 @@ public:
   // Network Status Register bits
   enum {
     NET_STAT_PHY_MGMT_DONE	=	1 << 2,
-  }
+  };
 
   // DMA Configuration Register bits
   enum {
     AHB_FIXED_BURST_LEN_16 = 16 << 0,
     RX_PKT_MEMSZ_SEL_8K = 3 << 8, 
     TX_PKT_MEMSZ_SEL = 1 << 10,
+    DMA_DISC_WHEN_NO_AHB = 1 << 24,
     DMA_ADDR_BUS_64 = 1 << 30,
   };
 
@@ -228,7 +229,7 @@ public:
     PHY_MAINT_OP_READ	= 2 << 28,
     PHY_MAINT_OP_WRITE	=	1 << 28,
     PHY_MAINT_DATA_MASK = 0xffff
-  }
+  };
 
   // Write 1 to clear register bits masks
   enum { TXSTATUS_CLEAR_MASK = 0x000001F7, RXSTATUS_CLEAR_MASK = 0x0000000F };

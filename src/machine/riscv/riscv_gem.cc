@@ -22,8 +22,8 @@ int SiFive_U_NIC::send(const Address &dst, const Protocol &prot,
   unsigned long i = _tx_cur;
   for (bool locked = false; !locked;) {
     for (; !(_tx_ring[i].ctrl & Tx_Desc::OWN); ++i %= TX_BUFS)
-    ;
-    locked = _tx_buffer[i]->lock(); // TODO: unaligned read ??
+      ;
+    locked = _tx_buffer[i]->lock();
   }
   _tx_cur = (i + 1) %
             TX_BUFS; // _tx_cur and _rx_cur are simple accelerators to avoid
@@ -89,8 +89,9 @@ int SiFive_U_NIC::send(Buffer *buf) {
     db<SiFive_U_NIC>(INF) << "SiFive_U_NIC::send:desc=" << desc << " => "
                           << *desc << endl;
 
-    // Wait for packet to be sent and unlock the respective buffer
-    // DONE BY INTERRUPT HANDLER
+    // Wait for packet to be sent (unlock will be called by handle_int())
+    while (!(desc->ctrl & Tx_Desc::OWN))
+      ;
   }
 
   return size;
@@ -152,7 +153,7 @@ void SiFive_U_NIC::receive() {
   db<SiFive_U_NIC>(TRC) << "SiFive_U_NIC::receive()" << endl;
 
   for (unsigned int count = RX_BUFS, i = _rx_cur;
-       count && (_rx_ring[i].w0 & Rx_Desc::OWN);
+       count && ((_rx_ring[i].w0 & Rx_Desc::OWN) != 0);
        count--, ++i %= RX_BUFS, _rx_cur = i) {
     // NIC received a frame in _rx_buffer[_rx_cur], let's check if it has
     // already been handled
@@ -255,19 +256,20 @@ void SiFive_U_NIC::reset() {
   // Initialize controller
   reg(NWCTRL) = 0;
   reg(NWCTRL) = CLEAR_STATS_REGS;
-  reg(NWCFG) = _64_DBUS_WIDTH_SIZE;
+  reg(NWCFG) = _32_DBUS_WIDTH_SIZE;
   reg(TXSTATUS) = TX_STAT_ALL;
   reg(RXSTATUS) = RX_STAT_ALL;
-  reg(IDR) = INTR_ALL;
+  //reg(IDR) = INTR_ALL;
   reg(TXQBASE) = 0;
   reg(RXQBASE) = 0;
 
   // Configure controller
   reg(NWCFG) |= MDC_DIV_48;
   reg(NWCTRL) |= CTRL_MGMT_PORT_EN;
-  
+
   reg(NWCFG) &= (MDC_CLK_DIV_MASK | DBUS_WIDTH_MASK);
-  reg(NWCFG) |= (STRIP_FCS | RX_BUF_OFFSET | GIGE_EN | _1536_RX_EN | FULL_DUPLEX | SPEED_100); 
+  reg(NWCFG) |= (STRIP_FCS | RX_BUF_OFFSET | GIGE_EN | _1536_RX_EN |
+                 FULL_DUPLEX | SPEED_100);
   reg(NWCFG) |= promiscuous ? PROMISC : 0;
 
   // Set the MAC address
@@ -281,8 +283,9 @@ void SiFive_U_NIC::reset() {
   _configuration.address[5] = (high >> 8) & 0xFF;
 
   // Set up DMA control register
-  reg(DMACFG) = (((sizeof(Buffer) + 63) / 64) << 16) | RX_PKT_MEMSZ_SEL_8K | TX_PKT_MEMSZ_SEL | AHB_FIXED_BURST_LEN_16 | DMA_ADDR_BUS_64;
-  
+  reg(DMACFG) = (((sizeof(Buffer) + 63) / 64) << 16) | RX_PKT_MEMSZ_SEL_8K |
+                TX_PKT_MEMSZ_SEL | AHB_FIXED_BURST_LEN_16 | DMA_DISC_WHEN_NO_AHB;
+
   // Might not be necessary
   reg(TXQBASE) = _tx_ring_phy;
   reg(RXQBASE) = _rx_ring_phy;
@@ -290,75 +293,82 @@ void SiFive_U_NIC::reset() {
   // Enable tx and rx
   reg(NWCTRL) |= CTRL_MGMT_PORT_EN | TX_EN | RX_EN;
 
-
   // Enable interrupts
-  reg(INT_ENR) = INTR_RX_COMPLETE | INTR_RX_OVERRUN | INTR_TX_USED_READ | INTR_RX_USED_READ | INTR_HRESP_NOT_OK;
+  reg(INT_ENR) |= INTR_RX_COMPLETE | INTR_RX_OVERRUN | INTR_TX_USED_READ |
+                 INTR_RX_USED_READ | INTR_HRESP_NOT_OK;
 
-  db<SiFive_U_NIC> (TRC) << "SiFive_U_NIC::reset: NWCFG=" << hex << reg(NWCFG) << endl;
-  db<SiFive_U_NIC> (TRC) << "SiFive_U_NIC::reset: NWCTRL=" << hex << reg(NWCTRL) << endl;
-  db<SiFive_U_NIC> (TRC) << "SiFive_U_NIC::reset: DMACFG=" << hex << reg(DMACFG) << endl;
-  db<SiFive_U_NIC> (TRC) << "SiFive_U_NIC::reset: INT_ENR=" << hex << reg(INT_ENR) << endl;
+  db<SiFive_U_NIC>(TRC) << "SiFive_U_NIC::reset: NWCFG=" << hex << reg(NWCFG)
+                        << endl;
+  db<SiFive_U_NIC>(TRC) << "SiFive_U_NIC::reset: NWCTRL=" << hex << reg(NWCTRL)
+                        << endl;
+  db<SiFive_U_NIC>(TRC) << "SiFive_U_NIC::reset: DMACFG=" << hex << reg(DMACFG)
+                        << endl;
+  db<SiFive_U_NIC>(TRC) << "SiFive_U_NIC::reset: INT_ENR=" << hex
+                        << reg(INT_ENR) << ",supposed=" << (INTR_RX_COMPLETE | INTR_RX_OVERRUN | INTR_TX_USED_READ |
+                 INTR_RX_USED_READ | INTR_HRESP_NOT_OK) << endl;
   db<SiFive_U_NIC>(TRC) << "SiFive_U_NIC::reset: MAC=" << _configuration.address
                         << endl;
 }
 
-void SiFive_U_NIC::phy_init()
-{
-  db<SiFive_U_NIC>(TRC) << "SiFive_U_NIC::phy_init()" << endl;
-  /*1. Detect the PHY address. Read the PHY identifier fields in PHY registers 2 and 3 for all the
-    PHY addresses ranging from 1 to 32. The register contents are valid for a valid PHY
-    address.
-    2. Advertise the relevant speed/duplex settings. These bits can be set to suit the system.
-    Refer to the PHY vendor data sheet for more information.
-    3. Configure the PHY as applicable. This could include options to set PHY mode, timing
-    options in the PHY, or others as applicable to the system. Refer to the PHY vendor data
-    sheet for more information.
-    4. Wait for completion of auto-negotiation. Read the PHY status register. Refer to the PHY
-    vendor data sheet for more information.
-    5. Update the controller with auto-negotiated speed and duplex settings. Read the
-    relevant PHY registers to determine the negotiated speed and duplex. Set the speed in
-    gem.network_config[gigabit_mode_enable], gem.network_config[speed] bits, and the
-    duplex in gem.network_config[full_duplex]*/
-    }
 
+// void SiFive_U_NIC::phy_init() {
+//   db<SiFive_U_NIC>(TRC) << "SiFive_U_NIC::phy_init()" << endl;
+//   /*1. Detect the PHY address. Read the PHY identifier fields in PHY registers 2
+//     and 3 for all the PHY addresses ranging from 1 to 32. The register contents
+//     are valid for a valid PHY address.
+//     2. Advertise the relevant speed/duplex settings. These bits can be set to
+//     suit the system. Refer to the PHY vendor data sheet for more information.
+//     3. Configure the PHY as applicable. This could include options to set PHY
+//     mode, timing options in the PHY, or others as applicable to the system.
+//     Refer to the PHY vendor data sheet for more information.
+//     4. Wait for completion of auto-negotiation. Read the PHY status register.
+//     Refer to the PHY vendor data sheet for more information.
+//     5. Update the controller with auto-negotiated speed and duplex settings.
+//     Read the relevant PHY registers to determine the negotiated speed and
+//     duplex. Set the speed in gem.network_config[gigabit_mode_enable],
+//     gem.network_config[speed] bits, and the duplex in
+//     gem.network_config[full_duplex]*/
+// }
 
-/* Almost sure this methods don't belong into the NIC class, might be part of something like de PCI on intel*/
-static int SiFive_U_NIC::Phy_write(int data)
-{ 
-  //Check to see that no MDIO operation is in progress. Read until gem.net_status[man_done] = 1
-  assert((reg(NWSR) & (NET_STAT_PHY_MGMT_DONE)) != 0)
+// /* Almost sure this methods don't belong into the NIC class, might be part of
+//  something like de PCI on intel*/
+// static int SiFive_U_NIC::Phy_write(int data) {
+//   // Check to see that no MDIO operation is in progress. Read until
+//   // gem.net_status[man_done] = 1
+//   assert((reg(NWSR) & (NET_STAT_PHY_MGMT_DONE)) != 0)
 
-  //Write to PHY_MAINT write operation + the data, not sure if this is correct
-  reg(PHYMNTNC) = PHY_MAINT_OP_WRITE | PHY_MAINT_REG_ADDR | PHY_MAINT_PHY_ADDR | data & PHY_MAINT_DATA_MASK ;
+//       // Write to PHY_MAINT write operation + the data, not sure if this is
+//       // correct
+//       reg(PHYMNTNC) = PHY_MAINT_OP_WRITE | PHY_MAINT_REG_ADDR |
+//                       PHY_MAINT_PHY_ADDR | data & PHY_MAINT_DATA_MASK;
 
-  /* Wait for completion. */
-  while ((reg(NWSR) & (NET_STAT_PHY_MGMT_DONE)) == 0) {
-    DELAY(5);
-  }
-  return 0;
-}
+//   /* Wait for completion. */
+//   while ((reg(NWSR) & (NET_STAT_PHY_MGMT_DONE)) == 0) {
+//     DELAY(5);
+//   }
+//   return 0;
+// }
 
-static int SiFive_U_NIC::Phy_read()
-{
-  int val;
-  //Check to see that no MDIO operation is in progress. Read until gem.net_status[man_done] = 1
-  assert((reg(NWSR) & (NET_STAT_PHY_MGMT_DONE)) != 0)
+// static int SiFive_U_NIC::Phy_read() {
+//   int val;
+//   // Check to see that no MDIO operation is in progress. Read until
+//   // gem.net_status[man_done] = 1
+//   assert((reg(NWSR) & (NET_STAT_PHY_MGMT_DONE)) != 0)
 
-  //Write to PHY_MAINT read operation, not sure if this is correct
-  reg(PHYMNTNC) = PHY_MAINT_OP_READ | PHY_MAINT_REG_ADDR | PHY_MAINT_PHY_ADDR;
+//       // Write to PHY_MAINT read operation, not sure if this is correct
+//       reg(PHYMNTNC) =
+//           PHY_MAINT_OP_READ | PHY_MAINT_REG_ADDR | PHY_MAINT_PHY_ADDR;
 
-  /* Wait for completion. */
-  while ((reg(NWSR) & (NET_STAT_PHY_MGMT_DONE)) == 0) {
-    DELAY(5);
-  }
+//   /* Wait for completion. */
+//   while ((reg(NWSR) & (NET_STAT_PHY_MGMT_DONE)) == 0) {
+//     DELAY(5);
+//   }
 
-  /*read from register*/
-  val = reg(NWSR) & PHY_MAINT_DATA_MASK;
+//   /*read from register*/
+//   val = reg(NWSR) & PHY_MAINT_DATA_MASK;
 
-  return val;
-}
-
-
+//   return val;
+// }
 
 int SiFive_U_NIC::receive(Address *src, Protocol *prot, void *data,
                           unsigned int size) {
@@ -369,7 +379,7 @@ int SiFive_U_NIC::receive(Address *src, Protocol *prot, void *data,
   // Wait for a received frame and seize it
   unsigned int i = _rx_cur;
   for (bool locked = false; !locked;) {
-    for (; !(_rx_ring[i].w0 & Rx_Desc::OWN); ++i %= RX_BUFS)
+    for (; ((_rx_ring[i].w0 & Rx_Desc::OWN) != 0); ++i %= RX_BUFS)
       ;
     locked = _rx_buffer[i]->lock();
   }
