@@ -49,6 +49,7 @@ int SiFive_U_NIC::send(const Address &dst, const Protocol &prot,
   // Status must be set last, since it can trigger a send
   desc->ctrl &= ~Tx_Desc::OWN;
 
+  //kick the transmittion
   reg(NWCTRL) |= TXSTART;
 
   _statistics.tx_packets++;
@@ -153,16 +154,16 @@ void SiFive_U_NIC::receive() {
   db<SiFive_U_NIC>(TRC) << "SiFive_U_NIC::receive()" << endl;
 
   for (unsigned int count = RX_BUFS, i = _rx_cur;
-       count && ((_rx_ring[i].w0 & Rx_Desc::OWN) != 0);
+       count && ((_rx_ring[i].addr & Rx_Desc::OWN) != 0);
        count--, ++i %= RX_BUFS, _rx_cur = i) {
     // NIC received a frame in _rx_buffer[_rx_cur], let's check if it has
-    // already been handled
+    // r
     if (_rx_buffer[i]->lock()) { // if it wasn't, let's handle it
       Buffer *buf = _rx_buffer[i];
       Rx_Desc *desc = &_rx_ring[i];
       Frame *frame = buf->frame();
 
-      desc->w0 &= ~Rx_Desc::OWN; // Owned by NIC
+      desc->addr &= ~Rx_Desc::OWN; // Owned by NIC
 
       // For the upper layers, size will represent the size of frame->data<T>()
       buf->size((desc->ctrl & Rx_Desc::SIZE_MASK) - sizeof(Header) -
@@ -259,7 +260,7 @@ void SiFive_U_NIC::reset() {
   reg(NWCFG) = _32_DBUS_WIDTH_SIZE;
   reg(TXSTATUS) = TX_STAT_ALL;
   reg(RXSTATUS) = RX_STAT_ALL;
-  //reg(IDR) = INTR_ALL;
+  reg(IDR) = INTR_ALL;
   reg(TXQBASE) = 0;
   reg(RXQBASE) = 0;
 
@@ -294,6 +295,7 @@ void SiFive_U_NIC::reset() {
   reg(NWCTRL) |= CTRL_MGMT_PORT_EN | TX_EN | RX_EN;
 
   // Enable interrupts
+
   reg(INT_ENR) |= INTR_RX_COMPLETE | INTR_RX_OVERRUN | INTR_TX_USED_READ |
                  INTR_RX_USED_READ | INTR_HRESP_NOT_OK;
 
@@ -306,6 +308,8 @@ void SiFive_U_NIC::reset() {
   db<SiFive_U_NIC>(TRC) << "SiFive_U_NIC::reset: INT_ENR=" << hex
                         << reg(INT_ENR) << ",supposed=" << (INTR_RX_COMPLETE | INTR_RX_OVERRUN | INTR_TX_USED_READ |
                  INTR_RX_USED_READ | INTR_HRESP_NOT_OK) << endl;
+  db<SiFive_U_NIC>(TRC) << "SiFive_U_NIC::reset: INT_DIS=" << hex
+                        << reg(IDR) << endl;
   db<SiFive_U_NIC>(TRC) << "SiFive_U_NIC::reset: MAC=" << _configuration.address
                         << endl;
 }
@@ -379,7 +383,7 @@ int SiFive_U_NIC::receive(Address *src, Protocol *prot, void *data,
   // Wait for a received frame and seize it
   unsigned int i = _rx_cur;
   for (bool locked = false; !locked;) {
-    for (; ((_rx_ring[i].w0 & Rx_Desc::OWN) != 0); ++i %= RX_BUFS)
+    for (; ((_rx_ring[i].addr & Rx_Desc::OWN) != 0); ++i %= RX_BUFS)
       ;
     locked = _rx_buffer[i]->lock();
   }
@@ -399,7 +403,7 @@ int SiFive_U_NIC::receive(Address *src, Protocol *prot, void *data,
   memcpy(data, frame->data<void>(), (buf->size() > size) ? size : buf->size());
 
   // Release the buffer to the NIC
-  desc->w0 &= ~Rx_Desc::OWN;
+  desc->addr &= ~Rx_Desc::OWN;
 
   _statistics.rx_packets++;
   _statistics.rx_bytes += buf->size();
@@ -416,6 +420,9 @@ int SiFive_U_NIC::receive(Address *src, Protocol *prot, void *data,
 
 void SiFive_U_NIC::handle_int() {
   Reg32 status = reg(ISR);
+
+  db<SiFive_U_NIC>(TRC) << "SiFive_U_NIC::handle_int: status=" << hex << status
+                        << endl;
 
   if ((status & INT_RXCMPL) != 0) {
     reg(ISR) = INTR_RX_COMPLETE;
@@ -437,6 +444,9 @@ void SiFive_U_NIC::handle_int() {
 
 void SiFive_U_NIC::int_handler(unsigned int interrupt) {
   SiFive_U_NIC *dev = get_by_interrupt(interrupt);
+
+  db<SiFive_U_NIC>(TRC) << "SiFive_U_NIC::int_handler(int=" << interrupt
+                        << ",dev=" << dev << ")" << endl;
 
   if (!dev) {
     db<SiFive_U_NIC>(WRN)

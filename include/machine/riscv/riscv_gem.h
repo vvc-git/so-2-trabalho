@@ -278,10 +278,8 @@ public:
 
   // Transmit and Receive Descriptors (in the Ring Buffers)
   struct Desc {
-
-    volatile Reg32 w0;
+    volatile Reg32 addr;
     volatile Reg32 ctrl;
-    Reg32 phy_addr;
   };
 
   // Receive Descriptor
@@ -299,7 +297,7 @@ public:
     }
 
     friend Debug &operator<<(Debug &db, const Rx_Desc &d) {
-      db << "{" << hex << d.phy_addr << dec << ","
+      db << "{" << hex << d.addr << dec << ","
          << 65536 - (d.ctrl & SIZE_MASK) << "," << hex << d.ctrl << dec << "}";
       return db;
     }
@@ -319,7 +317,7 @@ public:
     }
 
     friend Debug &operator<<(Debug &db, const Tx_Desc &d) {
-      db << "{" << hex << d.phy_addr << dec << ","
+      db << "{" << hex << d.addr << dec << ","
          << 65536 - (d.ctrl & SIZE_MASK) << "," << hex << d.ctrl << dec << "}";
       return db;
     }
