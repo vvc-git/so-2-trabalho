@@ -6,6 +6,7 @@
 #include <architecture/cpu.h>
 #include <machine/ic.h>
 #include <system/memory_map.h>
+#include <utility/math.h>
 
 __BEGIN_SYS
 
@@ -78,13 +79,13 @@ private:
     typedef CPU::Phy_Addr Phy_Addr;
     typedef CPU::Log_Addr Log_Addr;
 
+    typedef unsigned int Ex_Interrupt_Id;
+
 public:
     // Registers offsets from PLIC_CPU_BASE
     enum {                                  // Description
-        PLIC_PENDING_1      = 0x001000,     // PLIC Interrupt Pending Register 1 (pending1)
-        PLIC_PENDING_2      = 0x001004,     // PLIC Interrupt Pending Register 2 (pending2)
-        PLIC_INT_ENABLE_1   = 0x002000,     // PLIC Interrupt Enable Register 1 (enable1) for Hart 0 M-Mode
-        PLIC_INT_ENABLE_2   = 0x002404,     // PLIC Interrupt Enable Register 2 (enable2) for Hart 4 S-Mode
+        PLIC_PENDING      = 0x001000,     // PLIC Interrupt Pending base offset.
+        PLIC_INT_ENABLE   = 0x002000,     // PLIC Interrupt Enable base offset.
         PLIC_THRESHOLD      = 0x200000,     // PLIC Interrupt Priority Threshold Register (threshold)
         PLIC_CLAIM          = 0x200004,     // PLIC Claim/Complete Register (claim)
     };
@@ -100,47 +101,66 @@ public:
     // ID of the interrupt.
     static Reg32 next() {
         // The claim register is filled with the highest-priority, enabled interrupt.
-        unsigned int claim_no = getClaimReg();
+        unsigned int claim_no = get_claim_reg();
         return claim_no;
     }
 
     // Complete a pending interrupt by id. The id should come
     // from the next() function above.
-    static void complete(unsigned int id) {
-        getClaimReg() = id;
+    static void complete(Ex_Interrupt_Id id) {
+        get_claim_reg() = id;
     }
 
     // Set the global threshold. The threshold can be a value [0..7].
     // The PLIC will mask any interrupts at or below the given threshold.
     // This means that a threshold of 7 will mask ALL interrupts and
     // a threshold of 0 will allow ALL interrupts.
-    static void set_threshold(unsigned int tsh) {
-        unsigned int const actual_tsh = tsh & 7;
-         getThresholdReg() = actual_tsh;
+    static void set_threshold(Ex_Interrupt_Id tsh) {
+        Ex_Interrupt_Id const actual_tsh = tsh & 7;
+         get_threshold_reg() = actual_tsh;
+    }
+
+    // permits all interrupts with non-zero priority.
+    static void permit_all() {
+        set_threshold(MIN_GLOBAL_THRESHOLD);
+    }
+
+    // masks all interrupts, no matter the priority.
+    static void mask_all() {
+        set_threshold(MAX_GLOBAL_THRESHOLD);
     }
 
     // Enable a given interrupt ID.
-    static void enable(unsigned int id) {
-        Reg32 enables = getEnableReg(id);
+    static void enable(Ex_Interrupt_Id id) {
+        Reg32 enables = get_enable_reg(id);
         int actualId = 1 << id;
 
         // The register is a 32-bit register, so that gives us enables
         // for interrupt 31 through 1 (0 is hardwired to 0).
-        getEnableReg(id) = (enables | actualId);
+        get_enable_reg(id) = (enables | actualId);
+    }
+
+    // Disable a given interrupt ID.
+    static void disable(Ex_Interrupt_Id id) {
+        Reg32 enables = get_enable_reg(id);
+        int actualId = 1 << id;
+
+        // Clear the bit corresponding to the interrupt id
+        get_enable_reg(id) = (enables & ~actualId);
     }
 
     // Set a given interrupt priority to the given priority.
-    static void set_priority(unsigned int id, unsigned int priority) {
+    static void set_priority(Ex_Interrupt_Id id, unsigned int priority) {
         unsigned int actualPriority = priority & 7; // 7 is the max priority
-        getPriorityReg(id) = actualPriority; // Set the priority
+        get_priority_reg(id) = actualPriority; // Set the priority
     }
 
 private:
-    static volatile Reg32 & getPriorityReg(unsigned int id) {
+    static volatile Reg32 & get_priority_reg(unsigned int id) {
         return reinterpret_cast<volatile Reg32 *>(Memory_Map::PLIC_CPU_BASE)[id * 4];
     }
 
-    static volatile Reg32 & getThresholdReg() {
+    static volatile Reg32 & get_threshold_reg() {
         Reg hartId = CPU::mhartid();
 
         if (hartId == 0) {
@@ -148,11 +168,11 @@ private:
         }
         else {
             // + 0x1000 gets to Hart-1 threshold + 0x2000 * (n - 1) gets to Hart-n threshold (skipping S-Mode)
-            return reinterpret_cast<volatile Reg32 *>(Memory_Map::PLIC_CPU_BASE)[PLIC_THRESHOLD + 0x1000 + 0x2000 * (hartId - 1)/sizeof(Reg32)];
+            return reinterpret_cast<volatile Reg32 *>(Memory_Map::PLIC_CPU_BASE)[(PLIC_THRESHOLD + 0x1000 + 0x2000 * (hartId - 1))/sizeof(Reg32)];
         }
     }
 
-    static volatile Reg32 & getClaimReg() {
+    static volatile Reg32 & get_claim_reg() {
         Reg hartId = CPU::mhartid();
 
         if (hartId == 0) {
@@ -164,27 +184,20 @@ private:
         }
     }
 
-    static bool isPending(unsigned int id) {
-        Reg32 pendingReg;
+    static bool is_pending(Ex_Interrupt_Id id) {
+        // 32 registers with 32 bits for enable each. 0th bit is hardwired to 0.
+        Reg32 pendingReg = *reinterpret_cast<Reg32 *>(Memory_Map::PLIC_CPU_BASE + (PLIC_PENDING/sizeof(Reg32)) + Math::floor(id/32));
 
-        if (id < 32) {
-            pendingReg = *reinterpret_cast<Reg32 *>(Memory_Map::PLIC_CPU_BASE + PLIC_PENDING_1);
-        }
-        else {
-            pendingReg = *reinterpret_cast<Reg32 *>(Memory_Map::PLIC_CPU_BASE + PLIC_PENDING_2);
-        }
         int actualId = 1 << id;
 
         return ((pendingReg & actualId) != 0);
     }
 
-    static volatile Reg32 & getEnableReg(unsigned int id) {
-        if (id < 32) {
-            return reinterpret_cast<volatile Reg32 *>(Memory_Map::PLIC_CPU_BASE)[PLIC_INT_ENABLE_1/sizeof(Reg32)];
-        }
-        else {
-            return reinterpret_cast<volatile Reg32 *>(Memory_Map::PLIC_CPU_BASE)[PLIC_INT_ENABLE_2/sizeof(Reg32)];
-        }
+    static volatile Reg32 & get_enable_reg(Ex_Interrupt_Id id) {
+        unsigned int hartId = CPU::mhartid();
+        // + 32*(hartId) gets to the correct hart's enable base address
+        // + Math::floor(id/32) gets to the correct register within the hart's enable base address
+        return reinterpret_cast<volatile Reg32 *>(Memory_Map::PLIC_CPU_BASE)[(PLIC_INT_ENABLE/sizeof(Reg32)) + 32*(hartId) + Math::floor(id/32)];
     }
 };
 
@@ -205,9 +218,10 @@ public:
     using IC_Common::Interrupt_Id;
     using IC_Common::Interrupt_Handler;
 
-//    enum { // Place interruptions here, the number must be a position in the int_vector
-//
-//    };
+    enum {
+        INT_SYS_TIMER = EXCS + IRQ_MAC_TIMER
+        // Place supported local and external interrupts here
+    };
 
 public:
     IC() {}
@@ -244,7 +258,6 @@ public:
     static void disable() {
         db<IC>(TRC) << "IC::disable()" << endl;
         CPU::miec(CPU::MSI | CPU::MTI | CPU::MEI);
-        PLIC::set_threshold(PLIC::MAX_GLOBAL_THRESHOLD);
     }
 
     static void disable(Interrupt_Id i) {

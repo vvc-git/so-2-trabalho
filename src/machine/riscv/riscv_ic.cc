@@ -126,11 +126,12 @@ void IC::exception(Interrupt_Id id)
 void IC::external()
 {
     db<IC>(WRN) << "IC got external interruption. Sending to PLIC" << endl;
-    Interrupt_Id externalId = PLIC::next();
-    db<IC>(WRN) << "IC got external interruption, externalId=" << externalId << endl;
-    if (externalId != 0) {
-        _int_vector[eirq2int(externalId)](externalId);
-        PLIC::complete(externalId);
+    Interrupt_Id eirq = PLIC::next();
+    db<IC>(WRN) << "IC got external interruption, externalId=" << eirq << endl;
+    Interrupt_Id id = eirq2int(eirq);
+    if (id != 0) {
+        _int_vector[id](id);
+        PLIC::complete(id);
     }
 }
 
