@@ -356,7 +356,7 @@ private:
   };
 
   static const unsigned int INT_ID =
-      31; // TODO: verify if this is the correct interrupt number and how to
+      27; // TODO: verify if this is the correct interrupt number and how to
           // pass it to the interrupt handler
 
 protected:
