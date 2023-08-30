@@ -68,7 +68,8 @@ public:
     static void  mtimecmp(Reg64 v) { *reinterpret_cast<Reg64 *>(Memory_Map::CLINT_BASE + MTIMECMP) = v; }
 };
 
-class PLIC
+// Platform Level Interrupt Controller (PLIC)
+class PLIC // The current PLIC driver only operates in M-Mode, for any hart. S-Mode is not supported yet.
 {
 private:
     typedef CPU::Reg Reg;
@@ -90,25 +91,8 @@ public:
 
     enum Mode {
         MACHINE = 0,
-        SUPERVISOR = 1,
+        SUPERVISOR = 1, // Not supported yet
     };
-
-    enum Source {
-        L2_CACHE            = 1,
-        UART0               = 4,
-        UART1               = 5,
-        QSPI2               = 6,
-        GPIO                = 7,
-        DMA                 = 23,
-        DDR_SUBSYSTEM       = 31,
-        CHIPLINK_MSI        = 32,
-        PWM0                = 42,
-        PWM1                = 46,
-        I2C                 = 50,
-        QSPI0               = 51,
-        QSPI1               = 52,
-        GIGABIT_ETHERNET    = 53,
-        };
 
 public:
     // Get the next available interrupt. This is the "claim" process.
@@ -151,13 +135,6 @@ public:
         getPriorityReg(id) = actualPriority; // Set the priority
     }
 
-    static void handle(unsigned int id) {
-        switch (id) {
-            // Implement handlers for each interrupt ID here.
-            // If they need to be handled by each device's driver, then call their handler here.
-        }
-    }
-
 private:
     static volatile Reg32 & getPriorityReg(unsigned int id) {
         return reinterpret_cast<volatile Reg32 *>(Memory_Map::PLIC_CPU_BASE)[id * 4];
@@ -165,29 +142,25 @@ private:
 
     static volatile Reg32 & getThresholdReg() {
         Reg hartId = CPU::mhartid();
-        Reg mode = CPU::mstatus() & 0x1800;
-
-        Mode hartMode = (mode == 0x1800) ? SUPERVISOR : MACHINE;
 
         if (hartId == 0) {
             return reinterpret_cast<volatile Reg32 *>(Memory_Map::PLIC_CPU_BASE)[PLIC_THRESHOLD/sizeof(Reg32)];
         }
         else {
-            return reinterpret_cast<volatile Reg32 *>(Memory_Map::PLIC_CPU_BASE)[(PLIC_THRESHOLD + 0x1000 + 0x2000 * (hartId - 1) + 0x1000*hartMode)/sizeof(Reg32)];
+            // + 0x1000 gets to Hart-1 threshold + 0x2000 * (n - 1) gets to Hart-n threshold (skipping S-Mode)
+            return reinterpret_cast<volatile Reg32 *>(Memory_Map::PLIC_CPU_BASE)[PLIC_THRESHOLD + 0x1000 + 0x2000 * (hartId - 1)/sizeof(Reg32)];
         }
     }
 
     static volatile Reg32 & getClaimReg() {
         Reg hartId = CPU::mhartid();
-        Reg mode = CPU::mstatus() & 0x1800;
-
-        Mode hartMode = (mode == 0x1800) ? SUPERVISOR : MACHINE;
 
         if (hartId == 0) {
             return reinterpret_cast<volatile Reg32 *>(Memory_Map::PLIC_CPU_BASE)[PLIC_CLAIM/sizeof(Reg32)];
         }
         else {
-            return reinterpret_cast<volatile Reg32 *>(Memory_Map::PLIC_CPU_BASE)[((PLIC_CLAIM + 0x1000) + 0x2000 * (hartId - 1) + (0x1000*hartMode))/sizeof(Reg32)];
+            // + 0x1000 gets to Hart-1 claim + 0x2000 * (n - 1) gets to Hart-n claim (skipping S-Mode)
+            return reinterpret_cast<volatile Reg32 *>(Memory_Map::PLIC_CPU_BASE)[(PLIC_CLAIM + 0x1000) + 0x2000 * (hartId - 1)/sizeof(Reg32)];
         }
     }
 
@@ -232,15 +205,15 @@ public:
     using IC_Common::Interrupt_Id;
     using IC_Common::Interrupt_Handler;
 
-    enum {
-        INT_SYS_TIMER = EXCS + IRQ_MAC_TIMER
-    };
+//    enum { // Place interruptions here, the number must be a position in the int_vector
+//
+//    };
 
 public:
     IC() {}
 
     static Interrupt_Handler int_vector(Interrupt_Id i) {
-        assert(i < INTS); // We need this not to be "<" but "<=" because we need to be able to access the last external interrupt, and zero from claim is when there is no pending interrupt.
+        assert(i < INTS);
         return _int_vector[i];
     }
 
@@ -260,11 +233,18 @@ public:
         assert(i < INTS);
         enable();
         // TODO: this should handle individual INTs and also be done at PLIC
+
+        // Implement CLINT enable here
+
+        if (i >= EXCS + IRQS) { // External interrupts
+            PLIC::enable(int2eirq(i));
+        }
     }
 
     static void disable() {
         db<IC>(TRC) << "IC::disable()" << endl;
         CPU::miec(CPU::MSI | CPU::MTI | CPU::MEI);
+        PLIC::set_threshold(PLIC::MAX_GLOBAL_THRESHOLD);
     }
 
     static void disable(Interrupt_Id i) {
@@ -272,6 +252,10 @@ public:
         assert(i < INTS);
         disable();
         // TODO: this should handle individual INTs and also be done at PLIC
+
+        if (i >= EXCS + IRQS) { // External interrupts
+            PLIC::disable(int2eirq(i));
+        }
     }
 
     static Interrupt_Id int_id() {
@@ -286,13 +270,16 @@ public:
     static int irq2int(int i) { return i + EXCS; }
     static int int2irq(int i) { return i - EXCS; }
 
+    static int eirq2int(unsigned int i) { return i + EXCS + IRQS; }
+    static int int2eirq(unsigned int i) { return i - EXCS - IRQS; }
+
 private:
     static void dispatch();
 
     // Logical handlers
     static void int_not(Interrupt_Id i);
     static void exception(Interrupt_Id i);
-    static void external(Interrupt_Id i);
+    static void external();
 
     // Physical handler
     static void entry() __attribute((naked, aligned(4)));
