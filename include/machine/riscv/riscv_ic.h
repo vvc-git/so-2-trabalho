@@ -110,6 +110,7 @@ public:
     static Reg32 next() {
         // The claim register is filled with the highest-priority, enabled interrupt.
         unsigned int claim_no = get_claim_reg();
+        db<PLIC>(TRC)<<"PLIC::next(): claim_no=" << claim_no << endl;
         return claim_no;
     }
 
@@ -170,7 +171,7 @@ private:
 
     static volatile Reg32 & get_threshold_reg() {
         Reg hartId = CPU::mhartid();
-
+        db<PLIC>(TRC)<<"PLIC::get_threshold_reg: hartId=" << hartId << endl;
         if (hartId == 0) {
             return reinterpret_cast<volatile Reg32 *>(Memory_Map::PLIC_CPU_BASE)[PLIC_THRESHOLD/sizeof(Reg32)];
         }
@@ -182,7 +183,7 @@ private:
 
     static volatile Reg32 & get_claim_reg() {
         Reg hartId = CPU::mhartid();
-
+        db<PLIC>(TRC)<<"PLIC::get_claim_reg: hartId=" << hartId << endl;
         if (hartId == 0) {
             return reinterpret_cast<volatile Reg32 *>(Memory_Map::PLIC_CPU_BASE)[PLIC_CLAIM/sizeof(Reg32)];
         }
@@ -203,6 +204,7 @@ private:
 
     static volatile Reg32 & get_enable_reg(Ex_Interrupt_Id id) {
         unsigned int hartId = CPU::mhartid();
+        db<PLIC>(TRC)<<"PLIC::get_enable_reg: hartId=" << hartId << endl;
         // + 32*(hartId) gets to the correct hart's enable base address
         // + Math::floor(id/32) gets to the correct register within the hart's enable base address
         return reinterpret_cast<volatile Reg32 *>(Memory_Map::PLIC_CPU_BASE)[(PLIC_INT_ENABLE/sizeof(Reg32)) + 32*(hartId) + Math::floor(id/32)];
