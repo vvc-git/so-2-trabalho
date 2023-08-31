@@ -25,6 +25,7 @@ public:
         // Memory-mapped devices           Attribute    Size            Remarks
         CLINT_BASE      = 0x02000000,   //                              CLINT
         TIMER_BASE      = 0x02004000,   //                              CLINT Timer
+        PLIC_CPU_BASE   = 0x0c000000,   // SiFive PLIC
         UART0_BASE      = 0x10000000,   // RW A         64KB            Synopsys DW8250
         UART1_BASE      = 0x10010000,   // RW A         64KB
         UART2_BASE      = 0x10020000,   // RW A         64KB
