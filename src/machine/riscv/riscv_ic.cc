@@ -40,10 +40,7 @@ void IC::dispatch()
     if(id == INT_SYS_TIMER)
         Timer::reset(); // MIP.MTI is a direct logic on (MTIME == MTIMECMP) and reseting the Timer seems to be the only way to clear it
 
-    if (id == 11 + EXCS) {
-        external();
-    }
-        _int_vector[id](id);
+    _int_vector[id](id);
 
     if(id >= EXCS)
         CPU::fr(0); // tell CPU::Context::pop(true) not to increment PC since it is automatically incremented for hardware interrupts
@@ -54,6 +51,10 @@ void IC::int_not(Interrupt_Id id)
     db<IC>(WRN) << "IC::int_not(i=" << id << ")" << endl;
     if(Traits<Build>::hysterically_debugged)
         Machine::panic();
+    
+    if (id == 11 + EXCS) {
+        external();
+    }
 }
 
 void IC::exception(Interrupt_Id id)
