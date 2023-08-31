@@ -56,7 +56,7 @@ public:
 
 template <> struct Traits<IC>: public Traits<Machine_Common>
 {
-    static const bool debugged = hysterically_debugged;
+    static const bool debugged = true;
 };
 
 template <> struct Traits<Timer>: public Traits<Machine_Common>

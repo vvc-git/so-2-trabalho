@@ -166,7 +166,8 @@ public:
 
 private:
     static volatile Reg32 & get_priority_reg(unsigned int id) {
-        return reinterpret_cast<volatile Reg32 *>(Memory_Map::PLIC_CPU_BASE)[id * 4];
+
+        return reinterpret_cast<volatile Reg32 *>(Memory_Map::PLIC_CPU_BASE)[id];
     }
 
     static volatile Reg32 & get_threshold_reg() {

@@ -73,7 +73,7 @@ void SiFive_U_NIC::init(unsigned int unit) {
 
   // Register the device
   _devices[unit].device = dev;
-  _devices[unit].interrupt = INT_ID;
+  _devices[unit].interrupt = IC::eirq2int(53);
 
   // Install interrupt handler
   IC::int_vector(_devices[unit].interrupt, &int_handler);
