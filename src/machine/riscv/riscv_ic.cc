@@ -39,7 +39,6 @@ void IC::dispatch()
 
     if(id == INT_SYS_TIMER)
         Timer::reset(); // MIP.MTI is a direct logic on (MTIME == MTIMECMP) and reseting the Timer seems to be the only way to clear it
-
     _int_vector[id](id);
 
     if(id >= EXCS)
@@ -48,7 +47,7 @@ void IC::dispatch()
 
 void IC::int_not(Interrupt_Id id)
 {
-    db<IC>(WRN) << "IC::int_not(i=" << id << ")" << endl;
+    db<IC, System>(WRN) << "IC::int_not(i=" << id << ")" << endl;
     if(Traits<Build>::hysterically_debugged)
         Machine::panic();
     
@@ -126,9 +125,9 @@ void IC::exception(Interrupt_Id id)
 
 void IC::external()
 {
-    db<IC>(WRN) << "IC got external interruption. Sending to PLIC" << endl;
+    db<IC, System>(TRC) << "IC got external interruption. Sending to PLIC" << endl;
     Interrupt_Id eirq = PLIC::next();
-    db<IC>(WRN) << "IC got external interruption, externalId=" << eirq << endl;
+    db<IC, System>(TRC) << "IC got external interruption, externalId=" << eirq << endl;
     Interrupt_Id id = eirq2int(eirq);
     if (id != 0) {
         _int_vector[id](id);
