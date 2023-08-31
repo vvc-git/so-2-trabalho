@@ -82,6 +82,14 @@ private:
     typedef unsigned int Ex_Interrupt_Id;
 
 public:
+    // PUTS THIS IN TRAITS LATER: EACH PLIC IMPLEMENTATION HAS A DIFFERENT NUMBER OF EINTS. 1024 IS THE MAXIMUM SUPPORTED
+    static const unsigned int EIRQS = 1024; // All possible External interrupts. 1024 = EINT0 (no interrupt) to EINT1023.
+
+    enum {
+        MIN_GLOBAL_THRESHOLD = 0,
+        MAX_GLOBAL_THRESHOLD = 7  // masks all interrupts.
+    };
+
     // Registers offsets from PLIC_CPU_BASE
     enum {                                  // Description
         PLIC_PENDING      = 0x001000,     // PLIC Interrupt Pending base offset.
@@ -201,7 +209,7 @@ private:
     }
 };
 
-class IC: private IC_Common, private CLINT
+class IC: private IC_Common, private CLINT, private PLIC
 {
     friend class Setup;
     friend class Machine;
@@ -239,7 +247,7 @@ public:
 
     static void enable() {
         db<IC>(TRC) << "IC::enable()" << endl;
-        CPU::mie(CPU::MSI | CPU::MTI); // TODO: external interrupts should be treated by PLIC (not implemented yet), so not enabled for now
+        CPU::mie(CPU::MSI | CPU::MTI | CPU::MEI);
     }
 
     static void enable(Interrupt_Id i) {
