@@ -37,8 +37,8 @@ SiFive_U_NIC::SiFive_U_NIC(unsigned int unit, DMA_Buffer *dma_buf) {
   for (unsigned int i = 0; i < RX_BUFS; i++) {
     _rx_buffer[i] = new (log) Buffer(this, &_rx_ring[i]);
     //_rx_ring[i].update_size(sizeof(Frame)); 
+    _rx_ring[i].addr |= (phy << 2); // Keep bits [1-0] from the existing value, and combine with bits [31-2] from buffer addr, manual says do this
     _rx_ring[i].addr &= ~Rx_Desc::OWN; // Owned by NIC
-    _rx_ring[i].addr |= (_rx_ring[i].addr & 0x3) | ((phy & 0xFFFFFFFC) << 2); // Keep bits [1-0] from the existing value, and combine with bits [31-2] from buffer addr, manual says do this
     _rx_ring[i].ctrl = 0;
 
     log += align64(sizeof(Buffer));

@@ -162,12 +162,13 @@ public:
     _1536_RX_EN = 1 << 8, /**< 1536 byte receive enable */
     GIGE_EN = 1 << 10,          /**< Gigabit Ethernet enable */
     MDC_DIV_48 = 3 << 18,          /**< MDC clock divider 48 */
-    STRIP_FCS = 0x20000,     /**< Strip FCS field */
+    STRIP_FCS = 1 << 17,     /**< Strip FCS field */
     RX_BUF_OFFSET = 2 << 14,  /**< RX buffer offset for Ethernet */
     MDC_CLK_DIV_MASK = 7 << 18, /**< MDC clock divider mask */
     _32_DBUS_WIDTH_SIZE = 0 << 21, /**< 32 bits size */
     _64_DBUS_WIDTH_SIZE = 1 << 21, /**< 64 bits size */
     DBUS_WIDTH_MASK = 3 << 21,  /**< DBUS width mask */
+    IGNORE_FCS = 1 << 26,
   };
 
   // Network Status Register bits
@@ -178,6 +179,7 @@ public:
   // DMA Configuration Register bits
   enum {
     AHB_FIXED_BURST_LEN_16 = 16 << 0,
+    RX_PKT_MEMSZ_SEL = 0 << 8,
     RX_PKT_MEMSZ_SEL_8K = 3 << 8, 
     TX_PKT_MEMSZ_SEL = 1 << 10,
     DMA_DISC_WHEN_NO_AHB = 1 << 24,
@@ -218,17 +220,6 @@ public:
     ISR_RO_MASK = 0xFFFFFFFF, // Clear on read
     IMR_RO_MASK = 0xFFFFFFFF,
     MODID_RO_MASK = 0x000000FF,
-  };
-
-  //PHY Maintaince register bits
-
-  enum {
-    PHY_MAINT_PHY_ADDR = 23,
-    PHY_MAINT_REG_ADDR = 18,
-    PHY_MAINT_OP_MASK	= 3 << 28,
-    PHY_MAINT_OP_READ	= 2 << 28,
-    PHY_MAINT_OP_WRITE	=	1 << 28,
-    PHY_MAINT_DATA_MASK = 0xffff
   };
 
   // Write 1 to clear register bits masks
