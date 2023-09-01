@@ -129,7 +129,7 @@ void IC::external()
     Interrupt_Id eirq = PLIC::next();
     db<IC, System>(TRC) << "IC got external interruption, externalId=" << eirq << endl;
     Interrupt_Id id = eirq2int(eirq);
-    if (id != 0) {
+    if (id != EXCS + IRQS) { // claim != 0
         _int_vector[id](id);
         PLIC::complete(id);
     }

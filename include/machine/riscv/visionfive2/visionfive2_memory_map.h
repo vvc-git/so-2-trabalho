@@ -59,6 +59,8 @@ public:
         OTPC_BASE       = 0x17050000,   // RW A         64KB
         GPU_BASE        = 0x18000000,   // RW A         1MB
         ROM_BASE        = 0x2a000000,   // RX           32KB        Boot ROM
+
+        ETH_BASE = 0x80000000,
         
 
         // Physical Memory at Boot

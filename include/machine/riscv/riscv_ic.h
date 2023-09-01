@@ -142,17 +142,17 @@ public:
     // Enable a given interrupt ID.
     static void enable(Ex_Interrupt_Id id) {
         Reg32 enables = get_enable_reg(id);
-        int actualId = 1 << id;
+        int actualId = 1 << (id % 32);
 
         // The register is a 32-bit register, so that gives us enables
         // for interrupt 31 through 1 (0 is hardwired to 0).
-        get_enable_reg(id) = (enables | actualId);
+        get_enable_reg(id) = enables | actualId;
     }
 
     // Disable a given interrupt ID.
     static void disable(Ex_Interrupt_Id id) {
         Reg32 enables = get_enable_reg(id);
-        int actualId = 1 << id;
+        int actualId = 1 << (id % 32);
 
         // Clear the bit corresponding to the interrupt id
         get_enable_reg(id) = (enables & ~actualId);
@@ -196,9 +196,9 @@ private:
 
     static bool is_pending(Ex_Interrupt_Id id) {
         // 32 registers with 32 bits for enable each. 0th bit is hardwired to 0.
-        Reg32 pendingReg = *reinterpret_cast<Reg32 *>(Memory_Map::PLIC_CPU_BASE + (PLIC_PENDING/sizeof(Reg32)) + Math::floor(id/32));
+        Reg32 pendingReg = *reinterpret_cast<Reg32 *>(Memory_Map::PLIC_CPU_BASE + (PLIC_PENDING/sizeof(Reg32)) + (id / 32));
 
-        int actualId = 1 << id;
+        int actualId = 1 << (id % 32);
 
         return ((pendingReg & actualId) != 0);
     }
@@ -208,7 +208,7 @@ private:
         db<PLIC>(TRC)<<"PLIC::get_enable_reg: hartId=" << hartId << endl;
         // + 32*(hartId) gets to the correct hart's enable base address
         // + Math::floor(id/32) gets to the correct register within the hart's enable base address
-        return reinterpret_cast<volatile Reg32 *>(Memory_Map::PLIC_CPU_BASE)[(PLIC_INT_ENABLE/sizeof(Reg32)) + 32*(hartId) + Math::floor(id/32)];
+        return reinterpret_cast<volatile Reg32 *>(Memory_Map::PLIC_CPU_BASE)[(PLIC_INT_ENABLE/sizeof(Reg32)) + 32*(hartId) + (id / 32)];
     }
 };
 

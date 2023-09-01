@@ -80,6 +80,8 @@ void SiFive_U_NIC::init(unsigned int unit) {
 
   // Enable interrupts for device
   IC::enable(_devices[unit].interrupt);
+
+  PLIC::set_priority(53, 7);
 }
 
 __END_SYS

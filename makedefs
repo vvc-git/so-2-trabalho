@@ -109,7 +109,7 @@ ARCH_ENDIANESS		= $(ARCH_$(call GETTK,ENDIANESS,$(ARCH_TRAITS)))
 ARCH_WORD_SIZE		= $(call GETTK,WORD_SIZE,$(ARCH_TRAITS))
 ARCH_CLOCK		= $(call GETTK,CLOCK,$(ARCH_TRAITS))
 CC_M_FLAG		= -m$(ARCH_WORD_SIZE)
-QEMU_DEBUG      = -d int #-D $(addsuffix .log,$(APPLICATION))
+QEMU_DEBUG      = #-D $(addsuffix .log,$(APPLICATION))
 QEMU_DEBUG_PATH = /home/thiago/Documents/qemu/bin/native
 
 ifeq ($(QEMU_DEBUG_PATH),)
