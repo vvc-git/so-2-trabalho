@@ -63,3 +63,5 @@
 /src/system/system_sifive_u.o
 /src/api/thread.o
 /src/api/thread_init.o
+/.idea
+/.vscode
