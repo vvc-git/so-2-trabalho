@@ -22,7 +22,7 @@ void IC::init()
         _int_vector[i] = &int_not;
 
     // Permits all interrupts with non-zero priority
-    PLIC::permit_all();
+    permit_all_external();
 }
 
 __END_SYS
