@@ -5,7 +5,7 @@
 
 __BEGIN_SYS
 
-SiFive_U_NIC::Device SiFive_U_NIC::_devices[UNITS];
+SiFive_U_NIC *SiFive_U_NIC::_device;
 
 SiFive_U_NIC::~SiFive_U_NIC() {
   db<SiFive_U_NIC>(TRC) << "~SiFive_U_NIC()" << endl;
@@ -37,18 +37,18 @@ int SiFive_U_NIC::send(const Address &dst, const Protocol &prot,
   Tx_Desc *desc = &_tx_ring[i];
   Buffer *buf = _tx_buffer[i];
 
+  desc->ctrl &= ~Tx_Desc::OWN; // Owned by NIC
+
   // Assemble the Ethernet frame
   new (buf->frame()) Frame(_configuration.address, dst, prot, data, size);
 
   desc->update_size(size + sizeof(Header));
 
-  // Status must be set last, since it can trigger a send
-  desc->ctrl &= ~Tx_Desc::OWN;
-  db<SiFive_U_NIC>(INF) << "SiFive_U_NIC::send(desc_buf_size="
-                        << (desc->ctrl & Tx_Desc::SIZE_MASK) << ")" << endl;
-
   // Last buffer of packet, change if fragmenting from upper layers
   desc->ctrl |= Tx_Desc::LAST_BUF;
+
+  db<SiFive_U_NIC>(INF) << "SiFive_U_NIC::send:before_desc[" << i << "]=" << desc
+                        << " => " << *desc << endl;
 
   // kick the transmittion
   reg(NWCTRL) |= TXSTART;
@@ -56,11 +56,11 @@ int SiFive_U_NIC::send(const Address &dst, const Protocol &prot,
   _statistics.tx_packets++;
   _statistics.tx_bytes += size;
 
-  db<SiFive_U_NIC>(INF) << "SiFive_U_NIC::send:desc[" << i << "]=" << desc
-                        << " => " << *desc << ",isr=" << hex << reg(ISR)
-                        << endl;
+  db<SiFive_U_NIC>(INF) << "SiFive_U_NIC::send:after_desc[" << i << "]=" << desc
+                        << " => " << *desc << endl;
 
-  buf->unlock();
+  // Buffer unlocked at handle_int()
+  // buf->unlock();
 
   return size;
 }
@@ -315,8 +315,9 @@ void SiFive_U_NIC::reset() {
 
   // Enable interrupts
 
-  reg(INT_ENR) |= INTR_RX_COMPLETE | INTR_RX_OVERRUN | INTR_TX_USED_READ |
-                  INTR_RX_USED_READ | INTR_HRESP_NOT_OK;
+  // Only those supported from QEMU (real hardware might have more)
+  reg(INT_ENR) |= INTR_RX_COMPLETE | INTR_TX_CORRUPT_AHB_ERR |
+                  INTR_TX_USED_READ | INTR_RX_USED_READ | INTR_TX_COMPLETE;
 
   db<SiFive_U_NIC>(TRC) << "SiFive_U_NIC::reset: NWCFG=" << hex << reg(NWCFG)
                         << endl;
@@ -337,7 +338,7 @@ int SiFive_U_NIC::receive(Address *src, Protocol *prot, void *data,
   // Wait for a received frame and seize it
   unsigned int i = _rx_cur;
   for (bool locked = false; !locked;) {
-    for (; ((_rx_ring[i].addr & Rx_Desc::OWN) == 0); ++i %= RX_BUFS)
+    for (; !(_rx_ring[i].addr & Rx_Desc::OWN); ++i %= RX_BUFS)
       ;
     locked = _rx_buffer[i]->lock();
   }
@@ -377,42 +378,52 @@ void SiFive_U_NIC::handle_int() {
   reg(ISR) = status;
 
   db<SiFive_U_NIC>(TRC) << "SiFive_U_NIC::handle_int: status=" << hex << status
-                        << endl;
+                        << ",status_after=" << reg(ISR) << endl;
 
-  if ((status & INT_RXCMPL) != 0) {
-    // reg(ISR) = INTR_RX_COMPLETE;
-    // reg(RXSTATUS) = RX_STAT_FRAME_RECD;
+  if ((status & INT_RXCMPL)) {
+    db<SiFive_U_NIC>(TRC)
+        << "SiFive_U_NIC::handle_int: RX_USED_READ => rx_status=" << hex
+        << reg(RXSTATUS) << endl;
+
+    reg(ISR) = INTR_RX_COMPLETE;
+    reg(RXSTATUS) = RX_STAT_FRAME_RECD;
     receive();
   }
 
-  if ((status & INT_TXCMPL) != 0) {
+  if ((status & INT_TXCMPL)) {
+    Reg32 tx_status = reg(TXSTATUS);
     reg(TXSTATUS) |= TX_STAT_COMPLETE;
+    db<SiFive_U_NIC>(TRC)
+        << "SiFive_U_NIC::handle_int: TX_USED_READ => tx_status=" << hex
+        << tx_status << ",tx_status_after=" << reg(TXSTATUS) << endl;
 
-    unsigned int i = _tx_cur;
-    for (; !(_tx_ring[i].ctrl & Tx_Desc::OWN); ++i %= TX_BUFS) {
-      _tx_ring[i].ctrl |= Tx_Desc::OWN;
+    unsigned int i = _tx_cur == 0 ? TX_BUFS - 1 : _tx_cur - 1;
+    for (; (_tx_ring[i].ctrl & Tx_Desc::OWN) && i != _tx_cur; --i %= TX_BUFS) {
+      //_tx_ring[i].ctrl |= Tx_Desc::OWN;
+      db<SiFive_U_NIC>(INF) << "SiFive_U_NIC::handle_int: Unlocking _tx_buffer["
+                            << i << "] => " << _tx_ring[i] << endl;
+
+      _tx_ring[i].ctrl = _tx_ring[i].ctrl & (Tx_Desc::OWN | Tx_Desc::WRAP);
       _tx_buffer[i]->unlock();
-      break;
     };
   };
 
-  if (status & INTR_RX_USED_READ) { // Memory
-    db<SiFive_U_NIC>(WRN) << "SiFive_U_NIC::handle_int: error => memory";
+  if (status & INTR_RX_USED_READ) { // All buffers full
+    db<SiFive_U_NIC>(WRN) << "SiFive_U_NIC::handle_int: error => all bufs full" << endl;
   }
 
   if (status & INTR_RX_OVERRUN) { // Missed Frame
-    db<SiFive_U_NIC>(WRN) << "SiFive_U_NIC::handle_int: error => missed frame";
+    db<SiFive_U_NIC>(WRN) << "SiFive_U_NIC::handle_int: error => missed frame" << endl;
     _statistics.rx_overruns++;
   }
 
-  db<SiFive_U_NIC>(WRN) << endl;
 }
 
 void SiFive_U_NIC::int_handler(unsigned int interrupt) {
-  SiFive_U_NIC *dev = get_by_interrupt(interrupt);
+  SiFive_U_NIC *dev = _device;
 
   db<SiFive_U_NIC, IC>(TRC) << "SiFive_U_NIC::int_handler(int=" << interrupt
-                        << ",dev=" << dev << ")" << endl;
+                            << ",dev=" << dev << ")" << endl;
 
   if (!dev) {
     db<SiFive_U_NIC>(WRN)

@@ -56,7 +56,7 @@ SiFive_U_NIC::SiFive_U_NIC(unsigned int unit, DMA_Buffer *dma_buf) {
     log += align64(sizeof(Buffer));
     phy += align64(sizeof(Buffer));
   }
-  _rx_ring[TX_BUFS - 1].addr |= Tx_Desc::WRAP; //Mark the last descriptor in the list with the wrap bit. Set bit [30] in word [1] to 1
+  _tx_ring[TX_BUFS - 1].ctrl |= Tx_Desc::WRAP; //Mark the last descriptor in the list with the wrap bit. Set bit [30] in word [1] to 1
 
   // Reset device
   reset();
@@ -72,14 +72,14 @@ void SiFive_U_NIC::init(unsigned int unit) {
   SiFive_U_NIC *dev = new (SYSTEM) SiFive_U_NIC(unit, dma_buf);
 
   // Register the device
-  _devices[unit].device = dev;
-  _devices[unit].interrupt = IC::eirq2int(53);
+  SiFive_U_NIC::_device = dev;
+  Interrupt_Id int_id = IC::eirq2int(53);
 
   // Install interrupt handler
-  IC::int_vector(_devices[unit].interrupt, &int_handler);
+  IC::int_vector(int_id, &int_handler);
 
   // Enable interrupts for device
-  IC::enable(_devices[unit].interrupt);
+  IC::enable(int_id);
 
   IC::set_external_priority(53, 7);
 }

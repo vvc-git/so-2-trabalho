@@ -54,6 +54,7 @@ public:
     // Complete a pending interrupt by id. The id should come
     // from the next() function above.
     static void complete(Ex_Interrupt_Id id) {
+        db<PLIC_Common>(TRC) << "PLIC::complete(id=" << id << ")";
         get_claim_reg() = id;
     }
 

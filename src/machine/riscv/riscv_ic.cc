@@ -125,13 +125,13 @@ void IC::exception(Interrupt_Id id)
 
 void IC::external()
 {
-    db<IC, System>(TRC) << "IC got external interruption. Sending to PLIC" << endl;
+    db<IC>(TRC) << "IC got external interruption. Sending to PLIC" << endl;
     Interrupt_Id eirq = next_external_pending();
-    db<IC, System>(TRC) << "IC got external interruption, externalId=" << eirq << endl;
+    db<IC>(TRC) << "IC got external interruption, externalId=" << eirq << endl;
     Interrupt_Id id = eirq2int(eirq);
     if (id != EXCS + IRQS) { // claim != 0
-        _int_vector[id](id);
-        complete_external(id);
+        _int_vector[id](eirq);
+        complete_external(eirq);
     }
 }
 

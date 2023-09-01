@@ -6,6 +6,7 @@
 #include <architecture.h>
 #include <network/ethernet.h>
 #include <utility/convert.h>
+#include <machine/ic.h>
 
 __BEGIN_SYS
 
@@ -197,7 +198,7 @@ public:
     TX_STAT_RETRY_LIMIT_EXC = 1 << 2,
     TX_STAT_COLLISION = 1 << 1,
     TX_STAT_USED_BIT_READ = 1 << 0,
-    TX_STAT_ALL = 0xff,
+    TX_STAT_ALL = 0x1ff,
   };
 
   enum {
@@ -289,7 +290,7 @@ public:
 
     friend Debug &operator<<(Debug &db, const Rx_Desc &d) {
       db << "{" << hex << d.addr << dec << ","
-         << 65536 - (d.ctrl & SIZE_MASK) << "," << hex << d.ctrl << dec << "}";
+         << (d.ctrl & SIZE_MASK) << "," << hex << d.ctrl << dec << "}";
       return db;
     }
   };
@@ -309,7 +310,7 @@ public:
 
     friend Debug &operator<<(Debug &db, const Tx_Desc &d) {
       db << "{" << hex << d.addr << dec << ","
-         << 65536 - (d.ctrl & SIZE_MASK) << "," << hex << d.ctrl << dec << "}";
+         << (d.ctrl & SIZE_MASK) << "," << hex << d.ctrl << dec << "}";
       return db;
     }
   };
@@ -325,6 +326,8 @@ class SiFive_U_NIC : public NIC<Ethernet>, private GEM {
   friend class Machine_Common;
 
 private:
+  typedef IC_Common::Interrupt_Id Interrupt_Id;
+
   // Mode
   static const bool promiscuous = Traits<SiFive_U_NIC>::promiscuous;
 
@@ -401,22 +404,12 @@ private:
   void handle_int();
 
   // TODO: Change to Interrupt_Id and fix compiler error
-  static void int_handler(unsigned int interrupt);
+  static void int_handler(Interrupt_Id interrupt);
 
   static void init(unsigned int unit);
 
-  static SiFive_U_NIC *get_by_interrupt(unsigned int interrupt) {
-    for (unsigned int i = 0; i < UNITS; i++)
-      if (_devices[i].interrupt == interrupt)
-        return _devices[i].device;
-    db<SiFive_U_NIC>(WRN) << "SiFive_U_NIC::get_by_interrupt(" << interrupt
-                          << ") => no device bound!" << endl;
-    return 0;
-  };
-
   static SiFive_U_NIC *get_by_unit(unsigned int unit) {
-    assert(unit < UNITS);
-    return _devices[unit].device;
+    return _device;
   }
 
 private:
@@ -436,7 +429,7 @@ private:
   Buffer *_rx_buffer[RX_BUFS];
   Buffer *_tx_buffer[TX_BUFS];
 
-  static Device _devices[UNITS];
+  static SiFive_U_NIC* _device;
 };
 
 __END_SYS
