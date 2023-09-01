@@ -1,10 +1,12 @@
-#include <network_buffer.h>
+#include <utility/network_buffer.h>
 
-__BEGIN_SYS
-
-bool insert() {
+__BEGIN_UTIL
 
 
-    
+bool Network_buffer::insert() {
+
     return false;
-}
+};
+
+
+__END_UTIL

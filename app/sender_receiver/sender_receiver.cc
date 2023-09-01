@@ -4,6 +4,7 @@
 #include <time.h>
 #include <synchronizer.h>
 #include <process.h>
+#include <utility/network_buffer.h>
 
 using namespace EPOS;
 
@@ -18,12 +19,12 @@ char buffer[BUF_SIZE];
 
 int receiver()
 {
-    int out = 0;
+    // int out = 0;
     for(int i = 0; i < iterations; i++) {
         // full.p();
-        cout << "C<-" << buffer[out] << " ";
-        out = (out + 1) % BUF_SIZE;
-        Alarm::delay(100000);
+        // cout << "C<-" << buffer[out] << " ";
+        // out = (out + 1) % BUF_SIZE;
+        // Alarm::delay(100000);
         // empty.v();
     }
 
@@ -33,19 +34,19 @@ int receiver()
 int sender()
 {
     // producer
-    int in = 0;
+    // int in = 0;
     for(int i = 0; i < iterations; i++) {
         // empty.p();
-        Alarm::delay(100000);
+        // Alarm::delay(100000);
 
         // Alocar buffer em nivel de aplicação
         
 
         // Alocar buffer em nivel ethernet
 
-        buffer[in] = 'a' + in;
-        cout << "P-> " << buffer[in] << " ";
-        in = (in + 1) % BUF_SIZE;
+        // buffer[in] = 'a' + in;
+        // cout << "P-> " << buffer[in] << " ";
+        // in = (in + 1) % BUF_SIZE;
         // full.v();
     }
     return 0;
@@ -59,14 +60,15 @@ int main()
     Thread * rec = new Thread(&receiver);
     Thread * sen = new Thread(&sender);
 
-    MyBuffer buffer = new Mybuffer(size);
-    buffer.insert(objeto);
+    Network_buffer* buffer = new Network_buffer(1024);
+    cout << "Endereço buffer: " << buffer->buffer() << endl;
 
     rec->join();
     sen->join();
 
     cout << "The end!" << endl;
 
+    delete buffer;
     delete rec;
     delete sen;
 

@@ -31,7 +31,7 @@ public:
     }
 
     void * alloc(unsigned long bytes) {
-        db<Heaps>(TRC) << "Heap::alloc(this=" << this << ",bytes=" << bytes;
+        db<Heaps>(WRN) << "Heap::alloc(this=" << this << ",bytes=" << bytes;
 
         if(!bytes)
             return 0;
