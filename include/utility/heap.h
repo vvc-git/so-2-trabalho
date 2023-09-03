@@ -9,6 +9,8 @@
 
 __BEGIN_UTIL
 
+// OStream cout;
+
 // Heap
 class Heap: private Grouping_List<char>
 {
@@ -31,7 +33,7 @@ public:
     }
 
     void * alloc(unsigned long bytes) {
-        db<Heaps>(WRN) << "Heap::alloc(this=" << this << ",bytes=" << bytes;
+        db<Heaps>(TRC) << "\n\n\nHeap::alloc(this=" << this << ",bytes=" << bytes;
 
         if(!bytes)
             return 0;
@@ -64,7 +66,7 @@ public:
     }
 
     void free(void * ptr, unsigned long bytes) {
-        db<Heaps>(TRC) << "Heap::free(this=" << this << ",ptr=" << ptr << ",bytes=" << bytes << ")" << endl;
+        db<Heaps>(TRC) << "\n\n\nHeap::free(this=" << this << ",ptr=" << ptr << ",bytes=" << bytes << ")\n\n\n" << endl;
 
         if(ptr && (bytes >= sizeof(Element))) {
             Element * e = new (ptr) Element(reinterpret_cast<char *>(ptr), bytes);

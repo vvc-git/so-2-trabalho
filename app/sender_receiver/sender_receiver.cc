@@ -10,7 +10,7 @@ using namespace EPOS;
 
 const int iterations = 128;
 
-OStream cout;
+// OStream cout;
 
 const int BUF_SIZE = 16;
 char buffer[BUF_SIZE];
@@ -55,18 +55,23 @@ int sender()
 
 int main()
 {
-    cout << "Sender x Receiver" << endl;
+    cout << "Sender x Receiver" << "\n";
 
     Thread * rec = new Thread(&receiver);
     Thread * sen = new Thread(&sender);
 
-    Network_buffer* buffer = new Network_buffer(1024);
-    cout << "Endereço buffer: " << buffer->buffer() << endl;
+    Network_buffer* buffer = new Network_buffer(10 * 16 * 64 * 1024);
+    // cout << "Endereço buffer: " << buffer->buffer() << "\n";
+
+    char data = 'a';
+    int res = buffer->insert(&data, 64 * 1024);
+
+    cout << "res: " << res << endl;
 
     rec->join();
     sen->join();
 
-    cout << "The end!" << endl;
+    cout << "The end!" << "\n";
 
     delete buffer;
     delete rec;
