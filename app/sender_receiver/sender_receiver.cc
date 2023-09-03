@@ -68,6 +68,8 @@ int main()
     data[20] = 'b';
     int res = buffer->insert(data, 64 * 1024);
 
+    buffer->remove();
+
     cout << "res: " << res << endl;
 
     rec->join();

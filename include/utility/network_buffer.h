@@ -104,6 +104,18 @@ int Network_buffer::insert(char* data, unsigned long int size) {
 };
 
 void Network_buffer::remove() {
+
+    char * addr = _occupied.remove()->object();
+    cout << "remover -> " << reinterpret_cast<long *>(addr) << endl;
+    cout << _occupied.empty() << endl;
+
+    char * data = (char*)malloc(sizeof(char)*1024*64); //
+
+    memcpy((void *) data, (void *) addr, 64*1024);
+
+    cout <<"data[0] = " << data[0] << endl;
+    cout << "data[20] = " << data[20] << endl;
+
 };
 
 __END_UTIL
