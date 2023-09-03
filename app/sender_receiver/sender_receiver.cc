@@ -63,8 +63,10 @@ int main()
     Network_buffer* buffer = new Network_buffer(10 * 16 * 64 * 1024);
     // cout << "Endereço buffer: " << buffer->buffer() << "\n";
 
-    char data = 'a';
-    int res = buffer->insert(&data, 64 * 1024);
+    char data[64 * 1024];
+    data[0] = 'a';
+    data[20] = 'b';
+    int res = buffer->insert(data, 64 * 1024);
 
     cout << "res: " << res << endl;
 
