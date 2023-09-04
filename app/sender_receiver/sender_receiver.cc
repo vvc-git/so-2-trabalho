@@ -57,29 +57,37 @@ int main()
 {
     cout << "Sender x Receiver" << "\n";
 
-    Thread * rec = new Thread(&receiver);
-    Thread * sen = new Thread(&sender);
+    // Thread * rec = new Thread(&receiver);
+    // Thread * sen = new Thread(&sender);
 
-    Network_buffer* buffer = new Network_buffer(10 * 16 * 64 * 1024);
+    Network_buffer* buffer = new Network_buffer();
+
+    char * prt =reinterpret_cast<char *> (buffer->alloc(64 * 1024 * 1024));
+
     // cout << "Endereço buffer: " << buffer->buffer() << "\n";
 
-    char data[64 * 1024];
-    data[0] = 'a';
-    data[20] = 'b';
-    int res = buffer->insert(data, 64 * 1024);
 
-    buffer->remove();
+    prt[0] ='a';
 
-    cout << "res: " << res << endl;
 
-    rec->join();
-    sen->join();
+    // Dado que representa 
+    // char data[64 * 1024];
+    // data[0] = 'a';
+    // data[20] = 'b';
+    // int res = buffer->insert(data, 64 * 1024);
+
+    // buffer->remove();
+
+    // cout << "res: " << res << endl;
+
+    // rec->join();
+    // sen->join();
 
     cout << "The end!" << "\n";
 
-    delete buffer;
-    delete rec;
-    delete sen;
+    // delete buffer;
+    // delete rec;
+    // delete sen;
 
     return 0;
 }
