@@ -24,10 +24,7 @@ char buffer_main[15000];
 int receiver()
 {
     Network_buffer* b1 = new Network_buffer(buffer2, 1024);
-    // void * aux = b1->_dma.log_address();
-    //int out = 0;
-    
-    //for(int i = 0; i < iterations; i++) {
+
     full.p();
     b1->set_dma_data(buffer_main);
 
@@ -35,15 +32,9 @@ int receiver()
 
     b1->get_dma_data(data);
     
-    //memcpy(aux, buffer, BUF_SIZE);
-    //memcpy(buffer2, aux, BUF_SIZE);
-    
     cout << data[0] << endl;
-    // out = (out + 1) % BUF_SIZE;
-    // Alarm::delay(100000);
     
     empty.v();
-    //}
 
     return 0;
 }
