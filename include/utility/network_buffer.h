@@ -58,7 +58,7 @@ void Network_buffer::alloc_frame(char frame[]) {
 
 void Network_buffer::get_dma_data(char * dma_data) {
     // serão copiados apenas os frames alocados, por enquanto o dma_buffer inteiro
-    memcpy(dma_data, dma.log_address(), count_frames*FRAME_SIZE ); // serão copiados apenas os frames alocados, por enquanto o dma_buffer inteiro);
+    memcpy(dma_data, dma.log_address(), count_frames*FRAME_SIZE );
     dma_ptr = dma.log_address();
     count_frames = 0;
 };
