@@ -14,7 +14,7 @@
 __BEGIN_UTIL
 
 
-OStream cout;
+//OStream cout;
 
 class Network_buffer
 {
@@ -29,16 +29,19 @@ private:
 
 public:
     
-    Network_buffer(void * addr, unsigned long bytes): _app(addr, bytes), _dma(1500*3){}; 
+    Network_buffer(void * addr, unsigned long bytes): _app(addr, bytes), _dma(1500*3){_ptr=_dma.log_address();}; 
     ~Network_buffer() {};
     void * alloc(unsigned long int bytes);
-    void remove();
+    // void remove();
+    void alloc_frame(char frame[]);
+    void get_dma_data(char * dma_data);
+    void set_dma_data(char * dma_data);
 
     // // test purposes
     // char * buffer() {return _buffer;};
     // List list() {return _grouping_mng;};
 
-private:
+public:
     // // Lista que gerencia os espaços livres do buffer
     //List _grouping_mng;
 
@@ -49,6 +52,9 @@ private:
     Heap _app;
     No_MMU::DMA_Buffer _dma;
     No_MMU _no_mmu;
+    char * _ptr;
+
+    int count_frames = 0;
 
 };
 
@@ -59,6 +65,28 @@ void * Network_buffer::alloc(unsigned long int bytes) {
 
     return addr;
 
+};
+
+void Network_buffer::alloc_frame(char frame[]) {
+
+    memcpy(_ptr, frame, 1500);
+    _ptr += 1500; 
+    ++count_frames;
+    
+};
+
+void Network_buffer::get_dma_data(char * dma_data) {
+    // serão copiados apenas os frames alocados
+    memcpy(dma_data, _dma.log_address(), count_frames*1500);
+    _ptr = _dma.log_address();
+    count_frames = 0;
+};
+
+void Network_buffer::set_dma_data(char * dma_data) {
+    // serão copiados apenas os frames alocados
+    memcpy(_dma.log_address(), dma_data, 3*1500);
+    _ptr = _dma.log_address()+3*1500;
+    count_frames = 3;
 };
 
 // void Network_buffer::remove() {

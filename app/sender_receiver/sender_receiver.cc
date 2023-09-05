@@ -11,21 +11,37 @@ using namespace EPOS;
 
 const int iterations = 128;
 
-// OStream cout;
+OStream cout;
 
 const int BUF_SIZE = 1024;
 char buffer[BUF_SIZE];
+char buffer2[BUF_SIZE];
 Semaphore empty(BUF_SIZE);
 Semaphore full(0);
 
+char buffer_main[15000];
+
 int receiver()
 {
-    int out = 0;
+    Network_buffer* b1 = new Network_buffer(buffer2, 1024);
+    // void * aux = b1->_dma.log_address();
+    //int out = 0;
+    
     //for(int i = 0; i < iterations; i++) {
     full.p();
-    cout << "C<-" << buffer[out] << " ";
-        // out = (out + 1) % BUF_SIZE;
-        // Alarm::delay(100000);
+    b1->set_dma_data(buffer_main);
+
+    char * data = (char *) malloc(1500*3);
+
+    b1->get_dma_data(data);
+    
+    //memcpy(aux, buffer, BUF_SIZE);
+    //memcpy(buffer2, aux, BUF_SIZE);
+    
+    cout << data[0] << endl;
+    // out = (out + 1) % BUF_SIZE;
+    // Alarm::delay(100000);
+    
     empty.v();
     //}
 
@@ -43,6 +59,16 @@ int sender()
 
     empty.p();
     memcpy(buffer, prt, 512);
+    char frame[1500];
+    frame[0]='A';
+    b1->alloc_frame(frame);
+    frame[0]='B';
+    b1->alloc_frame(frame);
+
+    b1->get_dma_data(buffer_main);
+
+    
+    
     full.v();
 
     return 0;
@@ -54,7 +80,7 @@ int main()
     cout << "Sender x Receiver" << "\n";
 
     Thread * sen = new Thread(&sender);
-
+    sen->join();
     Thread * rec = new Thread(&receiver);
 
     
@@ -76,8 +102,8 @@ int main()
 
     // cout << "res: " << res << endl;
 
+    
     rec->join();
-    sen->join();
 
     cout << "The end!" << "\n";
 
