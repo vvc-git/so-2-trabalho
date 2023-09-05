@@ -47,7 +47,7 @@ void IC::dispatch()
 
 void IC::int_not(Interrupt_Id id)
 {
-    db<IC, System>(WRN) << "IC::int_not(i=" << id << ")" << endl;
+    db<IC, System>(TRC) << "IC::int_not(i=" << id << ")" << endl;
     if(Traits<Build>::hysterically_debugged)
         Machine::panic();
     
