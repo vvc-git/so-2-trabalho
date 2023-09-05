@@ -13,6 +13,7 @@
 
 __BEGIN_UTIL
 
+
 OStream cout;
 
 class Network_buffer
@@ -28,7 +29,7 @@ private:
 
 public:
     
-    Network_buffer() {}; 
+    Network_buffer(void * addr, unsigned long bytes): _app(addr, bytes), _dma(1500*3){}; 
     ~Network_buffer() {};
     void * alloc(unsigned long int bytes);
     void remove();
@@ -55,8 +56,6 @@ void * Network_buffer::alloc(unsigned long int bytes) {
 
     // 
     void * addr = _app.alloc(bytes);
-
-    _dma = _no_mmu.DMA_Buffer(bytes);
 
     return addr;
 

@@ -119,10 +119,12 @@ using namespace EPOS::S;
 
 void _entry() // machine mode
 {
-    if(CPU::mhartid() != 0)                             // SiFive-U always has 2 cores, so we halt core 1 and let core 0 run in a single-core configuration
+    if(CPU::mhartid() == 0)                             // SiFive-U always has 2 cores, so we halt core 1 and let core 0 run in a single-core configuration
         CPU::halt();
 
     CPU::mstatusc(CPU::MIE);                            // disable interrupts (they will be reenabled at Init_End)
+
+    
 
     CPU::sp(Memory_Map::BOOT_STACK + Traits<Machine>::STACK_SIZE - sizeof(long)); // set the stack pointer, thus creating a stack for SETUP
 

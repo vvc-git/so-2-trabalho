@@ -5,6 +5,7 @@
 #include <synchronizer.h>
 #include <process.h>
 #include <utility/network_buffer.h>
+#include <utility/string.h>
 
 using namespace EPOS;
 
@@ -12,43 +13,38 @@ const int iterations = 128;
 
 // OStream cout;
 
-const int BUF_SIZE = 16;
+const int BUF_SIZE = 1024;
 char buffer[BUF_SIZE];
-// Semaphore empty(BUF_SIZE);
-// Semaphore full(0);
+Semaphore empty(BUF_SIZE);
+Semaphore full(0);
 
 int receiver()
 {
-    // int out = 0;
-    for(int i = 0; i < iterations; i++) {
-        // full.p();
-        // cout << "C<-" << buffer[out] << " ";
+    int out = 0;
+    //for(int i = 0; i < iterations; i++) {
+    full.p();
+    cout << "C<-" << buffer[out] << " ";
         // out = (out + 1) % BUF_SIZE;
         // Alarm::delay(100000);
-        // empty.v();
-    }
+    empty.v();
+    //}
 
     return 0;
 }
 
 int sender()
 {
-    // producer
-    // int in = 0;
-    for(int i = 0; i < iterations; i++) {
-        // empty.p();
-        // Alarm::delay(100000);
 
-        // Alocar buffer em nivel de aplicação
-        
+    Network_buffer* b1 = new Network_buffer(buffer, 1024);
+    char * prt = reinterpret_cast<char *> (b1->alloc(512));
 
-        // Alocar buffer em nivel ethernet
+    prt[0] ='a';
+    prt[2] ='d';
 
-        // buffer[in] = 'a' + in;
-        // cout << "P-> " << buffer[in] << " ";
-        // in = (in + 1) % BUF_SIZE;
-        // full.v();
-    }
+    empty.p();
+    memcpy(buffer, prt, 512);
+    full.v();
+
     return 0;
 
 }
@@ -57,17 +53,17 @@ int main()
 {
     cout << "Sender x Receiver" << "\n";
 
-    // Thread * rec = new Thread(&receiver);
-    // Thread * sen = new Thread(&sender);
+    Thread * sen = new Thread(&sender);
 
-    Network_buffer* buffer = new Network_buffer();
+    Thread * rec = new Thread(&receiver);
 
-    char * prt =reinterpret_cast<char *> (buffer->alloc(64 * 1024 * 1024));
+    
+
+   // char * prt =reinterpret_cast<char *> (buffer->alloc(64 * 1024 * 1024));
 
     // cout << "Endereço buffer: " << buffer->buffer() << "\n";
 
 
-    prt[0] ='a';
 
 
     // Dado que representa 
@@ -80,8 +76,8 @@ int main()
 
     // cout << "res: " << res << endl;
 
-    // rec->join();
-    // sen->join();
+    rec->join();
+    sen->join();
 
     cout << "The end!" << "\n";
 
