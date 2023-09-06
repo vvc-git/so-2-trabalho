@@ -50,6 +50,7 @@ class PMU;
 class Machine;
 class PCI;
 class IC;
+class PLIC;
 class Timer;
 class RTC;
 class UART;

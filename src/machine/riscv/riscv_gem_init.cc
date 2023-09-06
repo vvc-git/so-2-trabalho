@@ -86,15 +86,14 @@ void SiFive_U_NIC::init(unsigned int unit)
 
   // Register the device
   SiFive_U_NIC::_device = dev;
-  Interrupt_Id int_id = IC::eirq2int(53);
 
   // Install interrupt handler
-  IC::int_vector(int_id, &int_handler);
+  IC::int_vector(IC::INT_GIGABIT_ETH, &int_handler);
 
   // Enable interrupts for device
-  IC::enable(int_id);
+  IC::enable(IC::INT_GIGABIT_ETH);
 
-  IC::set_external_priority(53, 7);
+  IC::set_external_priority(IC::INT_GIGABIT_ETH, 7);
 }
 
 __END_SYS

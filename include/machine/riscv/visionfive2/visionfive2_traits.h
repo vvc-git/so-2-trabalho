@@ -131,6 +131,16 @@ template<> struct Traits<SiFive_U_NIC>: public Traits<Ethernet>
     static const unsigned int RECEIVE_BUFFERS = 8; // per unit
 };
 
+template<> struct Traits<PLIC>: public Traits<Machine_Common>
+{
+    // Number of external interrupts in SiFive U
+    // static const unsigned int EIRQS = ; // TODO: Define how many external interrupts are in SiFive VisionFive2
+
+    // Number of NIC interrupts in SiFive U
+    // static const unsigned int INT_GIGABIT_ETH = ; // TODO: Define the ID of the NIC interrupt in SiFive VisionFive2
+
+};
+
 __END_SYS
 
 #endif
