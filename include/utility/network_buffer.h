@@ -27,6 +27,7 @@ public:
     Network_buffer(void * addr, unsigned long bytes): app(addr, bytes), dma(MAX_DMA_BUFFER_SIZE){dma_ptr=dma.log_address();}; 
     ~Network_buffer() {};
     void * alloc(unsigned long int bytes);
+    void free(void * ptr, unsigned long bytes) {app.free(ptr, bytes);};
     void alloc_frame(char frame[]);
     void get_dma_data(char * dma_data);
     void set_dma_data(char * dma_data);
@@ -48,12 +49,13 @@ void * Network_buffer::alloc(unsigned long int bytes) {
 
 };
 
+// alocando os frames no dma_buffer
 void Network_buffer::alloc_frame(char frame[]) {
-
-    memcpy(dma_ptr, frame, FRAME_SIZE);
-    dma_ptr += FRAME_SIZE; 
-    ++count_frames;
-    
+    if (count_frames <= MAX_DMA_BUFFER_SIZE/FRAME_SIZE) {
+        memcpy(dma_ptr, frame, FRAME_SIZE);
+        dma_ptr += FRAME_SIZE; 
+        ++count_frames;
+    }
 };
 
 void Network_buffer::get_dma_data(char * dma_data) {
@@ -63,6 +65,9 @@ void Network_buffer::get_dma_data(char * dma_data) {
     count_frames = 0;
 };
 
+// Recebe os dados da rede.
+// Por enquanto, preenche todo o dma buffer, seta o ponteiro dma para o final do buffer 
+// e seta count_frames para o valor máximo
 void Network_buffer::set_dma_data(char * dma_data) {
     memcpy(dma.log_address(), dma_data, MAX_DMA_BUFFER_SIZE );
     dma_ptr = dma.log_address()+MAX_DMA_BUFFER_SIZE;
