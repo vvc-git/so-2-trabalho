@@ -10,6 +10,7 @@
 #include <utility/heap.h>
 #include <utility/string.h>
 #include <architecture/mmu.h>
+#include <synchronizer.h>
 
 
 
