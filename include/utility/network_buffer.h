@@ -30,7 +30,7 @@ public:
     void free(void * ptr, unsigned long bytes) {app.free(ptr, bytes);};
     void alloc_frame(char frame[]);
     void get_dma_data(char * dma_data);
-    void set_dma_data(char * dma_data);
+    void set_dma_data(char * dma_data, int amnt_frames);
 
 
 public:
@@ -68,10 +68,11 @@ void Network_buffer::get_dma_data(char * dma_data) {
 // Recebe os dados da rede.
 // Por enquanto, preenche todo o dma buffer, seta o ponteiro dma para o final do buffer 
 // e seta count_frames para o valor máximo
-void Network_buffer::set_dma_data(char * dma_data) {
-    memcpy(dma.log_address(), dma_data, MAX_DMA_BUFFER_SIZE );
-    dma_ptr = dma.log_address()+MAX_DMA_BUFFER_SIZE;
-    count_frames = MAX_DMA_BUFFER_SIZE/FRAME_SIZE;
+void Network_buffer::set_dma_data(char * dma_data, int amnt_frames) {
+    unsigned int bytes = amnt_frames*FRAME_SIZE;
+    memcpy(dma.log_address(), dma_data, bytes);
+    dma_ptr = dma.log_address()+bytes;
+    count_frames = amnt_frames;
 };
 
 

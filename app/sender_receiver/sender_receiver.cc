@@ -13,13 +13,13 @@ const int iterations = 4;
 
 OStream cout;
 
-const int BUF_SIZE = 5000;
+const int BUF_SIZE = 128 * 1024;
 char buffer1[BUF_SIZE];
 char buffer2[BUF_SIZE];
 Semaphore empty(1);
 Semaphore full(0);
 
-char buffer_main[15000];
+char buffer_main[64000];
 int qde_frames;
 
 int stack_top_down( char * ptr, int size_datagrama, Network_buffer* net_buffer, int size_buf) {
@@ -44,7 +44,7 @@ int stack_top_down( char * ptr, int size_datagrama, Network_buffer* net_buffer, 
 }
 
 
-int stack_bottom_up(char datagrama[], Network_buffer* net_buffer) {
+void stack_bottom_up(char * datagrama, Network_buffer* net_buffer) {
 
     // Carrega os frames que chegaram na rede para um buffer da NIC
     net_buffer->set_dma_data(buffer_main, qde_frames);
@@ -52,14 +52,13 @@ int stack_bottom_up(char datagrama[], Network_buffer* net_buffer) {
     //  Agrupa os frames e coloca em um único datagrama
     net_buffer->get_dma_data(datagrama);
 
-    return 0;
 }
 
 
 int receiver()
 {
     // Cria o buffer de gerenciamento de protocolos
-    Network_buffer* buffer_managment = new Network_buffer(buffer2, 2 * 64 * 1024);
+    Network_buffer* buffer_managment = new Network_buffer(buffer2, BUF_SIZE);
 
     for (int i = 0; i < iterations; i++) {
         // tamanho do buffer que será alocado
@@ -71,13 +70,12 @@ int receiver()
         full.p();
 
         // instancia um datagrama que vai ser criado para agrupar os frames recebidos
-        char datagrama[amnt_frames];
+        char datagrama[qde_frames*FRAME_SIZE];
 
         stack_bottom_up(datagrama, buffer_managment);
-        
 
         // Copia os datagramas para a região alocada pelo Network_buffer
-        memcpy(pointer_application, &datagrama, 4500);
+        memcpy(pointer_application, datagrama, qde_frames*FRAME_SIZE);
 
         cout << pointer_application[0*FRAME_SIZE] << endl;
         cout << pointer_application[1*FRAME_SIZE] << endl;
@@ -95,7 +93,7 @@ int receiver()
 int sender()
 {
     // Cria o buffer de gerenciamento de protocolos
-    Network_buffer* buffer_managment = new Network_buffer(buffer1, 2 * 64 * 1024); // 128kB
+    Network_buffer* buffer_managment = new Network_buffer(buffer1, BUF_SIZE);
 
     for (int i = 0; i < iterations; i++) {
 
@@ -103,7 +101,7 @@ int sender()
         int size_buf = 5000;
 
         // Recebe o ponteiro do buffer alocado para os datagramas.
-        char * pointer_application = reinterpret_cast<char *> (buffer_managment->alloc(5000));
+        char * pointer_application = reinterpret_cast<char *> (buffer_managment->alloc(size_buf));
         
         char datagrama[4500];
 
@@ -116,7 +114,7 @@ int sender()
         
         empty.p();
         // Abstrai a pilha de protocolos
-        stack_top_down(pointer_application, amnt_frames, buffer_managment, size_buf);
+        stack_top_down(pointer_application, 4500, buffer_managment, size_buf);
         full.v();
 
     }
