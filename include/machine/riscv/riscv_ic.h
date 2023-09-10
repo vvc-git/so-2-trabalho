@@ -124,22 +124,26 @@ public:
     // This means that a threshold of 7 will mask ALL interrupts and
     // a threshold of 0 will allow ALL interrupts.
     static void set_threshold(unsigned int tsh) {
+        db<PLIC>(TRC) << "PLIC::set_threshold(tsh=" << tsh << ")";
         Ex_Interrupt_Id const actual_tsh = tsh & 7;
         get_threshold_reg() = actual_tsh;
     }
 
     // permits all interrupts with non-zero priority.
     static void permit_all_external() {
+        db<PLIC>(TRC) << "PLIC::permit_all()";
         set_threshold(MIN_GLOBAL_THRESHOLD);
     }
 
     // masks all interrupts, no matter the priority.
     static void mask_all_external() {
+        db<PLIC>(TRC) << "PLIC::mask_all()";
         set_threshold(MAX_GLOBAL_THRESHOLD);
     }
 
     // Enable a given interrupt ID.
     static void enable_external(Ex_Interrupt_Id id) {
+        db<PLIC>(TRC) << "PLIC::enable(id=" << id << ")";
         Reg32 enables = get_enable_reg(id);
         int actualId = 1 << (id % 32);
 
@@ -150,6 +154,7 @@ public:
 
     // Disable a given interrupt ID.
     static void disable_external(Ex_Interrupt_Id id) {
+        db<PLIC>(TRC) << "PLIC::disable(id=" << id << ")";
         Reg32 enables = get_enable_reg(id);
         int actualId = 1 << (id % 32);
 
@@ -159,13 +164,14 @@ public:
 
     // Set a given interrupt priority to the given priority.
     static void set_priority(Ex_Interrupt_Id id, unsigned int priority) {
+        db<PLIC>(TRC) << "PLIC::set_priority(id=" << id << ",priority=" << priority << ")";
         unsigned int actualPriority = priority & 7; // 7 is the max priority
         get_priority_reg(id) = actualPriority; // Set the priority
     }
 
 private:
     static volatile Reg32 & get_priority_reg(unsigned int id) {
-
+        db<PLIC>(TRC)<<"PLIC::get_priority_reg: id=" << id << endl;
         return reinterpret_cast<volatile Reg32 *>(Memory_Map::PLIC_CPU_BASE)[id];
     }
 
@@ -189,7 +195,7 @@ private:
         }
         else {
             // + 0x1000 gets to Hart-1 claim + 0x2000 * (n - 1) gets to Hart-n claim (skipping S-Mode)
-            return reinterpret_cast<volatile Reg32 *>(Memory_Map::PLIC_CPU_BASE)[(PLIC_CLAIM + 0x1000) + 0x2000 * (hartId - 1)/sizeof(Reg32)];
+            return reinterpret_cast<volatile Reg32 *>(Memory_Map::PLIC_CPU_BASE)[((PLIC_CLAIM + 0x1000) + 0x2000 * (hartId - 1))/sizeof(Reg32)];
         }
     }
 
@@ -262,6 +268,7 @@ public:
         // Implement CLINT enable here
 
         if (i >= EXCS + IRQS) { // External interrupts
+            db<IC>(TRC) << "IC::enable(int=" << int2eirq(i) << ")" << endl;
             enable_external(int2eirq(i));
         }
     }
@@ -283,7 +290,7 @@ public:
     }
 
     static void set_external_priority(Interrupt_Id id, unsigned int priority) {
-        id = eirq2int(id);
+        id = int2eirq(id);
         set_priority(id, priority);
     }
 
