@@ -110,7 +110,7 @@ ARCH_WORD_SIZE		= $(call GETTK,WORD_SIZE,$(ARCH_TRAITS))
 ARCH_CLOCK		= $(call GETTK,CLOCK,$(ARCH_TRAITS))
 CC_M_FLAG		= -m$(ARCH_WORD_SIZE)
 QEMU_DEBUG      = #-D $(addsuffix .log,$(APPLICATION))
-QEMU_DEBUG_PATH = /home/thiago/Documents/qemu/bin/native
+QEMU_DEBUG_PATH =
 
 ifeq ($(QEMU_DEBUG_PATH),)
 QEMU_RV64 = qemu-system-riscv64

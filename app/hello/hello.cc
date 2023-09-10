@@ -2,7 +2,6 @@
 
 #include <system/memory_map.h>
 #include <architecture/cpu.h>
-#include <machine/nic.h>
 
 using namespace EPOS;
 
@@ -17,7 +16,11 @@ int main()
 {
     cout << "Hello world!" << endl;
 
-    print_register(Memory_Map::ETH_BASE, 0x004);
+    unsigned long base = 0x16040000;
+    
+    for (int i = 0; i < 12; i++) {
+        print_register(base, i * 4);
+    }
 
     return 0;
 }

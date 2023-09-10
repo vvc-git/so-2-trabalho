@@ -6,7 +6,6 @@
 #include <architecture/cpu.h>
 #include <machine/ic.h>
 #include <system/memory_map.h>
-#include "system/traits.h"
 
 __BEGIN_SYS
 
@@ -66,7 +65,7 @@ public:
     }
 
     static Reg64 mtime() { return *reinterpret_cast<Reg64 *>(Memory_Map::CLINT_BASE + MTIME); }
-    static void  mtimecmp(Reg64 v) { *reinterpret_cast<Reg64 *>(Memory_Map::CLINT_BASE + MTIMECMP) = v; }
+    static void  mtimecmp(Reg64 v) { *reinterpret_cast<Reg64 *>(Memory_Map::CLINT_BASE + MTIMECMP + (CPU::mhartid() * 8)) = v; }
 };
 
 // Platform Level Interrupt Controller (PLIC)

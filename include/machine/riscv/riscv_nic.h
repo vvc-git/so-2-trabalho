@@ -5,9 +5,9 @@
 
 
 
-#include "riscv_gem.h"
 #ifdef __NIC_H
 #ifdef __ethernet__
+#include "riscv_gem.h"
 #endif
 #endif
 
