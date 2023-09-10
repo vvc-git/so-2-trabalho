@@ -9,6 +9,11 @@
     "array": "cpp",
     "string_view": "cpp",
     "initializer_list": "cpp",
-    "iterator": "cpp"
+    "iterator": "cpp",
+    "system_error": "cpp",
+    "functional": "cpp",
+    "tuple": "cpp",
+    "type_traits": "cpp",
+    "utility": "cpp"
   }
 }

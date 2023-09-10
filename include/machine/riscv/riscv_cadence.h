@@ -1,15 +1,13 @@
 #ifndef __cadence_h
 #define __cadence_h
 
-
 #include <architecture.h>
 #include <utility/convert.h>
 #include <network/ethernet.h>
 #include <utility/string.h>
-
+#include <machine/riscv/if_cgem_hw.h>
 
 __BEGIN_SYS
-
 
 #define GEM_NWCTRL        (0x00000000 / 4) /* Network Control reg */
 #define GEM_NWCFG         (0x00000004 / 4) /* Network Config reg */
@@ -94,11 +92,8 @@ __BEGIN_SYS
 #define GEM_RXTCPCCNT     (0x000001AC / 4) /* TCP Checksum Error Counter */
 #define GEM_RXUDPCCNT     (0x000001B0 / 4) /* UDP Checksum Error Counter */
 
-
 class Cadence
 {
-
-
 protected:
     typedef CPU::Reg8 Reg8;
     typedef CPU::Reg16 Reg16;
@@ -107,38 +102,65 @@ protected:
     typedef CPU::Phy_Addr Phy_Addr;
     // typedef CPU::IO_Port IO_Port;
     // typedef CPU::IO_Irq IO_Irq;
-
     // USAR NOSSO BUFFER
     typedef MMU::DMA_Buffer DMA_Buffer;
-
     // Ver como usar
     typedef Ethernet::Address MAC_Address;
 
-
 public:
- enum : unsigned long {
+    enum : unsigned long {
         ETH_BASE        = 0x10090000   // SiFive-U Ethernet
     };
 
     Cadence();
-    int valor(Reg32 * pointer);
-    
+    void set_value(Reg32 * offset, unsigned int value);  
 };
 
-
 Cadence::Cadence() {
-    Reg32 * pointer = reinterpret_cast<Reg32 *>(ETH_BASE + GEM_NWCTRL);
-    int valor;
+    // ! Vamos ter que implementar a PLIC?
+    // Clear network control register
+    Cadence::set_value(reinterpret_cast<Reg32 *>(GEM_NWCTRL), 0x0);
 
-    valor = Cadence::valor(pointer);
+    // Clear statics registers
+    Cadence::set_value(reinterpret_cast<Reg32 *>(GEM_NWCTRL), CGEM_NET_CTRL_CLR_STAT_REGS);
 
-    valor = 34;
-    
+    // Clear status registers
+    Cadence::set_value(reinterpret_cast<Reg32 *>(GEM_NWSTATUS), 0x0F);
+    Cadence::set_value(reinterpret_cast<Reg32 *>(GEM_TXSTATUS), 0xFF);
+
+    // Disable all interrupts
+    Cadence::set_value(reinterpret_cast<Reg32 *>(GEM_IDR), 0x7FFFEFF);
+
+    // Clear the buffer queues
+    // ! Checar o significado de { , 1}_ptr em gem.receive_q{ , 1}_ptr
+    Cadence::set_value(reinterpret_cast<Reg32 *>(GEM_RXQBASE), 0x0);
+    Cadence::set_value(reinterpret_cast<Reg32 *>(GEM_TXQBASE), 0x0);
+
+    // Enable full-duplex | Enable Gigabit mode | Enable reception multicast frames | Enable promiscuous mode | Enable checksum offload | Enable pause frames | Set the MDC clock divisor | *** Set MAC address *** |
+    // ! Enable pause frames: CGEM_NET_CFG_PAUSE_EN ou CGEM_NET_CFG_DIS_CP_PAUSE_FRAME?
+    // ! Set the MDC clock divisor (como saber qual é o clock apropriado?)
+    // ! Como setar o MAC address?
+    Cadence::set_value(reinterpret_cast<Reg32 *>(GEM_NWCFG), (CGEM_NET_CFG_FULL_DUPLEX | CGEM_NET_CFG_MULTI_HASH_EN | CGEM_NET_CFG_COPY_ALL | CGEM_NET_CFG_RX_CHKSUM_OFFLD_EN | CGEM_NET_CFG_PAUSE_EN | CGEM_NET_CFG_MDC_CLK_DIV_64 | ));
+
+    // Set the receive buffer size to 1.600 bytes
+    // ! Checar porque ele fala para colocar 8h'019
+    // ! Set the receive packet buffer memory size 
+    // ! Set the transmitter packet buffer memory size 
+    // ! Enable tcp/ip checksum geraration offload on the transmitter (não encontramos)
+    // Configure for a little endian system. 
+    // ! Configure AXI fixed burst length. Write 5'h10 to the gem.dma_config[amba_burst_length]: seria CGEM_DMA_CFG_AHB_FIXED_BURST_LEN_X (X é 1, 4, 8 ou 16)?
+    Cadence::set_value(reinterpret_cast<Reg32 *>(GEM_DMACFG), (CGEM_DMA_CFG_RX_BUF_SIZE(0x19)));
+
+    // !Enable the MDIO: gem.network_control[men_port_en] seria o CGEM_NET_CTRL_MGMT_PORT_EN? O que seria MGMT?
+    // Enable the transmitter
+    // Enable the receiver
+    Cadence::set_value(reinterpret_cast<Reg32 *>(GEM_NWCTRL), (CGEM_NET_CTRL_MGMT_PORT_EN | CGEM_NET_CTRL_TX_EN | CGEM_NET_CTRL_RX_EN));
+
+    // Outros...
 }
 
-int Cadence::valor(Reg32 * pointer) {
-    *pointer = 0x12345678;  
-    return *pointer;
+void Cadence::set_value(Reg32 * offset, unsigned int value) {
+    *(ETH_BASE + offset) = reinterpret_cast<Reg32>(value);  
 }
 
 
