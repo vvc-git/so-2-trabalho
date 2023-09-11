@@ -62,8 +62,7 @@ int SiFive_U_NIC::send(const Address &dst, const Protocol &prot,
   db<SiFive_U_NIC>(INF) << "SiFive_U_NIC::send:after_desc[" << i << "]=" << desc
                         << " => " << *desc << endl;
 
-  while (!(desc->ctrl & Tx_Desc::OWN))
-    ;
+  buf->unlock();
 
   return size;
 }
@@ -322,8 +321,9 @@ void SiFive_U_NIC::configure()
 
   // Enable interrupts
   // Only those supported from QEMU (real hardware might have more)
+  // Except TX_COMPLETE, for better performance
   reg(INT_ENR) |= INTR_RX_COMPLETE | INTR_TX_CORRUPT_AHB_ERR |
-                  INTR_TX_USED_READ | INTR_RX_USED_READ | INTR_TX_COMPLETE;
+                  INTR_TX_USED_READ | INTR_RX_USED_READ; 
 
   db<SiFive_U_NIC>(INF) << "SiFive_U_NIC::configure(): NWCFG=" << hex << reg(NWCFG)
                         << endl;
@@ -367,6 +367,7 @@ int SiFive_U_NIC::receive(Address *src, Protocol *prot, void *data,
 
   // Release the buffer to the NIC
   desc->addr &= ~Rx_Desc::OWN;
+  desc->ctrl = 0;
 
   _statistics.rx_packets++;
   _statistics.rx_bytes += buf->size();
@@ -420,7 +421,7 @@ void SiFive_U_NIC::handle_int()
 
   if (status & INTR_RX_OVERRUN)
   { // Missed Frame
-    db<SiFive_U_NIC>(WRN) << "SiFive_U_NIC::handle_int: error => missed frame" << endl;
+    db<SiFive_U_NIC>(TRC) << "SiFive_U_NIC::handle_int: error => missed frame" << endl;
     _statistics.rx_overruns++;
   }
 }

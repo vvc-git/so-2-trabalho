@@ -129,8 +129,8 @@ template<> struct Traits<SiFive_U_NIC>: public Traits<Ethernet>
     static const unsigned int UNITS = DEVICES::Count<SiFive_U_NIC>::Result;
     static const bool enabled = Traits<Ethernet>::enabled;
 
-    static const unsigned int SEND_BUFFERS = 4; // per unit
-    static const unsigned int RECEIVE_BUFFERS = 4; // per unit
+    static const unsigned int SEND_BUFFERS = 64; // per unit
+    static const unsigned int RECEIVE_BUFFERS = 64; // per unit
 };
 
 template<> struct Traits<PLIC>: public Traits<Machine_Common>

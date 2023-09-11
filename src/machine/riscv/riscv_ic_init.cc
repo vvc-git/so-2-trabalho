@@ -23,6 +23,8 @@ void IC::init()
 
     // TODO: map and treat these interrupts (fire non-stop)
     if (Traits<Build>::MODEL == Traits_Tokens::VisionFive2) {
+        set_priority(3, 0);
+        set_priority(4, 0);
         set_priority(50, 0);
         set_priority(98, 0);
     }
