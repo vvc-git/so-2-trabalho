@@ -14,7 +14,7 @@ using namespace EPOS;
 
 const int iterations = 1;
 
-OStream cout;
+// OStream cout;
 
 const int BUF_SIZE = 10000;
 const int DMA_SIZE = 4500;
@@ -139,8 +139,8 @@ int main()
 {
     cout << "Sender x Receiver" << "\n";
 
-    Cadence_NIC *net = new Cadence_NIC();
-    cout << net << "\n";
+    Cadence net = Cadence();
+    cout << &net << "\n";
 
     // Thread * sen = new Thread(&sender);
     // Thread * rec = new Thread(&receiver);
