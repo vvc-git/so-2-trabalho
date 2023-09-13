@@ -6,7 +6,12 @@ OStream cout;
 
 int main()
 {
-    cout << "Hello world!" << endl;
+    cout << "\n\n ************ TESTANDO CADENCE ************\n\n" << endl;
+
+    Cadence net = Cadence();
+    cout << &net << "\n";
+
+    cout << "\n\n ******************* FIM *******************\n\n" << endl;
 
     return 0;
 }

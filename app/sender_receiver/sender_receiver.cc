@@ -139,19 +139,16 @@ int main()
 {
     cout << "Sender x Receiver" << "\n";
 
-    Cadence net = Cadence();
-    cout << &net << "\n";
+    Thread * sen = new Thread(&sender);
+    Thread * rec = new Thread(&receiver);
 
-    // Thread * sen = new Thread(&sender);
-    // Thread * rec = new Thread(&receiver);
-
-    // sen->join();
-    // rec->join();
+    sen->join();
+    rec->join();
 
     cout << "The end!" << "\n";
 
-    // delete rec;
-    // delete sen;
+    delete rec;
+    delete sen;
 
     return 0;
 }
