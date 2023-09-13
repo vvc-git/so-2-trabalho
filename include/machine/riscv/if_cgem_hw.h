@@ -376,8 +376,8 @@
  */
 
 struct cgem_tx_desc {
-	uint32_t addr;
-	uint32_t ctl;
+	// uint32_t addr;
+	// uint32_t ctl;
 	#define CGEM_TXDESC_USED						(1U << 31) /* done txmitting */
 	#define CGEM_TXDESC_WRAP						(1 << 30)  /* end descr ring */
 	#define CGEM_TXDESC_RETRY_ERR					(1 << 29)
@@ -395,8 +395,8 @@ struct cgem_tx_desc {
 	#define CGEM_TXDESC_LAST_BUF					(1 << 15)  /* last in frame */
 	#define CGEM_TXDESC_LENGTH_MASK					0x3fff
 	#ifdef 	CGEM64
-	uint32_t addrhi;
-	uint32_t unused;
+	// uint32_t addrhi;
+	// uint32_t unused;
 	#endif
 };
 
@@ -409,10 +409,10 @@ struct cgem_tx_desc {
  */
 
 struct cgem_rx_desc {
-	uint32_t addr;
+	// uint32_t addr;
 	#define CGEM_RXDESC_WRAP						(1 << 1)  /* goes in addr! */
 	#define CGEM_RXDESC_OWN							(1 << 0)  /* buf filled */
-	uint32_t ctl;
+	// uint32_t ctl;
 	#define CGEM_RXDESC_BCAST						(1U << 31)/* all 1's bcast */
 	#define CGEM_RXDESC_MULTI_MATCH					(1 << 30) /* mutlicast match */
 	#define CGEM_RXDESC_UNICAST_MATCH				(1 << 29)
@@ -436,8 +436,8 @@ struct cgem_rx_desc {
 	#define CGEM_RXDESC_BAD_FCS						(1 << 13)
 	#define CGEM_RXDESC_LENGTH_MASK					0x1fff
 	#ifdef 	CGEM64
-	uint32_t addrhi;
-	uint32_t unused;
+	// uint32_t addrhi;
+	// uint32_t unused;
 	#endif
 };
 

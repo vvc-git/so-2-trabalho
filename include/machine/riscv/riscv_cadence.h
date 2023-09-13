@@ -140,7 +140,7 @@ Cadence::Cadence() {
     // ! Enable pause frames: CGEM_NET_CFG_PAUSE_EN ou CGEM_NET_CFG_DIS_CP_PAUSE_FRAME?
     // ! Set the MDC clock divisor (como saber qual é o clock apropriado?)
     // ! Como setar o MAC address?
-    Cadence::set_value(reinterpret_cast<Reg32 *>(GEM_NWCFG), (CGEM_NET_CFG_FULL_DUPLEX | CGEM_NET_CFG_MULTI_HASH_EN | CGEM_NET_CFG_COPY_ALL | CGEM_NET_CFG_RX_CHKSUM_OFFLD_EN | CGEM_NET_CFG_PAUSE_EN | CGEM_NET_CFG_MDC_CLK_DIV_64 | ));
+    // Cadence::set_value(reinterpret_cast<Reg32 *>(GEM_NWCFG), (CGEM_NET_CFG_FULL_DUPLEX | CGEM_NET_CFG_MULTI_HASH_EN | CGEM_NET_CFG_COPY_ALL | CGEM_NET_CFG_RX_CHKSUM_OFFLD_EN | CGEM_NET_CFG_PAUSE_EN | CGEM_NET_CFG_MDC_CLK_DIV_64 | );
 
     // Set the receive buffer size to 1.600 bytes
     // ! Checar porque ele fala para colocar 8h'019
