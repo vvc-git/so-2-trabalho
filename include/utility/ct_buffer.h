@@ -31,7 +31,7 @@ public:
     void alloc_frame(char frame[]);
     void get_dma_data(char * dma_data);
     void set_dma_data(char * dma_data, int amnt_frames);
-
+    // Retornar endereço físico
 
 public:
     No_MMU::DMA_Buffer dma;

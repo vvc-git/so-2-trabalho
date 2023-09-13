@@ -8,6 +8,7 @@
 #include <utility/dt_buffer.h>
 #include <utility/string.h>
 #include <machine/riscv/riscv_cadence.h>
+#include <machine/riscv/riscv_nic.h>
 
 using namespace EPOS;
 
@@ -138,19 +139,19 @@ int main()
 {
     cout << "Sender x Receiver" << "\n";
 
-    // Cadence net = Cadence();
-    // cout << &net << "\n";
+    Cadence_NIC *net = new Cadence_NIC();
+    cout << net << "\n";
 
-    Thread * sen = new Thread(&sender);
-    Thread * rec = new Thread(&receiver);
+    // Thread * sen = new Thread(&sender);
+    // Thread * rec = new Thread(&receiver);
 
-    sen->join();
-    rec->join();
+    // sen->join();
+    // rec->join();
 
     cout << "The end!" << "\n";
 
-    delete rec;
-    delete sen;
+    // delete rec;
+    // delete sen;
 
     return 0;
 }
