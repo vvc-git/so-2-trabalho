@@ -7,7 +7,7 @@
 #include <utility/ct_buffer.h>
 #include <utility/dt_buffer.h>
 #include <utility/string.h>
-#include <machine/riscv/riscv_cadence.h>
+// #include <machine/riscv/riscv_cadence.h>
 #include <machine/riscv/riscv_nic.h>
 
 using namespace EPOS;

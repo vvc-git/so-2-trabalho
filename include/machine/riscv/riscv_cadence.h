@@ -6,6 +6,7 @@
 #include <network/ethernet.h>
 #include <utility/string.h>
 #include <machine/riscv/if_cgem_hw.h>
+#include <machine/riscv/sifive_u/sifive_u_memory_map.h>
 
 __BEGIN_SYS
 
@@ -102,34 +103,64 @@ protected:
     typedef CPU::Reg32 Reg32;
     typedef CPU::Log_Addr Log_Addr;
     typedef CPU::Phy_Addr Phy_Addr;
-    // typedef CPU::IO_Port IO_Port;
-    // typedef CPU::IO_Irq IO_Irq;
+    typedef Memory_Map::ETH_BASE ETH_BASE;
     // USAR NOSSO BUFFER
     typedef MMU::DMA_Buffer DMA_Buffer;
     // Ver como usar
     typedef Ethernet::Address MAC_Address;
 
+    // typedef CPU::IO_Port IO_Port;
+    // typedef CPU::IO_Irq IO_Irq;
+    
 public:
-    enum : unsigned long int {
-        ETH_BASE        = 0x10090000   // SiFive-U Ethernet
+    // Register offsets
+    enum {
+        NETWORK_CONTROL = 0x00000000,
+        RECEIVE_STATUS =  0x00000020,
     };
 
+    // Network Control Register bits
+    enum {
+        CLEAR_ALL_STATS_REGS = 1 << 5,
+    };
+
+    // construtor
     Cadence();
-    void set_value(unsigned long int pointer, unsigned int value);
+
+    // destrutor
+    ~Cadence();
+
+    // função que seta os valores dos registradores mapeados em memória
+    void set_reg(unsigned long int pointer, unsigned int value);
+
+    // função que retorna or lógico dos valores passados por parâmetros
+    void set_bits(unsigned long int pointer, unsigned long int pointer);
 };
 
 Cadence::Cadence() {
+    // Clear the network control register
+    Cadence::set_reg(NETWORK_CONTROL, 0x0);
 
-    Cadence::set_value(ETH_BASE + GEM_NWCTRL, 0x0);
+    // Clear the statistics registers
+    Cadence::set_bits(NETWORK_CONTROL, CLEAR_ALL_STATS_REGS);
+
+    //Clear the status registers
+    Cadence::set_reg(RECEIVE_STATUS, 0x0);
+    
 }
 
-void Cadence::set_value(unsigned long int pointer, unsigned int value) {
-    Reg32 * p = reinterpret_cast<Reg32 *>(pointer);
+void Cadence::set_reg(unsigned long int pointer, unsigned int value) {
+    Reg32 * p = reinterpret_cast<Reg32 *>(ETH_BASE + pointer);
     Reg32 v = reinterpret_cast<Reg32>(value);
     *p = v;
     cout << v << endl;
 }
 
+void Cadence::set_bits(unsigned long int pointer, unsigned int value) {
+    Reg32 * p = reinterpret_cast<Reg32 *>(ETH_BASE + pointer);
+    Reg32 v = reinterpret_cast<Reg32>(value);
+    *p = *p | value;
+}
 
 __END_SYS
 
