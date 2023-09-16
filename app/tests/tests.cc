@@ -19,7 +19,7 @@ int main()
     //memcpy(&teste, addr, sizeof(int));
     
     cout << "\nEndereço do objeto Cadence = " << &net << endl;
-    cout << "\nEndereço do ETH_BASE + deslocamento = " << &addr << endl;
+    cout << "\nEndereço do ETH_BASE + deslocamento = " << addr << endl;
 
     cout << "\n\n ******************* FIM *******************\n\n" << endl;
 
