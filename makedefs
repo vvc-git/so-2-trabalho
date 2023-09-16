@@ -330,9 +330,9 @@ TCPDUMP		:= tcpdump -tttttennvvvXXr
 TEE		:= tee
 
 ifndef DISPLAY
-TERM		:= sh -c
+TERM		:= xterm -e 
 else
-TERM		:= xterm -e
+TERM		:= gnome-terminal -- sh -c
 endif
 
 TOUCH		:= touch
