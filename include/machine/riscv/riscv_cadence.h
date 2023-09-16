@@ -122,7 +122,8 @@ public:
         TRANSMIT_Q_PTR   = 0x000000001C,
         RECEIVE_STATUS =  0x0000000020,
         INT_DISABLE    =  0x000000002C, 
-        SPEC_ADD1_BOTTOM = 0x0000000088
+        SPEC_ADD1_BOTTOM = 0x0000000088,
+        DMA_CONFIG = 0x0000000010, 
 
         
     };
@@ -229,7 +230,7 @@ Cadence::Cadence() {
 
     // 2. Set the MAC address.
     // Write to the gem.spec_add1_bottom register.
-    
+
 
     // Write to the gem.spec_add1_top register.
     
