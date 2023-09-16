@@ -1,25 +1,18 @@
 #include <utility/ostream.h>
-
-#include <machine/riscv/riscv_cadence.h>
-#include <utility/string.h>
-#include <machine/riscv/sifive_u/sifive_u_memory_map.h>
+#include <machine/riscv/riscv_nic.h>
 
 using namespace EPOS;
 
-// OStream cout;
+OStream cout;
 
 int main()
 {
-    // cout << "Hello world!" << endl;
-    cout << "\n\n ************ TESTANDO CADENCE ************\n\n" << endl;
+    cout << "\n\n ************** TESTANDO NIC **************\n\n" << endl;
 
-    Cadence net = Cadence();
-    int * addr = reinterpret_cast<int *>(Memory_Map::ETH_BASE + 0x18);
+    Cadence_NIC net = Cadence_NIC();
     
-    //memcpy(&teste, addr, sizeof(int));
-    
-    cout << "\nEndereço do objeto Cadence = " << &net << endl;
-    cout << "\nEndereço do ETH_BASE + deslocamento = " << addr << endl;
+    cout << "\nEndereço físico do buffer descritor: " << net.phy_init_tx_desc << "\n";
+    cout << "\nEndereço físico do buffer de dados: " << net.phy_init_tx_data << "\n";
 
     cout << "\n\n ******************* FIM *******************\n\n" << endl;
 
