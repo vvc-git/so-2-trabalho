@@ -1,6 +1,9 @@
 *.o
 *.conf
+
 .vscode
+
+run.sh
 
 tools/eposcfg/eposcfg
 tools/eposmkbi/eposmkbi
