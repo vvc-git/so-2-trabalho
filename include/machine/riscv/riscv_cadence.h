@@ -127,7 +127,7 @@ void Cadence::set_value(unsigned long int pointer, unsigned int value) {
     Reg32 * p = reinterpret_cast<Reg32 *>(pointer);
     Reg32 v = reinterpret_cast<Reg32>(value);
     *p = v;
-    cout << v << endl;
+    // cout << v << endl;
 }
 
 
