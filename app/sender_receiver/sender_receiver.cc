@@ -139,11 +139,15 @@ int main()
 {
     cout << "Sender x Receiver" << "\n";
 
-    Thread * sen = new Thread(&sender);
-    Thread * rec = new Thread(&receiver);
+    Cadence_NIC net = Cadence_NIC();
+    cout << net.phy_init_tx_desc << "\n";
+    cout << net.phy_init_tx_data << "\n";
 
-    sen->join();
-    rec->join();
+    // Thread * sen = new Thread(&sender);
+    // Thread * rec = new Thread(&receiver);
+
+    // sen->join();
+    // rec->join();
 
     cout << "The end!" << "\n";
 
