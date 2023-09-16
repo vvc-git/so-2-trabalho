@@ -117,6 +117,7 @@ public:
         db<Observers>(TRC) << "~Conditionally_Observed(this=" << this << ")" << endl;
     }
 
+    // !! Usar função para lidar com receive, para um determinado protocolo
     virtual void attach(Conditional_Observer<C> * o, const C & c) {
         db<Observers>(TRC) << "Conditionally_Observed::attach(o=" << o << ",c=" << c << ")" << endl;
 
@@ -206,6 +207,7 @@ public:
     virtual void attach(Data_Observer<D, C> * o, const C & c) {
         db<Observers>(TRC) << "Data_Observed::attach(obs=" << o << ",cond=" << c << ")" << endl;
 
+         // !! Condicao para o observador ser notificado, passar o numero de protocolo
         o->_link = Element(o, c);
         _observers.insert(&o->_link);
     }
