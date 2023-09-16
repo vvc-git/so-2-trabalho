@@ -1,0 +1,14 @@
+*.o
+*.conf
+.vscode
+
+tools/eposcfg/eposcfg
+tools/eposmkbi/eposmkbi
+
+app/hello/hello
+app/philosophers_dinner/philosophers_dinner
+app/producer_consumer/producer_consumer
+app/tests/tests
+
+img/*
+!img/.makefile

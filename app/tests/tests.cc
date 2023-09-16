@@ -15,9 +15,11 @@ int main()
 
     Cadence net = Cadence();
     int * addr = reinterpret_cast<int *>(Memory_Map::ETH_BASE + 0x18);
-
-    cout << &net << endl;
-    cout << &addr << endl;
+    
+    //memcpy(&teste, addr, sizeof(int));
+    
+    cout << "\nEndereço do objeto Cadence = " << &net << endl;
+    cout << "\nEndereço do ETH_BASE + deslocamento = " << &addr << endl;
 
     cout << "\n\n ******************* FIM *******************\n\n" << endl;
 
