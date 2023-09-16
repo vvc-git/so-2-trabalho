@@ -7,7 +7,7 @@
 #include <utility/ct_buffer.h>
 #include <utility/dt_buffer.h>
 #include <utility/string.h>
-#include <machine/riscv/riscv_cadence.h>
+// #include <machine/riscv/riscv_cadence.h>
 #include <machine/riscv/riscv_nic.h>
 
 using namespace EPOS;
@@ -143,7 +143,6 @@ int main()
     cout << net.phy_init_tx_desc << "\n";
     cout << net.phy_init_tx_data << "\n";
 
-
     // Thread * sen = new Thread(&sender);
     // Thread * rec = new Thread(&receiver);
 
@@ -152,8 +151,8 @@ int main()
 
     cout << "The end!" << "\n";
 
-    // delete rec;
-    // delete sen;
+    delete rec;
+    delete sen;
 
     return 0;
 }
