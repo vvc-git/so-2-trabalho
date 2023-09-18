@@ -7,9 +7,9 @@
 
 __BEGIN_SYS
 
-OStream cout;
+// OStream cout;
 
-class Cadence_NIC
+class SiFiveU_NIC : public Data_Observed<CT_Buffer, void>
 {
 
 private:
@@ -37,8 +37,16 @@ private:
     };
 
 public:
-    Cadence_NIC();
-    ~Cadence_NIC(){};
+    SiFiveU_NIC();
+    ~SiFiveU_NIC(){};
+    void attach(Data_Observer<CT_Buffer, void> *o) { Data_Observed<CT_Buffer, void>::attach(o); };
+
+    void int_handler(int interrupt = 1)
+    {
+        receive();
+    }
+
+    void receive();
 
 public:
     CT_Buffer *tx_desc_buffer;
@@ -58,10 +66,10 @@ public:
 
     unsigned int DATA_SIZE = 1500;
     unsigned int DESC_SIZE = 16;
-    unsigned int SLOTS_BUFFER = 5;
+    unsigned int SLOTS_BUFFER = 4;
 };
 
-Cadence_NIC::Cadence_NIC()
+SiFiveU_NIC::SiFiveU_NIC()
 {
     // TX Alocando memoria para os buffers tx de descritores e dados
     tx_desc_buffer = new CT_Buffer(DESC_SIZE * SLOTS_BUFFER);
@@ -119,8 +127,8 @@ Cadence_NIC::Cadence_NIC()
     // setting RX buffers
     for (unsigned int i = 0; i < SLOTS_BUFFER; i++)
     {
-        addr_desc = tx_desc_phy + (i * DESC_SIZE);
-        addr_data = tx_data_phy + (i * DATA_SIZE);
+        addr_desc = rx_desc_phy + (i * DESC_SIZE);
+        addr_data = rx_data_phy + (i * DATA_SIZE);
 
         // cout << i << "º \n\n";
         // cout << "addr_desc: " << addr_desc << endl;
@@ -150,6 +158,41 @@ Cadence_NIC::Cadence_NIC()
         // cout << "desc->address_msb: " << hex << desc->address_msb << endl;
         // cout << "desc->control_3: " << hex << desc->control_3 << endl;
     }
+}
+
+void SiFiveU_NIC::receive()
+{
+    //! varrer rx descriptor até encontrar o bit válido
+    Desc *desc = rx_desc_phy;
+
+    Phy_Addr addr;
+
+    addr = desc->address_msb;
+    addr = (addr << 32);
+    addr = addr | desc->address_lsb;
+
+    // TESTE: Valor de teste
+    char teste[4];
+    teste[0] = 'd';
+    teste[1] = 'a';
+    teste[2] = 'n';
+    teste[3] = 'y';
+
+    // cout << "teste: " << teste[0] << endl;
+
+    // TESTE: Copiando teste para o endereço de dados em RX (addr)
+    memcpy(addr, teste, DATA_SIZE);
+
+    //! lembrar de aumentar memoria do qemu
+    CT_Buffer *buffer = new CT_Buffer(DATA_SIZE);
+
+    //! depois pegar size do descritor
+
+    // Colocando o valor de RX data (addr) para o CT_buffer alocado
+    buffer->set_dma_data((char *)addr, 1);
+
+    // Chamando notify (Observed)
+    notify(buffer);
 }
 
 __END_SYS
