@@ -37,19 +37,24 @@ public:
         NETWORK_STATUS = 0x0000000008,
         TRANSMIT_Q1_PTR = 0x0000000440, 
         RECEIVE_Q1_PTR = 0x0000000480, 
+        DMA_CONFIG = 0x0000000010,
         TRANSMIT_STATUS = 0x0000000014,
         RECEIVE_Q_PTR = 0x0000000018,
         TRANSMIT_Q_PTR = 0x000000001C,
         RECEIVE_STATUS = 0x0000000020,
         INT_DISABLE = 0x000000002C,
         SPEC_ADD1_BOTTOM = 0x0000000088,
-        DMA_CONFIG = 0x0000000010,
+        SPEC_ADD1_TOP = 0x000000008c,
     };
 
     // Network Control Register bits
     enum
     {
         CLEAR_ALL_STATS_REGS = 1 << 5,
+        MAN_PORT_EN = 1 << 4, 
+        ENABLE_TRANSMIT = 1 << 3,
+        ENABLE_RECEIVE = 1 << 2,
+
     };
 
     // Network Config Register bits
@@ -58,13 +63,19 @@ public:
         // !! Verificar se os deslocamentos estão certos!! (FULL DUPLEX estava errado) 
         FULL_DUPLEX = 1 << 1,
         GIGABIT_MODE_ENABLE = 1 << 10,
-        NO_BROADCAST = 1 << 5,
+        NO_BROADCAST = ~(1 << 5), // Bit que deve ser zero
         MULTICAST_HASH_ENABLE = 1 << 6,
         COPY_ALL_FRAMES = 1 << 4,
         RECEIVE_CHECKSUM_OFFLOAD_ENABLE = 1 << 24,
         PAUSE_ENABLE = 1 << 13,
-        MDC_CLOCK_DIVISION = 000 << 18,
+        MDC_CLOCK_DIVISION = 000 << 18, // verificar
 
+        // DMA_CONFIG bits
+        RX_PBUF_SIZE = 11 << 8,
+        TX_PBUF_SIZE = 1 << 10,
+        TX_PBUF_TCP_EN = 1 << 11,
+        ENDIAN_SWAP_PACKET = ~(1 << 7), // Bit que deve ser zero
+        AMBA_BURST_LENGTH = 1,
     };
 
     // construtor
@@ -75,6 +86,8 @@ public:
 
     // função que retorna or lógico dos valores passados por parâmetros
     void set_bits(unsigned long int pointer, unsigned int value);
+
+    void set_bits_and(unsigned long int pointer, unsigned int value);
 };
 
 Cadence_GEM::Cadence_GEM()
@@ -128,7 +141,8 @@ Cadence_GEM::Cadence_GEM()
 
     // c. Enable reception of broadcast or multicast frames.
     // Write a 0 to the gem.network_config[no_broadcast] register to enable broadcast frames.
-    Cadence_GEM::set_bits(NETWORK_CONFIG, NO_BROADCAST);
+    //! Bit que deve ser zero nao pode ser setado com 'or'
+    Cadence_GEM::set_bits_and(NETWORK_CONFIG, NO_BROADCAST); // TESTAR!
 
     // write a 1 to the gem.network_config[multicast_hash_en] bit to enable multicast frames.
     Cadence_GEM::set_bits(NETWORK_CONFIG, MULTICAST_HASH_ENABLE);
@@ -150,9 +164,52 @@ Cadence_GEM::Cadence_GEM()
     Cadence_GEM::set_bits(NETWORK_CONFIG, MDC_CLOCK_DIVISION);
 
     // 2. Set the MAC address.
+    // Setando agora o endereço aleatório 0xFFFFFFFFFFFF
     // Write to the gem.spec_add1_bottom register.
+    Cadence_GEM::set_bits(SPEC_ADD1_BOTTOM, 0xFFFFFFFF);
 
-    // Write to the gem.spec_add1_top register.
+    // Write to the gem.spec_add1_top register. The
+    // most significant 16 bits go to gem.spec_add1_top
+    Cadence_GEM::set_bits(SPEC_ADD1_BOTTOM, 0x0000FFFF);
+
+    // 3. Program the DMA configuration register (gem.dma_config)
+
+    // a. Set the receive buffer size to 1,600 bytes. Write a value of 8'h19 to the
+    // gem.dma_config[rx_buf_size] bit field. (escrevendo 25, pois 25*64 = 1600)
+    Cadence_GEM::set_reg(DMA_CONFIG, 0x00019000);
+
+    // b. Set the receiver packet buffer memory size to the full configured addressable space
+    // of 32 KB. Write 2'b11 to the gem.dma_config[rx_pbuf_size] bit field
+    Cadence_GEM::set_bits(DMA_CONFIG, RX_PBUF_SIZE);
+
+    // C. Set the transmitter packet buffer memory size to the full configured addressable
+    // space of 32 KB. Write a 1 to the gem.dma_config[tx_pbuf_size] bit.
+    Cadence_GEM::set_bits(DMA_CONFIG, TX_PBUF_SIZE);
+
+    // d. Enable TCP/IP checksum generation offload on the transmitter. Write a 1 to the
+    // gem.dma_config[tx_pbuf_tcp_en] bit.
+    Cadence_GEM::set_bits(DMA_CONFIG, TX_PBUF_TCP_EN);
+
+    // e. Configure for a little endian system. Write a 0 to the
+    // gem.dma_config[endian_swap_packet] bit.
+    //! Bit que deve ser zero nao pode ser setado com 'or'
+    Cadence_GEM::set_bits_and(DMA_CONFIG, ENDIAN_SWAP_PACKET); // TESTAR!
+
+    // f. Configure AXI fixed burst length. Write 5'h10 to the
+    // gem.dma_config[amba_burst_length] bit field to use INCR16 AXI burst for higher
+    // performance.
+    Cadence_GEM::set_bits(DMA_CONFIG, AMBA_BURST_LENGTH);
+
+    // 4. Program the network control register (gem.network_control).
+    // a. Enable the MDIO. Write a 1 to the gem.network_control[man_port_en] bit.
+    Cadence_GEM::set_bits(NETWORK_CONTROL, MAN_PORT_EN);
+    
+    // b. Enable the transmitter. Write a 1 to the gem.network_control[enable_transmit] bit.
+    Cadence_GEM::set_bits(NETWORK_CONTROL, ENABLE_TRANSMIT);
+    
+    // c. Enable the receiver. Write a 1 to the gem.network_control[enable_receive] bit.
+    Cadence_GEM::set_bits(NETWORK_CONTROL, ENABLE_RECEIVE);
+
 }
 
 void Cadence_GEM::set_reg(unsigned long int pointer, unsigned int value)
@@ -168,6 +225,14 @@ void Cadence_GEM::set_bits(unsigned long int pointer, unsigned int value)
     Reg32 *p = reinterpret_cast<Reg32 *>(Memory_Map::ETH_BASE + pointer);
     Reg32 v = reinterpret_cast<Reg32>(value);
     *p = *p | v;
+}
+
+// operador '&'
+void Cadence_GEM::set_bits_and(unsigned long int pointer, unsigned int value)
+{
+    Reg32 *p = reinterpret_cast<Reg32 *>(Memory_Map::ETH_BASE + pointer);
+    Reg32 v = reinterpret_cast<Reg32>(value);
+    *p = *p & v;
 }
 
 __END_SYS
