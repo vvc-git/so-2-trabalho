@@ -56,19 +56,19 @@ public:
     {
         FULL_DUPLEX = 1 << 1,
         GIGABIT_MODE_ENABLE = 1 << 10,
-        NO_BROADCAST = 0 << 5, // Bit que deve ser zero nao pode ser setado com 'or'
+        NO_BROADCAST = ~(1 << 5), // Bit que deve ser zero
         MULTICAST_HASH_ENABLE = 1 << 6,
         COPY_ALL_FRAMES = 1 << 4,
         RECEIVE_CHECKSUM_OFFLOAD_ENABLE = 1 << 24,
         PAUSE_ENABLE = 1 << 13,
-        MDC_CLOCK_DIVISION = 000 << 18,
+        MDC_CLOCK_DIVISION = 000 << 18, // verificar
 
         // DMA_CONFIG bits
         RX_PBUF_SIZE = 11 << 8,
         TX_PBUF_SIZE = 1 << 10,
         TX_PBUF_TCP_EN = 1 << 11,
-        ENDIAN_SWAP_PACKET = 0 << 7, // Bit que deve ser zero nao pode ser setado com 'or'
-        AMBA_BURST_LENGTH = 10000,
+        ENDIAN_SWAP_PACKET = ~(1 << 7), // Bit que deve ser zero
+        AMBA_BURST_LENGTH = 1,
     };
 
     // construtor
@@ -129,7 +129,7 @@ Cadence_GEM::Cadence_GEM()
     // c. Enable reception of broadcast or multicast frames.
     // Write a 0 to the gem.network_config[no_broadcast] register to enable broadcast frames.
     //! Bit que deve ser zero nao pode ser setado com 'or'
-    //   ->  Cadence_GEM::set_bits(NETWORK_CONFIG, NO_BROADCAST);
+    Cadence_GEM::set_bits_and(NETWORK_CONFIG, NO_BROADCAST); // TESTAR!
 
     // write a 1 to the gem.network_config[multicast_hash_en] bit to enable multicast frames.
     Cadence_GEM::set_bits(NETWORK_CONFIG, MULTICAST_HASH_ENABLE);
@@ -180,11 +180,12 @@ Cadence_GEM::Cadence_GEM()
     // e. Configure for a little endian system. Write a 0 to the
     // gem.dma_config[endian_swap_packet] bit.
     //! Bit que deve ser zero nao pode ser setado com 'or'
-    //   ->   Cadence_GEM::set_bits(DMA_CONFIG, ENDIAN_SWAP_PACKET);
+    Cadence_GEM::set_bits_and(DMA_CONFIG, ENDIAN_SWAP_PACKET); // TESTAR!
 
     // f. Configure AXI fixed burst length. Write 5'h10 to the
     // gem.dma_config[amba_burst_length] bit field to use INCR16 AXI burst for higher
-    // performance. -> escrever '10000' nos bits [4:0]
+    // performance.
+    Cadence_GEM::set_bits(DMA_CONFIG, AMBA_BURST_LENGTH);
 
 }
 
@@ -201,6 +202,14 @@ void Cadence_GEM::set_bits(unsigned long int pointer, unsigned int value)
     Reg32 *p = reinterpret_cast<Reg32 *>(Memory_Map::ETH_BASE + pointer);
     Reg32 v = reinterpret_cast<Reg32>(value);
     *p = *p | v;
+}
+
+// operador '&'
+void Cadence_GEM::set_bits_and(unsigned long int pointer, unsigned int value)
+{
+    Reg32 *p = reinterpret_cast<Reg32 *>(Memory_Map::ETH_BASE + pointer);
+    Reg32 v = reinterpret_cast<Reg32>(value);
+    *p = *p & v;
 }
 
 __END_SYS
