@@ -26,6 +26,12 @@ public:
      }
 };
 
+void copy_rx_tx(SiFiveU_NIC *nic)
+{
+
+     memcpy(nic->rx_data_phy, nic->tx_data_phy, FRAME_SIZE);
+}
+
 int main()
 {
      cout << "\n\n ******************** TESTANDO NIC *********************\n\n"
@@ -35,6 +41,17 @@ int main()
      NIC_Receiver nic_receiver = NIC_Receiver();
 
      sifiveu_nic.attach(&nic_receiver);
+
+     // TESTE
+     char data[1500];
+     data[0] = 'a';
+     data[1] = 'b';
+     data[2] = 'c';
+     data[3] = 'd';
+
+     sifiveu_nic.send(data, 1500);
+
+     copy_rx_tx(&sifiveu_nic);
 
      sifiveu_nic.int_handler();
 

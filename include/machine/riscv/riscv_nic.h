@@ -41,12 +41,10 @@ public:
     ~SiFiveU_NIC(){};
     void attach(Data_Observer<CT_Buffer, void> *o) { Data_Observed<CT_Buffer, void>::attach(o); };
 
-    void int_handler(int interrupt = 1)
-    {
-        receive();
-    }
+    void int_handler(int interrupt = 1) { receive(); };
 
     void receive();
+    void send(char *data, unsigned int size);
 
 public:
     CT_Buffer *tx_desc_buffer;
@@ -64,7 +62,6 @@ public:
     Log_Addr log_init_tx_desc;
     Log_Addr log_init_tx_data;
 
-    unsigned int DATA_SIZE = 1500;
     unsigned int DESC_SIZE = 16;
     unsigned int SLOTS_BUFFER = 4;
 };
@@ -73,11 +70,11 @@ SiFiveU_NIC::SiFiveU_NIC()
 {
     // TX Alocando memoria para os buffers tx de descritores e dados
     tx_desc_buffer = new CT_Buffer(DESC_SIZE * SLOTS_BUFFER);
-    tx_data_buffer = new CT_Buffer(DATA_SIZE * SLOTS_BUFFER);
+    tx_data_buffer = new CT_Buffer(FRAME_SIZE * SLOTS_BUFFER);
 
     // RX Alocando memoria para os buffers rx de descritores e dados
     rx_desc_buffer = new CT_Buffer(DESC_SIZE * SLOTS_BUFFER);
-    rx_data_buffer = new CT_Buffer(DATA_SIZE * SLOTS_BUFFER);
+    rx_data_buffer = new CT_Buffer(FRAME_SIZE * SLOTS_BUFFER);
 
     // Pegando endereço físico dos buffers para NIC
     // TX
@@ -99,7 +96,7 @@ SiFiveU_NIC::SiFiveU_NIC()
     for (unsigned int i = 0; i < SLOTS_BUFFER; i++)
     {
         addr_desc = tx_desc_phy + (i * DESC_SIZE);
-        addr_data = tx_data_phy + (i * DATA_SIZE);
+        addr_data = tx_data_phy + (i * FRAME_SIZE);
 
         // cout << i << "º \n\n";
         // cout << "addr_desc: " << addr_desc << endl;
@@ -128,7 +125,7 @@ SiFiveU_NIC::SiFiveU_NIC()
     for (unsigned int i = 0; i < SLOTS_BUFFER; i++)
     {
         addr_desc = rx_desc_phy + (i * DESC_SIZE);
-        addr_data = rx_data_phy + (i * DATA_SIZE);
+        addr_data = rx_data_phy + (i * FRAME_SIZE);
 
         // cout << i << "º \n\n";
         // cout << "addr_desc: " << addr_desc << endl;
@@ -160,6 +157,16 @@ SiFiveU_NIC::SiFiveU_NIC()
     }
 }
 
+void SiFiveU_NIC::send(char *data, unsigned int size)
+{
+    if (size <= FRAME_SIZE)
+    {
+        // Varrer descriptors de tx procurando buffer livre
+        // TESTE: colocando no primeiro slot
+        memcpy(tx_data_phy, data, FRAME_SIZE);
+    }
+}
+
 void SiFiveU_NIC::receive()
 {
     //! varrer rx descriptor até encontrar o bit válido
@@ -171,20 +178,8 @@ void SiFiveU_NIC::receive()
     addr = (addr << 32);
     addr = addr | desc->address_lsb;
 
-    // TESTE: Valor de teste
-    char teste[4];
-    teste[0] = 'd';
-    teste[1] = 'a';
-    teste[2] = 'n';
-    teste[3] = 'y';
-
-    // cout << "teste: " << teste[0] << endl;
-
-    // TESTE: Copiando teste para o endereço de dados em RX (addr)
-    memcpy(addr, teste, DATA_SIZE);
-
     //! lembrar de aumentar memoria do qemu
-    CT_Buffer *buffer = new CT_Buffer(DATA_SIZE);
+    CT_Buffer *buffer = new CT_Buffer(FRAME_SIZE);
 
     //! depois pegar size do descritor
 
