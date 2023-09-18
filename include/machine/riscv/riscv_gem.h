@@ -10,7 +10,7 @@
 
 __BEGIN_SYS
 
-OStream cout;
+// OStream cout;
 
 class Cadence_GEM
 {
@@ -35,6 +35,8 @@ public:
         NETWORK_CONTROL = 0x0000000000,
         NETWORK_CONFIG = 0x0000000004,
         NETWORK_STATUS = 0x0000000008,
+        TRANSMIT_Q1_PTR = 0x0000000440, 
+        RECEIVE_Q1_PTR = 0x0000000480, 
         TRANSMIT_STATUS = 0x0000000014,
         RECEIVE_Q_PTR = 0x0000000018,
         TRANSMIT_Q_PTR = 0x000000001C,
@@ -53,7 +55,8 @@ public:
     // Network Config Register bits
     enum
     {
-        FULL_DUPLEX = 1 << 2,
+        // !! Verificar se os deslocamentos estão certos!! (FULL DUPLEX estava errado) 
+        FULL_DUPLEX = 1 << 1,
         GIGABIT_MODE_ENABLE = 1 << 10,
         NO_BROADCAST = 1 << 5,
         MULTICAST_HASH_ENABLE = 1 << 6,
@@ -102,12 +105,16 @@ Cadence_GEM::Cadence_GEM()
 
     // 5. Clear the buffer queues.
     // Write 0x0 to the gem.receive_q{ , 1}_ptr
-    // ?? Duvida se esta mesmo sentando, pois testamos com os WR e mesmo tava dando errado
-    Cadence_GEM::set_reg(RECEIVE_Q_PTR, 0X0);
+    Cadence_GEM::set_reg(TRANSMIT_Q_PTR, 0X0);
+
+    // ?? Duvida de como vamos fazer para ignorar essa fila
+    Cadence_GEM::set_reg(TRANSMIT_Q1_PTR, 0X0);
 
     // Write 0x0 to the gem.transmit_q{ , 1}_ptr
-    // ?? Duvida se esta mesmo sentando, pois testamos com os WR e mesmo tava dando errado
     Cadence_GEM::set_reg(RECEIVE_Q_PTR, 0x0);
+
+    // ?? Duvida de como vamos fazer para ignorar essa fila
+    Cadence_GEM::set_reg(RECEIVE_Q1_PTR, 0X0);
 
     // Configure the controller
 

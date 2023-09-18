@@ -1,12 +1,12 @@
 #include <utility/ostream.h>
 #include <utility/observer.h>
 #include <utility/ct_buffer.h>
-#include <utility/ct_buffer.h>
 #include <machine/riscv/riscv_nic.h>
+#include <machine/riscv/riscv_gem.h>
 
 using namespace EPOS;
 
-// OStream cout;
+OStream cout;
 
 class NIC_Receiver : public Data_Observer<CT_Buffer, void>
 {
@@ -36,6 +36,9 @@ int main()
 {
      cout << "\n\n ******************** TESTANDO NIC *********************\n\n"
           << endl;
+
+     Cadence_GEM * t = new Cadence_GEM();
+     cout << t << endl;
 
      SiFiveU_NIC sifiveu_nic = SiFiveU_NIC();
      NIC_Receiver nic_receiver = NIC_Receiver();

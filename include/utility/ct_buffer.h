@@ -14,7 +14,7 @@
 
 __BEGIN_UTIL
 
-OStream cout;
+// OStream cout;
 
 class CT_Buffer
 {
