@@ -103,15 +103,10 @@ SiFiveU_NIC::SiFiveU_NIC()
         addr_desc = tx_desc_phy + (i * DESC_SIZE);
         addr_data = tx_data_phy + (i * FRAME_SIZE);
 
-        // cout << i << "º \n\n";
-        // cout << "addr_desc: " << addr_desc << endl;
-        // cout << "addr_data: " << addr_data << endl;
 
         unsigned int addr_data_lsb = addr_data;         // pegou os 32 menos significativos
         unsigned int addr_data_msb = (addr_data >> 32); // pegou os 32 mais significativos
 
-        // cout << "addr_data_lsb: " << hex << addr_data_lsb << endl;
-        // cout << "addr_data_msb: " << hex << addr_data_msb << endl;
 
         Desc *desc = addr_desc;
         desc->address_lsb = addr_data_lsb;
@@ -119,11 +114,6 @@ SiFiveU_NIC::SiFiveU_NIC()
         desc->address_msb = addr_data_msb;
         desc->control_3 = 0;
 
-        // cout << "desc: " << desc << endl;
-        // cout << "desc->address_lsb: " << hex << desc->address_lsb << endl;
-        // cout << "desc->control_1: " << hex << desc->control_1 << endl;
-        // cout << "desc->address_msb: " << hex << desc->address_msb << endl;
-        // cout << "desc->control_3: " << hex << desc->control_3 << endl;
     }
 
     // setting RX buffers
@@ -132,15 +122,11 @@ SiFiveU_NIC::SiFiveU_NIC()
         addr_desc = rx_desc_phy + (i * DESC_SIZE);
         addr_data = rx_data_phy + (i * FRAME_SIZE);
 
-        // cout << i << "º \n\n";
-        // cout << "addr_desc: " << addr_desc << endl;
-        // cout << "addr_data: " << addr_data << endl;
+
 
         unsigned int addr_data_lsb = addr_data;         // pegou os 32 menos significativos
         unsigned int addr_data_msb = (addr_data >> 32); // pegou os 32 mais significativos
 
-        // cout << "addr_data_lsb: " << hex << addr_data_lsb << endl;
-        // cout << "addr_data_msb: " << hex << addr_data_msb << endl;
 
         // Configure Buffer Descriptors, p. 1061
         // 3. Mark all entries in this list as owned by controller. Set bit [0] of word [0] of each buffer
@@ -160,11 +146,7 @@ SiFiveU_NIC::SiFiveU_NIC()
             desc->address_lsb = desc->address_lsb | RX_WORD0_3_LSB_WRP;
         }
 
-        // cout << "desc: " << desc << endl;
-        // cout << "desc->address_lsb: " << hex << desc->address_lsb << endl;
-        // cout << "desc->control_1: " << hex << desc->control_1 << endl;
-        // cout << "desc->address_msb: " << hex << desc->address_msb << endl;
-        // cout << "desc->control_3: " << hex << desc->control_3 << endl;
+
     }
 
     unsigned int rx_phy_lsb = rx_desc_phy;
