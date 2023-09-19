@@ -28,9 +28,16 @@ private:
         RX_WORD0_3_LSB_WRP = 0x00000002,
     };
 
+    enum  
+    {
+        TX_WORD1_OWN_CONTROLLER = 1 << 31, 
+        TX_WORD1_WRP_BIT = 1 << 30,
+    };
+
     // Utilizando modo de endereçamento de 64 bits
     struct Desc
     {
+        // ?? Será que não é melhor trocar por word1, word2...? Para seguir o manual (manual)
         volatile Reg32 address_lsb;
         volatile Reg32 control_1;
         volatile Reg32 address_msb; // Upper 32-bit address of the data buffer.
@@ -103,18 +110,39 @@ SiFiveU_NIC::SiFiveU_NIC()
         addr_desc = tx_desc_phy + (i * DESC_SIZE);
         addr_data = tx_data_phy + (i * FRAME_SIZE);
 
+        long unsigned int t  = addr_desc;
+        cout << "Addr_desc " << hex << t << endl;
+
 
         unsigned int addr_data_lsb = addr_data;         // pegou os 32 menos significativos
         unsigned int addr_data_msb = (addr_data >> 32); // pegou os 32 mais significativos
 
 
-        Desc *desc = addr_desc;
-        desc->address_lsb = addr_data_lsb;
-        desc->control_1 = 7;
-        desc->address_msb = addr_data_msb;
-        desc->control_3 = 0;
+        // Configure BUffer Descriptors, p. 1062
+        // 2. Mark all entries in this list as owned by the controller. Set bit [31] of word [1] to 0.  (TX_WORD1_OWN_CONTROLLER)
+        // 3. Mark the last descriptor in the list with the wrap bit. Set bit [30] in word [1] to 1.
+        // 4. Write the base address of transmit buffer descriptor list to Controller registers gem.transmit_q{ , 1}_ptr.
+        Desc *tx_desc = addr_desc;
+        tx_desc->address_lsb = addr_data_lsb;
+        tx_desc->control_1 = TX_WORD1_OWN_CONTROLLER | tx_desc->control_1;
+        tx_desc->address_msb = addr_data_msb;
+         // ?? Comentei porque não setamos nada (apenas para teste)
+        // tx_desc->control_3 = 0;
+
+        // Setando o bit WRP no último descritor (item 3)
+        if (i == (SLOTS_BUFFER - 1))
+        {
+            // ?? Estou mantendo os bits que já estavam. Não sei se é melhor escolha, ja que não sabemos o que tinha antes (lixo...)
+            tx_desc->control_1 = TX_WORD1_WRP_BIT | tx_desc->control_1;
+        }
 
     }
+
+    // Configure Buffer Descriptor, p.1062
+    //4. Write the base address of transmit buffer descriptor list to Controller registers gem.transmit_q{ , 1}_ptr..
+    unsigned int tx_phy_lsb = tx_desc_phy;
+    set_reg(TRANSMIT_Q_PTR, tx_phy_lsb);
+
 
     // setting RX buffers
     for (unsigned int i = 0; i < SLOTS_BUFFER; i++)
@@ -129,26 +157,30 @@ SiFiveU_NIC::SiFiveU_NIC()
 
 
         // Configure Buffer Descriptors, p. 1061
-        // 3. Mark all entries in this list as owned by controller. Set bit [0] of word [0] of each buffer
-        // descriptor to 0.
-        // 4. Mark the last descriptor in the buffer descriptor list with the wrap bit, (bit [1] in word [0])
-        // set.
+        // 3. Mark all entries in this list as owned by controller. Set bit [0] of word [0] of each buffer descriptor to 0.
+        // 4. Mark the last descriptor in the buffer descriptor list with the wrap bit, (bit [1] in word [0]) set.
         // 5. Fill the addresses of the allocated buffers in the buffer descriptors (bits [31-2], Word [0])
-        Desc *desc = addr_desc;
-        desc->address_lsb = addr_data_lsb & RX_WORD0_3_LSB; // Os 3 últimos bits da palavra 0 estao sendo zerados
-        desc->control_1 = 7;
-        desc->address_msb = addr_data_msb;
-        desc->control_3 = 0;
+        Desc *rx_desc = addr_desc;
+        rx_desc->address_lsb = addr_data_lsb & RX_WORD0_3_LSB; // Os 3 últimos bits da palavra 0 estao sendo zerados
+        // ?? Comentei porque não setamos nada (apenas para teste)
+        // rx_desc->control_1 = 7;
+        rx_desc->address_msb = addr_data_msb;
+         // ?? Comentei porque não setamos nada (apenas para teste)
+        //rx_desc->control_3 = 0;
 
         // Setando o bit WRP no último descritor
         if (i == (SLOTS_BUFFER - 1))
         {
-            desc->address_lsb = desc->address_lsb | RX_WORD0_3_LSB_WRP;
+            rx_desc->address_lsb = rx_desc->address_lsb | RX_WORD0_3_LSB_WRP;
         }
 
 
     }
 
+
+    // Configure Buffer Descriptor, p.1061
+    // 6. Write the base address of this buffer descriptor list to the gem.receive_q{ , 1}_ptr
+    // registers.
     unsigned int rx_phy_lsb = rx_desc_phy;
     set_reg(RECEIVE_Q_PTR, rx_phy_lsb);
 
