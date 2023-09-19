@@ -4,12 +4,13 @@
 #include <network/ethernet.h>
 #include <utility/ct_buffer.h>
 #include <architecture/cpu.h>
+#include <machine/riscv/riscv_gem.h>
 
 __BEGIN_SYS
 
 // OStream cout;
 
-class SiFiveU_NIC : public Data_Observed<CT_Buffer, void>
+class SiFiveU_NIC : public Data_Observed<CT_Buffer, void>, Cadence_GEM
 {
 
 private:
@@ -46,6 +47,8 @@ public:
     void receive();
     void send(char *data, unsigned int size);
 
+    void init_regs();
+
 public:
     CT_Buffer *tx_desc_buffer;
     CT_Buffer *tx_data_buffer;
@@ -67,7 +70,9 @@ public:
 };
 
 SiFiveU_NIC::SiFiveU_NIC()
-{
+{ 
+    init_regs();
+
     // TX Alocando memoria para os buffers tx de descritores e dados
     tx_desc_buffer = new CT_Buffer(DESC_SIZE * SLOTS_BUFFER);
     tx_data_buffer = new CT_Buffer(FRAME_SIZE * SLOTS_BUFFER);
@@ -137,8 +142,14 @@ SiFiveU_NIC::SiFiveU_NIC()
         // cout << "addr_data_lsb: " << hex << addr_data_lsb << endl;
         // cout << "addr_data_msb: " << hex << addr_data_msb << endl;
 
+        // Configure Buffer Descriptors, p. 1061
+        // 3. Mark all entries in this list as owned by controller. Set bit [0] of word [0] of each buffer
+        // descriptor to 0.
+        // 4. Mark the last descriptor in the buffer descriptor list with the wrap bit, (bit [1] in word [0])
+        // set.
+        // 5. Fill the addresses of the allocated buffers in the buffer descriptors (bits [31-2], Word [0])
         Desc *desc = addr_desc;
-        desc->address_lsb = addr_data_lsb & RX_WORD0_3_LSB; // Os 3 últimos bits da palavra 0 serão zerados
+        desc->address_lsb = addr_data_lsb & RX_WORD0_3_LSB; // Os 3 últimos bits da palavra 0 estao sendo zerados
         desc->control_1 = 7;
         desc->address_msb = addr_data_msb;
         desc->control_3 = 0;
@@ -155,6 +166,10 @@ SiFiveU_NIC::SiFiveU_NIC()
         // cout << "desc->address_msb: " << hex << desc->address_msb << endl;
         // cout << "desc->control_3: " << hex << desc->control_3 << endl;
     }
+
+    unsigned int rx_phy_lsb = rx_desc_phy;
+    set_reg(RECEIVE_Q_PTR, rx_phy_lsb);
+
 }
 
 void SiFiveU_NIC::send(char *data, unsigned int size)
@@ -188,6 +203,129 @@ void SiFiveU_NIC::receive()
 
     // Chamando notify (Observed)
     notify(buffer);
+}
+
+
+void SiFiveU_NIC::init_regs() 
+{
+    cout << "Iniciando registradores" << endl;
+    // 1. Clear the network control register
+    //  Write 0x0 to the gem.network_control register.
+    set_reg(NETWORK_CONTROL, 0x0);
+
+    // 2. Clear the statistics registers
+    // Write a 1 to the gem.network_control [clear_all_stats_regs].
+    set_bits(NETWORK_CONTROL, CLEAR_ALL_STATS_REGS);
+
+    // 3. Clear the status registers
+
+    // ?? Não conseguimos fazer essa:
+    // Write a 1 to the status registers.
+
+    // gem.receive_status = 0x0F
+    set_reg(RECEIVE_STATUS, 0x0F);
+
+    // gem.transmit_status = 0xFF.
+    set_reg(TRANSMIT_STATUS, 0xFF);
+
+    // 4.Disable all interrupts.
+    // Write 0x7FF_FEFF to the gem. int_disable register.
+    set_reg(INT_DISABLE, 0x7FFFEFF);
+
+    // 5. Clear the buffer queues.
+    // Write 0x0 to the gem.receive_q{ , 1}_ptr
+    set_reg(TRANSMIT_Q_PTR, 0X0);
+
+    // ?? Duvida de como vamos fazer para ignorar essa fila
+    set_reg(TRANSMIT_Q1_PTR, 0X0);
+
+    // Write 0x0 to the gem.transmit_q{ , 1}_ptr
+    set_reg(RECEIVE_Q_PTR, 0x0);
+
+    // ?? Duvida de como vamos fazer para ignorar essa fila
+    set_reg(RECEIVE_Q1_PTR, 0X0);
+
+    // Configure the controller
+
+    // 1. Enable full duplex.
+    // a. Write a 1 to the gem.network_config[full_duplex] bit.
+    set_bits(NETWORK_CONFIG, FULL_DUPLEX);
+
+    // b. Enable gigabit mode.
+    // Write a 1 to the gem.network_config[gigabit_mode_enable] bit.
+    set_bits(NETWORK_CONFIG, GIGABIT_MODE_ENABLE);
+
+    // c. Enable reception of broadcast or multicast frames.
+    // Write a 0 to the gem.network_config[no_broadcast] register to enable broadcast frames.
+    //! Bit que deve ser zero nao pode ser setado com 'or'
+    set_bits_and(NETWORK_CONFIG, NO_BROADCAST); // TESTAR!
+
+    // write a 1 to the gem.network_config[multicast_hash_en] bit to enable multicast frames.
+    set_bits(NETWORK_CONFIG, MULTICAST_HASH_ENABLE);
+
+    // d. Enable promiscuous mode.
+    // Write a 1 to the gem.network_config[copy_all_frames] bit.
+    set_bits(NETWORK_CONFIG, COPY_ALL_FRAMES);
+
+    // e. Enable TCP/IP checksum offload feature on receive.
+    // Write a 1 to the gem.network_config[receive_checksum_offload_enable] bit.
+    set_bits(NETWORK_CONFIG, RECEIVE_CHECKSUM_OFFLOAD_ENABLE);
+
+    // f.Enable pause frames. Write a 1 to gem.network_config[pause_enable] bit.
+    set_bits(NETWORK_CONFIG, PAUSE_ENABLE);
+
+    // g. Set the MDC clock divisor.
+    // Write the appropriate MDC clock divisor to the gem.network_config[mdc_clock_division] bit.
+    // ?? QUAL CLOCK ESCOLHER?
+    set_bits(NETWORK_CONFIG, MDC_CLOCK_DIVISION);
+
+    // 2. Set the MAC address.
+    // Setando agora o endereço aleatório 0xFFFFFFFFFFFF
+    // Write to the gem.spec_add1_bottom register.
+    set_bits(SPEC_ADD1_BOTTOM, 0xFFFFFFFF);
+
+    // Write to the gem.spec_add1_top register. The
+    // most significant 16 bits go to gem.spec_add1_top
+    set_bits(SPEC_ADD1_BOTTOM, 0x0000FFFF);
+
+    // 3. Program the DMA configuration register (gem.dma_config)
+
+    // a. Set the receive buffer size to 1,600 bytes. Write a value of 8'h19 to the
+    // gem.dma_config[rx_buf_size] bit field. (escrevendo 24, pois 24*64 = 1600)
+    set_reg(DMA_CONFIG, 0x00018000);
+
+    // b. Set the receiver packet buffer memory size to the full configured addressable space
+    // of 32 KB. Write 2'b11 to the gem.dma_config[rx_pbuf_size] bit field
+    set_bits(DMA_CONFIG, RX_PBUF_SIZE);
+
+    // C. Set the transmitter packet buffer memory size to the full configured addressable
+    // space of 32 KB. Write a 1 to the gem.dma_config[tx_pbuf_size] bit.
+    set_bits(DMA_CONFIG, TX_PBUF_SIZE);
+
+    // d. Enable TCP/IP checksum generation offload on the transmitter. Write a 1 to the
+    // gem.dma_config[tx_pbuf_tcp_en] bit.
+    set_bits(DMA_CONFIG, TX_PBUF_TCP_EN);
+
+    // e. Configure for a little endian system. Write a 0 to the
+    // gem.dma_config[endian_swap_packet] bit.
+    //! Bit que deve ser zero nao pode ser setado com 'or'
+    set_bits_and(DMA_CONFIG, ENDIAN_SWAP_PACKET); // TESTAR!
+
+    // f. Configure AXI fixed burst length. Write 5'h10 to the
+    // gem.dma_config[amba_burst_length] bit field to use INCR16 AXI burst for higher
+    // performance.
+    set_bits(DMA_CONFIG, AMBA_BURST_LENGTH);
+
+    // 4. Program the network control register (gem.network_control).
+    // a. Enable the MDIO. Write a 1 to the gem.network_control[man_port_en] bit.
+    set_bits(NETWORK_CONTROL, MAN_PORT_EN);
+    
+    // b. Enable the transmitter. Write a 1 to the gem.network_control[enable_transmit] bit.
+    set_bits(NETWORK_CONTROL, ENABLE_TRANSMIT);
+    
+    // c. Enable the receiver. Write a 1 to the gem.network_control[enable_receive] bit.
+    set_bits(NETWORK_CONTROL, ENABLE_RECEIVE);
+
 }
 
 __END_SYS
