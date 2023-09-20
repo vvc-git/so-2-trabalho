@@ -15,13 +15,13 @@ OStream cout;
 class Cadence_GEM
 {
 protected:
-    typedef CPU::Reg8 Reg8;
-    typedef CPU::Reg16 Reg16;
+    // typedef CPU::Reg8 Reg8;
+    // typedef CPU::Reg16 Reg16;
     typedef CPU::Reg32 Reg32;
     typedef CPU::Log_Addr Log_Addr;
     typedef CPU::Phy_Addr Phy_Addr;
     // USAR NOSSO BUFFER
-    typedef MMU::DMA_Buffer DMA_Buffer;
+    // typedef MMU::DMA_Buffer DMA_Buffer;
     // Ver como usar
     typedef Ethernet::Address MAC_Address;
 
@@ -68,9 +68,10 @@ public:
         COPY_ALL_FRAMES = 1 << 4,
         RECEIVE_CHECKSUM_OFFLOAD_ENABLE = 1 << 24,
         PAUSE_ENABLE = 1 << 13,
-        MDC_CLOCK_DIVISION = 000 << 18, // verificar
+        MDC_CLOCK_DIVISION = 111 << 18, // verificar
 
         // DMA_CONFIG bits
+        RX_BUF_SIZE = 0x00019000,
         RX_PBUF_SIZE = 11 << 8,
         TX_PBUF_SIZE = 1 << 10,
         TX_PBUF_TCP_EN = 1 << 11,

@@ -8,7 +8,6 @@
 
 __BEGIN_SYS
 
-// OStream cout;
 
 class SiFiveU_NIC : public Data_Observed<CT_Buffer, void>, Cadence_GEM
 {
@@ -27,7 +26,7 @@ private:
         RX_WORD0_3_LSB = 0xfffffff8,
         RX_WORD0_3_LSB_WRP = 0x00000002,
     };
-
+    // Descriptor
     enum  
     {
         TX_WORD1_OWN_CONTROLLER = 1 << 31, 
@@ -109,9 +108,6 @@ SiFiveU_NIC::SiFiveU_NIC()
     {
         addr_desc = tx_desc_phy + (i * DESC_SIZE);
         addr_data = tx_data_phy + (i * FRAME_SIZE);
-
-        long unsigned int t  = addr_desc;
-        cout << "Addr_desc " << hex << t << endl;
 
 
         unsigned int addr_data_lsb = addr_data;         // pegou os 32 menos significativos
@@ -222,7 +218,6 @@ void SiFiveU_NIC::receive()
 
 void SiFiveU_NIC::init_regs() 
 {
-    cout << "Iniciando registradores" << endl;
     // 1. Clear the network control register
     //  Write 0x0 to the gem.network_control register.
     set_reg(NETWORK_CONTROL, 0x0);
@@ -306,7 +301,7 @@ void SiFiveU_NIC::init_regs()
 
     // a. Set the receive buffer size to 1,600 bytes. Write a value of 8'h19 to the
     // gem.dma_config[rx_buf_size] bit field. (escrevendo 24, pois 24*64 = 1600)
-    set_reg(DMA_CONFIG, 0x00018000);
+    set_reg(DMA_CONFIG, RX_BUF_SIZE);
 
     // b. Set the receiver packet buffer memory size to the full configured addressable space
     // of 32 KB. Write 2'b11 to the gem.dma_config[rx_pbuf_size] bit field
