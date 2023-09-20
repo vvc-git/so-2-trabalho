@@ -80,14 +80,14 @@ int philosopher(int n, int l, int c)
 
         
         //Display::position(l, c);
-        //cout << "thinking";
+        cout << "thinking";
         
 
         Delay thinking(1000000);
 
         
         //Display::position(l, c);
-        //cout << " hungry ";
+        cout << " hungry ";
         
 
         chopstick[first]->p();   // get first chopstick
@@ -95,14 +95,14 @@ int philosopher(int n, int l, int c)
 
         
         //Display::position(l, c);
-        //cout << " eating ";
+        cout << " eating ";
         
 
         Delay eating(500000);
 
         
         //Display::position(l, c);
-        //cout << "  sate  ";
+        cout << "  sate  ";
         
 
         chopstick[first]->v();   // release first chopstick
