@@ -21,8 +21,6 @@ public:
           cout << "NIC_Receiver update: " << endl;
           cout << data[0] << " " << data[1] << " " << data[2] << " " << data[3] << endl;
 
-          //  ! verificar aqui depois
-          //  buffer->nic()->free(buffer); // to return to the buffer pool;
      }
 };
 
@@ -34,11 +32,9 @@ void copy_rx_tx(SiFiveU_NIC *nic)
 
 int main()
 {
-     cout << "\n\n ******************** TESTANDO NIC *********************\n\n"
+     cout << "\n\n ********************  NIC *********************\n\n"
           << endl;
 
-     //Cadence_GEM * t = new Cadence_GEM();
-     //cout << t << endl;
 
      SiFiveU_NIC sifiveu_nic = SiFiveU_NIC();
      NIC_Receiver nic_receiver = NIC_Receiver();
@@ -58,7 +54,7 @@ int main()
 
      sifiveu_nic.int_handler();
 
-     cout << "\n\n ************************* FIM *************************\n\n"
+     cout << "\n\n ************************* NIC *************************\n\n"
           << endl;
 
      return 0;

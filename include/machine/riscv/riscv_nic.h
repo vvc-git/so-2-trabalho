@@ -36,7 +36,7 @@ private:
     // Utilizando modo de endereçamento de 64 bits
     struct Desc
     {
-        // ?? Será que não é melhor trocar por word1, word2...? Para seguir o manual (manual)
+
         volatile Reg32 address_lsb;
         volatile Reg32 control_1;
         volatile Reg32 address_msb; // Upper 32-bit address of the data buffer.
@@ -97,8 +97,8 @@ SiFiveU_NIC::SiFiveU_NIC()
     rx_data_phy = rx_data_buffer->phy_address();
 
     // Pegando endereço lógico dos buffers para CPU
-    // log_init_tx_desc = buffer_tx_desc->log_address();
-    // log_init_tx_data = buffer_tx_data->log_address();
+    log_init_tx_desc = tx_desc_buffer->log_address();
+    log_init_tx_data = tx_data_buffer->log_address();
 
     Phy_Addr addr_desc;
     Phy_Addr addr_data;
@@ -122,13 +122,10 @@ SiFiveU_NIC::SiFiveU_NIC()
         tx_desc->address_lsb = addr_data_lsb;
         tx_desc->control_1 = TX_WORD1_OWN_CONTROLLER | tx_desc->control_1;
         tx_desc->address_msb = addr_data_msb;
-         // ?? Comentei porque não setamos nada (apenas para teste)
-        // tx_desc->control_3 = 0;
 
         // Setando o bit WRP no último descritor (item 3)
         if (i == (SLOTS_BUFFER - 1))
         {
-            // ?? Estou mantendo os bits que já estavam. Não sei se é melhor escolha, ja que não sabemos o que tinha antes (lixo...)
             tx_desc->control_1 = TX_WORD1_WRP_BIT | tx_desc->control_1;
         }
 
@@ -158,11 +155,7 @@ SiFiveU_NIC::SiFiveU_NIC()
         // 5. Fill the addresses of the allocated buffers in the buffer descriptors (bits [31-2], Word [0])
         Desc *rx_desc = addr_desc;
         rx_desc->address_lsb = addr_data_lsb & RX_WORD0_3_LSB; // Os 3 últimos bits da palavra 0 estao sendo zerados
-        // ?? Comentei porque não setamos nada (apenas para teste)
-        // rx_desc->control_1 = 7;
         rx_desc->address_msb = addr_data_msb;
-         // ?? Comentei porque não setamos nada (apenas para teste)
-        //rx_desc->control_3 = 0;
 
         // Setando o bit WRP no último descritor
         if (i == (SLOTS_BUFFER - 1))
@@ -194,7 +187,6 @@ void SiFiveU_NIC::send(char *data, unsigned int size)
 
 void SiFiveU_NIC::receive()
 {
-    //! varrer rx descriptor até encontrar o bit válido
     Desc *desc = rx_desc_phy;
 
     Phy_Addr addr;
@@ -203,10 +195,7 @@ void SiFiveU_NIC::receive()
     addr = (addr << 32);
     addr = addr | desc->address_lsb;
 
-    //! lembrar de aumentar memoria do qemu
     CT_Buffer *buffer = new CT_Buffer(FRAME_SIZE);
-
-    //! depois pegar size do descritor
 
     // Colocando o valor de RX data (addr) para o CT_buffer alocado
     buffer->set_dma_data((char *)addr, 1);
@@ -226,11 +215,7 @@ void SiFiveU_NIC::init_regs()
     // Write a 1 to the gem.network_control [clear_all_stats_regs].
     set_bits(NETWORK_CONTROL, CLEAR_ALL_STATS_REGS);
 
-    // 3. Clear the status registers
-
-    // ?? Não conseguimos fazer essa:
-    // Write a 1 to the status registers.
-
+    // 3. Clear the status registers. Write a 1 to the status registers.
     // gem.receive_status = 0x0F
     set_reg(RECEIVE_STATUS, 0x0F);
 
@@ -242,16 +227,16 @@ void SiFiveU_NIC::init_regs()
     set_reg(INT_DISABLE, 0x7FFFEFF);
 
     // 5. Clear the buffer queues.
-    // Write 0x0 to the gem.receive_q{ , 1}_ptr
+    // Write 0x0 to the gem.transmit_q{}_ptr
     set_reg(TRANSMIT_Q_PTR, 0X0);
 
-    // ?? Duvida de como vamos fazer para ignorar essa fila
+    // Write 0x0 to the gem.transmit_q{1}_ptr
     set_reg(TRANSMIT_Q1_PTR, 0X0);
 
-    // Write 0x0 to the gem.transmit_q{ , 1}_ptr
+    // Write 0x0 to the gem.receive_q{}_ptr
     set_reg(RECEIVE_Q_PTR, 0x0);
 
-    // ?? Duvida de como vamos fazer para ignorar essa fila
+     // Write 0x0 to the gem.receive_q{1}_ptr
     set_reg(RECEIVE_Q1_PTR, 0X0);
 
     // Configure the controller
@@ -266,8 +251,7 @@ void SiFiveU_NIC::init_regs()
 
     // c. Enable reception of broadcast or multicast frames.
     // Write a 0 to the gem.network_config[no_broadcast] register to enable broadcast frames.
-    //! Bit que deve ser zero nao pode ser setado com 'or'
-    set_bits_and(NETWORK_CONFIG, NO_BROADCAST); // TESTAR!
+    set_bits_and(NETWORK_CONFIG, NO_BROADCAST);
 
     // write a 1 to the gem.network_config[multicast_hash_en] bit to enable multicast frames.
     set_bits(NETWORK_CONFIG, MULTICAST_HASH_ENABLE);
@@ -285,7 +269,6 @@ void SiFiveU_NIC::init_regs()
 
     // g. Set the MDC clock divisor.
     // Write the appropriate MDC clock divisor to the gem.network_config[mdc_clock_division] bit.
-    // ?? QUAL CLOCK ESCOLHER?
     set_bits(NETWORK_CONFIG, MDC_CLOCK_DIVISION);
 
     // 2. Set the MAC address.
@@ -317,8 +300,7 @@ void SiFiveU_NIC::init_regs()
 
     // e. Configure for a little endian system. Write a 0 to the
     // gem.dma_config[endian_swap_packet] bit.
-    //! Bit que deve ser zero nao pode ser setado com 'or'
-    set_bits_and(DMA_CONFIG, ENDIAN_SWAP_PACKET); // TESTAR!
+    set_bits_and(DMA_CONFIG, ENDIAN_SWAP_PACKET);
 
     // f. Configure AXI fixed burst length. Write 5'h10 to the
     // gem.dma_config[amba_burst_length] bit field to use INCR16 AXI burst for higher

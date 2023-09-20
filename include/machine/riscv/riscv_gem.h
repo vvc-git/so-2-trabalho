@@ -15,18 +15,9 @@ OStream cout;
 class Cadence_GEM
 {
 protected:
-    // typedef CPU::Reg8 Reg8;
-    // typedef CPU::Reg16 Reg16;
     typedef CPU::Reg32 Reg32;
     typedef CPU::Log_Addr Log_Addr;
     typedef CPU::Phy_Addr Phy_Addr;
-    // USAR NOSSO BUFFER
-    // typedef MMU::DMA_Buffer DMA_Buffer;
-    // Ver como usar
-    typedef Ethernet::Address MAC_Address;
-
-    // typedef CPU::IO_Port IO_Port;
-    // typedef CPU::IO_Irq IO_Irq;
 
 public:
     // Register offsets
@@ -60,7 +51,6 @@ public:
     // Network Config Register bits
     enum
     {
-        // !! Verificar se os deslocamentos estão certos!! (FULL DUPLEX estava errado) 
         FULL_DUPLEX = 1 << 1,
         GIGABIT_MODE_ENABLE = 1 << 10,
         NO_BROADCAST = ~(1 << 5), // Bit que deve ser zero

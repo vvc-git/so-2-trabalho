@@ -24,13 +24,10 @@ public:
 
     CT_Buffer(unsigned long bytes) : dma(bytes), buffer_size(bytes) { dma_ptr = dma.log_address(); };
     ~CT_Buffer(){};
-    // void * alloc(unsigned long int bytes);
-    // void free(void * ptr, unsigned long bytes) {app.free(ptr, bytes);};
     void alloc_frame(char frame[]);
     void get_dma_data(char *dma_data);
     void set_dma_data(char *dma_data, int amnt_frames);
     unsigned int allocated();
-    // Retornar endereço físico
     Phy_Addr phy_address() { return dma.phy_address(); };
     Log_Addr log_address() { return dma.log_address(); };
 
