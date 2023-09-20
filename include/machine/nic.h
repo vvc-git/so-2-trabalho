@@ -273,14 +273,12 @@ protected:
 public:
     virtual ~NIC() {}
 
-    // !! API para testes!!!
     virtual int send(const Address & dst, const Protocol & prot, const void * data, unsigned int size) = 0;
     virtual int receive(Address * src, Protocol * prot, void * data, unsigned int size) = 0;
 
-    // !! Os dois ultimos dos parametros são always e payload são zeros 
     virtual Buffer * alloc(const Address & dst, const Protocol & prot, unsigned int once, unsigned int always, unsigned int payload) = 0;
     virtual int send(Buffer * buf) = 0;
-     // !! Não tem receive, tem que ter um notify (Observer by IP)
+ 
     virtual bool drop(Buffer * buf) { return false; } // after send, while still in the working queues, not supported by many NICs
     virtual void free(Buffer * buf) = 0;               // to be called by observers after handling notifications from the NIC
 

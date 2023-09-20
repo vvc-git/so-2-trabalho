@@ -33,9 +33,7 @@ PCNet32::PCNet32(unsigned int unit, IO_Port io_port, IO_Irq irq, DMA_Buffer * dm
 
     // Rx_Desc Ring
     _rx_cur = 0;
-    // Ponteiro lógico a CPU
     _rx_ring = log;
-    // Ponteiro físico a CPU
     _rx_ring_phy = phy;
     log += RX_BUFS * align128(sizeof(Rx_Desc));
     phy += RX_BUFS * align128(sizeof(Rx_Desc));

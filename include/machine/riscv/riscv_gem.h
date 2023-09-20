@@ -5,7 +5,6 @@
 #include <utility/convert.h>
 #include <network/ethernet.h>
 #include <utility/string.h>
-#include <machine/riscv/if_cgem_hw.h>
 #include <machine/riscv/sifive_u/sifive_u_memory_map.h>
 
 __BEGIN_SYS
