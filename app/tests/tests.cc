@@ -15,7 +15,7 @@ public:
      ~NIC_Receiver(){};
      void update(Data_Observed<CT_Buffer, void> *obs, CT_Buffer *buffer)
      {
-          char data[1500];
+          char data[FRAME_SIZE];
           buffer->get_dma_data(data);
 
           cout << "NIC_Receiver update: " << endl;
@@ -46,13 +46,13 @@ int main()
      sifiveu_nic.attach(&nic_receiver);
 
      // TESTE
-     char data[1500];
+     char data[FRAME_SIZE];
      data[0] = 'a';
      data[1] = 'b';
      data[2] = 'c';
      data[3] = 'd';
 
-     sifiveu_nic.send(data, 1500);
+     sifiveu_nic.send(data, FRAME_SIZE);
 
      copy_rx_tx(&sifiveu_nic);
 
