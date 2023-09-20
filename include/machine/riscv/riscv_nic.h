@@ -62,14 +62,19 @@ public:
     CT_Buffer *rx_desc_buffer;
     CT_Buffer *rx_data_buffer;
 
+    // Endereço físico base
     Phy_Addr tx_desc_phy;
     Phy_Addr tx_data_phy;
 
     Phy_Addr rx_desc_phy;
     Phy_Addr rx_data_phy;
 
+    // Endereço lógico base
     Log_Addr log_init_tx_desc;
     Log_Addr log_init_tx_data;
+
+    Log_Addr log_init_rx_desc;
+    Log_Addr log_init_rx_data;
 
     unsigned int DESC_SIZE = 16;
     unsigned int SLOTS_BUFFER = 4;
@@ -99,6 +104,10 @@ SiFiveU_NIC::SiFiveU_NIC()
     // Pegando endereço lógico dos buffers para CPU
     log_init_tx_desc = tx_desc_buffer->log_address();
     log_init_tx_data = tx_data_buffer->log_address();
+
+    // Pegando endereço lógico dos buffers para CPU
+    log_init_rx_desc = rx_desc_buffer->log_address();
+    log_init_rx_data = rx_data_buffer->log_address();
 
     Phy_Addr addr_desc;
     Phy_Addr addr_data;
