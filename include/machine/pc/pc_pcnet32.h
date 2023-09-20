@@ -481,7 +481,6 @@ private:
     IO_Irq _irq;
     DMA_Buffer * _dma_buf;
 
-    // Ignorar
     Init_Block * _iblock;
     Phy_Addr  _iblock_phy;
 

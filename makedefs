@@ -330,7 +330,7 @@ TCPDUMP		:= tcpdump -tttttennvvvXXr
 TEE		:= tee
 
 ifndef DISPLAY 
-TERM		:= gnome-terminal -- sh -c
+TERM		:= sh -c
 else
 TERM		:= xterm -e
 endif

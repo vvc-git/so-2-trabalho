@@ -9,7 +9,6 @@
 
 __BEGIN_UTIL
 
-
 // Heap
 class Heap: private Grouping_List<char>
 {
