@@ -51,7 +51,6 @@ private:
 
 __END_SYS
 
-
 extern "C"
 {
     // Standard C Library allocators
