@@ -73,36 +73,39 @@ int main()
 
 int philosopher(int n, int l, int c)
 {
-    int first = (n < 4)? n : 0;
+    unsigned int first = (n < 4)? n : 0;
     int second = (n < 4)? n + 1 : 4;
 
     for(int i = iterations; i > 0; i--) {
 
         
         //Display::position(l, c);
-        cout << "thinking";
+        cout << "thinking\n";
         
 
-        Delay thinking(1000000);
+        Delay thinking(10000000);
 
-        
         //Display::position(l, c);
-        cout << " hungry ";
-        
+        table.lock();
+        cout << "\nFirst: " << first << ".\n" << endl;
+        table.unlock();
+        table.lock();
+        cout << "\nSecond: " << second << ".\n" << endl;
+        table.unlock();
 
         chopstick[first]->p();   // get first chopstick
         chopstick[second]->p();  // get second chopstick
 
         
         //Display::position(l, c);
-        cout << " eating ";
+        cout << "eating\n";
         
 
         Delay eating(500000);
 
         
         //Display::position(l, c);
-        cout << "  sate  ";
+        cout << "\n  sate  \n";
         
 
         chopstick[first]->v();   // release first chopstick
