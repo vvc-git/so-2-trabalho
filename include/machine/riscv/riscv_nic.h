@@ -36,11 +36,9 @@ private:
     // Utilizando modo de endereçamento de 64 bits
     struct Desc
     {
-
-        volatile Reg32 address_lsb;
-        volatile Reg32 control_1;
-        volatile Reg32 address_msb; // Upper 32-bit address of the data buffer.
-        volatile Reg32 control_3;
+        
+        volatile Reg32 address;
+        volatile Reg32 control;
     };
 
 public:
@@ -120,7 +118,6 @@ SiFiveU_NIC::SiFiveU_NIC()
 
 
         unsigned int addr_data_lsb = addr_data;         // pegou os 32 menos significativos
-        unsigned int addr_data_msb = (addr_data >> 32); // pegou os 32 mais significativos
 
 
         // Configure BUffer Descriptors, p. 1062
@@ -128,14 +125,13 @@ SiFiveU_NIC::SiFiveU_NIC()
         // 3. Mark the last descriptor in the list with the wrap bit. Set bit [30] in word [1] to 1.
         // 4. Write the base address of transmit buffer descriptor list to Controller registers gem.transmit_q{ , 1}_ptr.
         Desc *tx_desc = addr_desc;
-        tx_desc->address_lsb = addr_data_lsb;
-        tx_desc->control_1 = TX_WORD1_OWN_CONTROLLER | tx_desc->control_1;
-        tx_desc->address_msb = addr_data_msb;
+        tx_desc->address = addr_data_lsb;
+        tx_desc->control = TX_WORD1_OWN_CONTROLLER | tx_desc->control;
 
         // Setando o bit WRP no último descritor (item 3)
         if (i == (SLOTS_BUFFER - 1))
         {
-            tx_desc->control_1 = TX_WORD1_WRP_BIT | tx_desc->control_1;
+            tx_desc->control = TX_WORD1_WRP_BIT | tx_desc->control;
         }
 
     }
@@ -155,21 +151,19 @@ SiFiveU_NIC::SiFiveU_NIC()
 
 
         unsigned int addr_data_lsb = addr_data;         // pegou os 32 menos significativos
-        unsigned int addr_data_msb = (addr_data >> 32); // pegou os 32 mais significativos
-
+     
 
         // Configure Buffer Descriptors, p. 1061
         // 3. Mark all entries in this list as owned by controller. Set bit [0] of word [0] of each buffer descriptor to 0.
         // 4. Mark the last descriptor in the buffer descriptor list with the wrap bit, (bit [1] in word [0]) set.
         // 5. Fill the addresses of the allocated buffers in the buffer descriptors (bits [31-2], Word [0])
         Desc *rx_desc = addr_desc;
-        rx_desc->address_lsb = addr_data_lsb & RX_WORD0_3_LSB; // Os 3 últimos bits da palavra 0 estao sendo zerados
-        rx_desc->address_msb = addr_data_msb;
+        rx_desc->address = addr_data_lsb & RX_WORD0_3_LSB; // Os 3 últimos bits da palavra 0 estao sendo zerados
 
         // Setando o bit WRP no último descritor
         if (i == (SLOTS_BUFFER - 1))
         {
-            rx_desc->address_lsb = rx_desc->address_lsb | RX_WORD0_3_LSB_WRP;
+            rx_desc->address = rx_desc->address | RX_WORD0_3_LSB_WRP;
         }
 
 
@@ -198,11 +192,7 @@ void SiFiveU_NIC::receive()
 {
     Desc *desc = rx_desc_phy;
 
-    Phy_Addr addr;
-
-    addr = desc->address_msb;
-    addr = (addr << 32);
-    addr = addr | desc->address_lsb;
+    Phy_Addr addr = desc->address;
 
     CT_Buffer *buffer = new CT_Buffer(FRAME_SIZE);
 
