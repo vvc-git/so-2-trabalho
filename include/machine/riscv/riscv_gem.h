@@ -1,5 +1,5 @@
-#ifndef __gem_h
-#define __gem_h
+#ifndef __riscv_gem_h
+#define __riscv_gem_h
 
 #include <architecture.h>
 #include <utility/convert.h>

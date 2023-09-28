@@ -1,5 +1,5 @@
-#ifndef __pcnet32_h
-#define __pcnet32_h
+#ifndef __riscv_nic_h
+#define __riscv_nic_h
 
 #include <network/ethernet.h>
 #include <utility/ct_buffer.h>
