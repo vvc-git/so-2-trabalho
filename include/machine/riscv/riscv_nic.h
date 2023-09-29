@@ -16,6 +16,7 @@ private:
     friend class Machine_Common;
 
     typedef CPU::Reg32 Reg32;
+    typedef CPU::Reg32 Reg16;
     typedef CPU::Reg64 Reg64;
     typedef CPU::Phy_Addr Phy_Addr;
     typedef CPU::Log_Addr Log_Addr;
@@ -181,7 +182,6 @@ SiFiveU_NIC::SiFiveU_NIC()
 void SiFiveU_NIC::send(char *data, unsigned int size)
 {
 
-    cout << "size" << size << endl;
     if (size <= FRAME_SIZE)
     {
         // Varrer descriptors de tx procurando buffer livre
@@ -307,11 +307,17 @@ void SiFiveU_NIC::init_regs()
     // 2. Set the MAC address.
     // Setando agora o endereço aleatório 0xFFFFFFFFFFFF
     // Write to the gem.spec_add1_bottom register.
-    set_bits(SPEC_ADD1_BOTTOM, 0xFFFFFFFF);
+    // set_bits(SPEC_ADD1_BOTTOM, 0xFFFFFFFF);
+    Reg32 * addr1 = reinterpret_cast<Reg32*>(Memory_Map::ETH_BASE + SPEC_ADD1_BOTTOM);
+    Reg32 * addr2 = reinterpret_cast<Reg32*>(Memory_Map::ETH_BASE + SPEC_ADD1_TOP);
+    cout << "Endereço 1 " << addr1 << endl;
+    cout << hex << * addr1 << endl;
+    cout << "Endereço 2 " << addr2 << endl;
+    cout << hex << * addr2 << endl;
 
     // Write to the gem.spec_add1_top register. The
     // most significant 16 bits go to gem.spec_add1_top
-    set_bits(SPEC_ADD1_BOTTOM, 0x0000FFFF);
+    // set_bits(SPEC_ADD1_BOTTOM, 0x0000FFFF);
 
     // 3. Program the DMA configuration register (gem.dma_config)
 
