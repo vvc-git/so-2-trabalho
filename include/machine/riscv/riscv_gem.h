@@ -44,6 +44,7 @@ public:
         MAN_PORT_EN = 1 << 4, 
         ENABLE_TRANSMIT = 1 << 3,
         ENABLE_RECEIVE = 1 << 2,
+        TX_START_PCLK = 1 << 9,
 
     };
 

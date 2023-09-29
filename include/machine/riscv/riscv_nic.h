@@ -180,11 +180,45 @@ SiFiveU_NIC::SiFiveU_NIC()
 
 void SiFiveU_NIC::send(char *data, unsigned int size)
 {
+
+    cout << "size" << size << endl;
     if (size <= FRAME_SIZE)
     {
         // Varrer descriptors de tx procurando buffer livre
-        // TESTE: colocando no primeiro slot
-        memcpy(tx_data_phy, data, FRAME_SIZE);
+        for (unsigned int i = 0; i < SLOTS_BUFFER; i++)
+        {
+            Desc *tx_desc = tx_desc_phy + (i * DESC_SIZE);
+
+            unsigned int bit_free = (tx_desc->control >> 31);
+
+            unsigned int bit_used = ~(1 << 31);
+
+            
+            if (bit_free) {
+
+                // Copia o dado a ser enviado para o endereço de dados do TX
+                memcpy(reinterpret_cast<void *>(tx_desc->address), data, FRAME_SIZE);
+
+                // Coloca o bit 31 como 0 (Bit que indica que a NIC poder ler)
+                tx_desc->control = tx_desc->control & bit_used;
+
+                // Seta o tamanho do buffer de dados a ser lido (1536 bytes)
+                tx_desc->control = tx_desc->control | size;
+
+                // Habilita a NIC para a execução
+                set_bits(NETWORK_CONTROL, TX_START_PCLK);
+
+                break;
+            } else {
+                if (i == SLOTS_BUFFER - 1)
+                    // !! APAGAR
+                    cout << "Acabou o buffer" << endl;
+            }
+          
+        }
+        // TODO: Verificar registrador int_status[7]: transmit complete pg 1064 (item 6)
+        // while(desc->status & Tx_Desc::OWN);
+        
     }
 }
 
