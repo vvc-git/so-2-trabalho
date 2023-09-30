@@ -43,10 +43,10 @@ int main()
 
      // TESTE
      char data[FRAME_SIZE];
-     data[0] = 'a';
-     data[1] = 'b';
-     data[2] = 'c';
-     data[3] = 'd';
+     data[18] = 'A';
+     data[19] = 'B';
+     data[20] = 'C';
+     data[21] = 'D';
 
      sifiveu_nic.send(data, FRAME_SIZE);
 

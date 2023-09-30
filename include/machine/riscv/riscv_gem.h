@@ -35,6 +35,7 @@ public:
         INT_DISABLE     = 0x0000002C,
         SPEC_ADD1_BOTTOM= 0x00000088,
         SPEC_ADD1_TOP   = 0x0000008c,
+        INT_STATUS      = 0x00000024,
     };
 
     // Network Control Register bits
@@ -67,6 +68,13 @@ public:
         TX_PBUF_TCP_EN = 1 << 11,
         ENDIAN_SWAP_PACKET = ~(1 << 7), // Bit que deve ser zero
         AMBA_BURST_LENGTH = 0x10,
+
+        // INT STATUS
+        INT_TRASNMIT_COMPLETE = 1 << 7,
+
+        // TRANSMIT STATUS
+        TRANS_TRANSMIT_COMPLETE = 1 << 5,
+
     };
 
     // construtor
