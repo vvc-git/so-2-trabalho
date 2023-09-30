@@ -246,7 +246,14 @@ void SiFiveU_NIC::init_regs()
 
     // 2. Clear the statistics registers
     // Write a 1 to the gem.network_control [clear_all_stats_regs].
+    // !!DUVIDA: Nâo conseguimos ver o bit CLEAR_ALL_STATS (Sempre estava zerado)
+    // ! É read/write
     set_bits(NETWORK_CONTROL, CLEAR_ALL_STATS_REGS);
+
+
+    // Reg32 * teste = reinterpret_cast<Reg32 *>(Memory_Map::ETH_BASE + NETWORK_CONTROL);
+    // cout << "Endereço: " << hex << teste << " Valor: "<< hex << ((* teste)) << endl;
+    // cout << hex << CLEAR_ALL_STATS_REGS << endl;
 
     // 3. Clear the status registers. Write a 1 to the status registers.
     // gem.receive_status = 0x0F
@@ -261,16 +268,16 @@ void SiFiveU_NIC::init_regs()
 
     // 5. Clear the buffer queues.
     // Write 0x0 to the gem.transmit_q{}_ptr
-    set_reg(TRANSMIT_Q_PTR, 0X0);
+    set_reg(TRANSMIT_Q_PTR, 0x0);
 
     // Write 0x0 to the gem.transmit_q{1}_ptr
-    set_reg(TRANSMIT_Q1_PTR, 0X0);
+    set_reg(TRANSMIT_Q1_PTR, 0x0);
 
     // Write 0x0 to the gem.receive_q{}_ptr
     set_reg(RECEIVE_Q_PTR, 0x0);
 
      // Write 0x0 to the gem.receive_q{1}_ptr
-    set_reg(RECEIVE_Q1_PTR, 0X0);
+    set_reg(RECEIVE_Q1_PTR, 0x0);
 
     // Configure the controller
 
@@ -285,6 +292,7 @@ void SiFiveU_NIC::init_regs()
     // c. Enable reception of broadcast or multicast frames.
     // Write a 0 to the gem.network_config[no_broadcast] register to enable broadcast frames.
     set_bits_and(NETWORK_CONFIG, NO_BROADCAST);
+
 
     // write a 1 to the gem.network_config[multicast_hash_en] bit to enable multicast frames.
     set_bits(NETWORK_CONFIG, MULTICAST_HASH_ENABLE);
@@ -302,6 +310,8 @@ void SiFiveU_NIC::init_regs()
 
     // g. Set the MDC clock divisor.
     // Write the appropriate MDC clock divisor to the gem.network_config[mdc_clock_division] bit.
+    
+    // !! PERGUNTAR PRA ALGUEM
     set_bits(NETWORK_CONFIG, MDC_CLOCK_DIVISION);
 
     // 2. Set the MAC address.
@@ -310,10 +320,11 @@ void SiFiveU_NIC::init_regs()
     // set_bits(SPEC_ADD1_BOTTOM, 0xFFFFFFFF);
     Reg32 * addr1 = reinterpret_cast<Reg32*>(Memory_Map::ETH_BASE + SPEC_ADD1_BOTTOM);
     Reg32 * addr2 = reinterpret_cast<Reg32*>(Memory_Map::ETH_BASE + SPEC_ADD1_TOP);
-    cout << "Endereço 1 " << addr1 << endl;
-    cout << hex << * addr1 << endl;
-    cout << "Endereço 2 " << addr2 << endl;
-    cout << hex << * addr2 << endl;
+    
+
+    set_reg(SPEC_ADD1_BOTTOM, *addr1);
+    set_reg(SPEC_ADD1_TOP, *addr2);
+    // set_bits(SPEC_ADD1_TOP, 1 << 16);
 
     // Write to the gem.spec_add1_top register. The
     // most significant 16 bits go to gem.spec_add1_top
@@ -322,8 +333,9 @@ void SiFiveU_NIC::init_regs()
     // 3. Program the DMA configuration register (gem.dma_config)
 
     // a. Set the receive buffer size to 1,600 bytes. Write a value of 8'h19 to the
-    // gem.dma_config[rx_buf_size] bit field. (escrevendo 24, pois 24*64 = 1600)
+    // gem.dma_config[rx_buf_size] bit field. (escrevendo 24, pois 24*64 = 1536)
     set_reg(DMA_CONFIG, RX_BUF_SIZE);
+
 
     // b. Set the receiver packet buffer memory size to the full configured addressable space
     // of 32 KB. Write 2'b11 to the gem.dma_config[rx_pbuf_size] bit field
@@ -346,6 +358,7 @@ void SiFiveU_NIC::init_regs()
     // performance.
     set_bits(DMA_CONFIG, AMBA_BURST_LENGTH);
 
+
     // 4. Program the network control register (gem.network_control).
     // a. Enable the MDIO. Write a 1 to the gem.network_control[man_port_en] bit.
     set_bits(NETWORK_CONTROL, MAN_PORT_EN);
@@ -355,6 +368,10 @@ void SiFiveU_NIC::init_regs()
     
     // c. Enable the receiver. Write a 1 to the gem.network_control[enable_receive] bit.
     set_bits(NETWORK_CONTROL, ENABLE_RECEIVE);
+
+    Reg32 * teste = reinterpret_cast<Reg32 *>(Memory_Map::ETH_BASE + NETWORK_CONTROL);
+    cout << "Endereço: " << hex << teste << " Valor: "<< hex << ((* teste)) << endl;
+
 
 }
 

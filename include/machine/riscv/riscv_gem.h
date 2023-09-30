@@ -22,19 +22,19 @@ public:
     // Register offsets
     enum
     {
-        NETWORK_CONTROL = 0x0000000000,
-        NETWORK_CONFIG = 0x0000000004,
-        NETWORK_STATUS = 0x0000000008,
-        TRANSMIT_Q1_PTR = 0x0000000440, 
-        RECEIVE_Q1_PTR = 0x0000000480, 
-        DMA_CONFIG = 0x0000000010,
-        TRANSMIT_STATUS = 0x0000000014,
-        RECEIVE_Q_PTR = 0x0000000018,
-        TRANSMIT_Q_PTR = 0x000000001C,
-        RECEIVE_STATUS = 0x0000000020,
-        INT_DISABLE = 0x000000002C,
-        SPEC_ADD1_BOTTOM = 0x0000000088,
-        SPEC_ADD1_TOP = 0x000000008c,
+        NETWORK_CONTROL = 0x00000000,
+        NETWORK_CONFIG  = 0x00000004,
+        NETWORK_STATUS  = 0x00000008,
+        TRANSMIT_Q1_PTR = 0x00000440, 
+        RECEIVE_Q1_PTR  = 0x00000480, 
+        DMA_CONFIG      = 0x00000010,
+        TRANSMIT_STATUS = 0x00000014,
+        RECEIVE_Q_PTR   = 0x00000018,
+        TRANSMIT_Q_PTR  = 0x0000001C,
+        RECEIVE_STATUS  = 0x00000020,
+        INT_DISABLE     = 0x0000002C,
+        SPEC_ADD1_BOTTOM= 0x00000088,
+        SPEC_ADD1_TOP   = 0x0000008c,
     };
 
     // Network Control Register bits
@@ -58,15 +58,15 @@ public:
         COPY_ALL_FRAMES = 1 << 4,
         RECEIVE_CHECKSUM_OFFLOAD_ENABLE = 1 << 24,
         PAUSE_ENABLE = 1 << 13,
-        MDC_CLOCK_DIVISION = 111 << 18, // verificar
+        MDC_CLOCK_DIVISION = 0x1C0000, // verificar
 
         // DMA_CONFIG bits
-        RX_BUF_SIZE = 0x00019000,
-        RX_PBUF_SIZE = 11 << 8,
+        RX_BUF_SIZE  = 0x00180000,
+        RX_PBUF_SIZE = 0x00000300,
         TX_PBUF_SIZE = 1 << 10,
         TX_PBUF_TCP_EN = 1 << 11,
         ENDIAN_SWAP_PACKET = ~(1 << 7), // Bit que deve ser zero
-        AMBA_BURST_LENGTH = 1,
+        AMBA_BURST_LENGTH = 0x10,
     };
 
     // construtor

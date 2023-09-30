@@ -2,7 +2,7 @@
 
 #ifndef __CT_Buffer_h
 #define __CT_Buffer_h
-#define FRAME_SIZE 1600
+#define FRAME_SIZE 1536
 
 #include <utility/list.h>
 #include <system.h>
