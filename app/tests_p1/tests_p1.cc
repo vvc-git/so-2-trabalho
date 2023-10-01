@@ -3,6 +3,8 @@
 #include <utility/ct_buffer.h>
 #include <machine/riscv/riscv_nic.h>
 #include <machine/riscv/riscv_gem.h>
+#include <network/ethernet.h>
+
 
 using namespace EPOS;
 
@@ -24,15 +26,10 @@ public:
      }
 };
 
-void copy_rx_tx(SiFiveU_NIC *nic)
-{
-
-     memcpy(nic->rx_data_phy, nic->tx_data_phy, FRAME_SIZE);
-}
 
 int main()
 {
-     cout << "\n\n ********************  NIC *********************\n\n"
+     cout << "\n\n ********************  P1 *********************\n\n"
           << endl;
 
 
@@ -41,20 +38,32 @@ int main()
 
      sifiveu_nic.attach(&nic_receiver);
 
-     // TESTE
-     char data[FRAME_SIZE];
-     data[0] = 'a';
-     data[1] = 'b';
-     data[2] = 'c';
-     data[3] = 'd';
+     NIC<Ethernet>::Address src, dst;
 
-     sifiveu_nic.send(data, FRAME_SIZE);
+     src[5] = 0x01;
+     src[4] = 0x00;
+     src[3] = 0x00;
+     src[2] = 0x00;
+     src[1] = 0x00;
+     src[0] = 0x00;
 
-     copy_rx_tx(&sifiveu_nic);
+     dst[5] = 0x02;
+     dst[4] = 0x00;
+     dst[3] = 0x00;
+     dst[2] = 0x00;
+     dst[1] = 0x00;
+     dst[0] = 0x00;
 
-     sifiveu_nic.int_handler();
 
-     cout << "\n\n ************************* NIC *************************\n\n"
+     char payload[100];
+     for(int i = 0; i < 10; i++) {
+          memset(payload, '0' + i, 100);
+          // Ethernet::Frame * frame = new Ethernet::Frame(src, dst, 0x8888, payload, 100);
+          payload[100 - 1] = '\n';
+          sifiveu_nic.send(src, dst, payload, 100);
+     }
+
+     cout << "\n\n ************************* P1 *************************\n\n"
           << endl;
 
      return 0;

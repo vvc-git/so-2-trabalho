@@ -5,6 +5,8 @@
 #include <utility/ct_buffer.h>
 #include <architecture/cpu.h>
 #include <machine/riscv/riscv_gem.h>
+#include <system.h>
+
 
 __BEGIN_SYS
 
@@ -20,6 +22,8 @@ private:
     typedef CPU::Reg64 Reg64;
     typedef CPU::Phy_Addr Phy_Addr;
     typedef CPU::Log_Addr Log_Addr;
+    typedef Ethernet::Frame Frame;
+    typedef NIC<Ethernet>::Address Address;
 
     // masks
     enum : unsigned int
@@ -51,7 +55,7 @@ public:
     void int_handler(int interrupt = 1) { receive(); };
 
     void receive();
-    void send(char *data, unsigned int size);
+    void send(Address src, Address dst, char* payload, unsigned int payload_size);
     bool end_transmission();
 
     void init_regs();
@@ -194,10 +198,10 @@ SiFiveU_NIC::SiFiveU_NIC()
 
 }
 
-void SiFiveU_NIC::send(char *data, unsigned int size)
+void SiFiveU_NIC::send(Address src, Address dst, char* payload, unsigned int payload_size)
 {
 
-    if (size <= FRAME_SIZE)
+    if (payload_size <= FRAME_SIZE)
     {
         // Varrer descriptors de tx procurando buffer livre
         for (; last_desc_idx < SLOTS_BUFFER; )
@@ -216,11 +220,12 @@ void SiFiveU_NIC::send(char *data, unsigned int size)
                 cout << "Endereco do desc " << hex << tx_desc->address << endl; 
                 
                 // Copia o dado a ser enviado para o endereço de dados do TX
-                memcpy(reinterpret_cast<void *>(tx_desc->address), data, FRAME_SIZE);
+                // memcpy(reinterpret_cast<void *>(tx_desc->address), frame, size);
+                Frame* frame = new (reinterpret_cast<void *>(tx_desc->address)) Frame(src, dst, 0x8888, payload, payload_size);
 
                 
-                // Seta o tamanho do buffer de dados a ser lido (1536 bytes)
-                tx_desc->control = tx_desc->control | size;
+                // Seta o tamanho do buffer de dados a ser lido
+                tx_desc->control = tx_desc->control | (payload_size + sizeof(*(frame->header())));
 
                 // For single buffer ehternet frame, bit[15] of word [1] must also be set.
                 tx_desc->control = (1 << 15) | tx_desc->control;
