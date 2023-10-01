@@ -48,6 +48,10 @@ int main()
      data[20] = 'C';
      data[21] = 'D';
 
+     sifiveu_nic.send(data, 100);
+     sifiveu_nic.send(data, FRAME_SIZE);
+     sifiveu_nic.send(data, FRAME_SIZE);
+     sifiveu_nic.send(data, FRAME_SIZE);
      sifiveu_nic.send(data, FRAME_SIZE);
 
      copy_rx_tx(&sifiveu_nic);

@@ -31,7 +31,7 @@ private:
     enum  
     {
         TX_WORD1_OWN_CONTROLLER = ~(1 << 31), 
-        TX_WORD1_OWN_CPU = (1 << 31),
+        TX_WORD1_OWN_CPU = 1 << 31,
         TX_WORD1_WRP_BIT = 1 << 30,
     };
 
@@ -77,8 +77,9 @@ public:
     Log_Addr log_init_rx_desc;
     Log_Addr log_init_rx_data;
 
-    unsigned int DESC_SIZE = 16;
+    unsigned int DESC_SIZE = 8;
     unsigned int SLOTS_BUFFER = 4;
+    unsigned int last_desc_idx = 0;
 };
 
 SiFiveU_NIC::SiFiveU_NIC()
@@ -128,8 +129,6 @@ SiFiveU_NIC::SiFiveU_NIC()
         Desc *rx_desc = addr_desc;
         rx_desc->address = addr_data & RX_WORD0_3_LSB; // Os 3 últimos bits da palavra 0 estao sendo zerados
 
-       
-
 
         // Setando o bit WRP no último descritor
         if (i == (SLOTS_BUFFER - 1))
@@ -144,7 +143,7 @@ SiFiveU_NIC::SiFiveU_NIC()
     // 6. Write the base address of this buffer descriptor list to the gem.receive_q{ , 1}_ptr
     // registers.
     set_reg(RECEIVE_Q_PTR, rx_desc_phy);
-    set_reg(RECEIVE_Q1_PTR, rx_desc_phy);
+    // set_reg(RECEIVE_Q1_PTR, rx_desc_phy);
 
     // setting TX buffers
     for (unsigned int i = 0; i < SLOTS_BUFFER; i++)
@@ -180,7 +179,7 @@ SiFiveU_NIC::SiFiveU_NIC()
     // Configure Buffer Descriptor, p.1062
     //4. Write the base address of transmit buffer descriptor list to Controller registers gem.transmit_q{ , 1}_ptr..
     set_reg(TRANSMIT_Q_PTR, tx_desc_phy);
-    set_reg(TRANSMIT_Q1_PTR, tx_desc_phy);
+    // set_reg(TRANSMIT_Q1_PTR, tx_desc_phy);
 
 
     // Reg32 * rec = reinterpret_cast<Reg32 *>(Memory_Map::ETH_BASE + RECEIVE_Q_PTR);
@@ -201,22 +200,25 @@ void SiFiveU_NIC::send(char *data, unsigned int size)
     if (size <= FRAME_SIZE)
     {
         // Varrer descriptors de tx procurando buffer livre
-        for (unsigned int i = 0; i < SLOTS_BUFFER; i++)
+        for (; last_desc_idx < SLOTS_BUFFER; )
         {
-            Desc *tx_desc = tx_desc_phy + (i * DESC_SIZE);
+            Desc *tx_desc = tx_desc_phy + (last_desc_idx * DESC_SIZE);
 
             unsigned int bit_free = (tx_desc->control >> 31);
             // unsigned int bit_used = ~(1 << 31);
 
-            cout << bit_free << endl;
+            cout << "i: " << last_desc_idx << endl;
+            last_desc_idx = (last_desc_idx + 1) % SLOTS_BUFFER;
             
             if (bit_free) {
 
+                cout << "Entrou no if bit_free" << endl;
+                cout << "Endereco do desc " << hex << tx_desc->address << endl; 
+                
                 // Copia o dado a ser enviado para o endereço de dados do TX
                 memcpy(reinterpret_cast<void *>(tx_desc->address), data, FRAME_SIZE);
 
                 
-
                 // Seta o tamanho do buffer de dados a ser lido (1536 bytes)
                 tx_desc->control = tx_desc->control | size;
 
@@ -231,24 +233,26 @@ void SiFiveU_NIC::send(char *data, unsigned int size)
 
 
                 // !! APAGAR
-                Reg32 * teste = reinterpret_cast<Reg32*>(Memory_Map::ETH_BASE + NETWORK_CONFIG);
-                cout << "Config " << hex << * teste << endl;
-                char * dado = reinterpret_cast<char*>(tx_desc->address);
-                cout << "Dado " << dado[0] << endl;
-                Reg32 * ctrl = reinterpret_cast<Reg32*>(Memory_Map::ETH_BASE + NETWORK_CONTROL);
-                cout << "control " << hex <<  * ctrl << endl;
+                // Reg32 * teste = reinterpret_cast<Reg32*>(Memory_Map::ETH_BASE + NETWORK_CONFIG);
+                // cout << "Config " << hex << * teste << endl;
+                // char * dado = reinterpret_cast<char*>(tx_desc->address);
+                // cout << "Dado " << dado[0] << endl;
+                // Reg32 * ctrl = reinterpret_cast<Reg32*>(Memory_Map::ETH_BASE + NETWORK_CONTROL);
+                // cout << "control " << hex <<  * ctrl << endl;
                 cout << "ctrl desc" << hex << tx_desc->control << endl;
+
+                // TODO: Verificar registrador int_status[7]: transmit complete pg 1064 (item 6)
+                while (!(tx_desc->control & TX_WORD1_OWN_CPU));
 
                 break;
             } else {
-                if (i == SLOTS_BUFFER - 1)
+                if (last_desc_idx == SLOTS_BUFFER - 1)
                     // !! APAGAR
                     cout << "Acabou o buffer" << endl;
             }
-          
+    
         }
-        // TODO: Verificar registrador int_status[7]: transmit complete pg 1064 (item 6)
-        //while(end_transmission());
+        
         
     }
 }
