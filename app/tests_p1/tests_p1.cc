@@ -56,9 +56,8 @@ int main()
 
 
      char payload[100];
-     for(int i = 0; i < 10; i++) {
+     for(int i = 0; i < 20; i++) {
           memset(payload, '0' + i, 100);
-          // Ethernet::Frame * frame = new Ethernet::Frame(src, dst, 0x8888, payload, 100);
           payload[100 - 1] = '\n';
           sifiveu_nic.send(src, dst, payload, 100);
      }

@@ -52,12 +52,11 @@ public:
     ~SiFiveU_NIC(){};
     void attach(Data_Observer<CT_Buffer, void> *o) { Data_Observed<CT_Buffer, void>::attach(o); };
 
-    void int_handler(int interrupt = 1) { receive(); };
+    // TODO: Será utilizado para o P2
+    // void int_handler(int interrupt = 1) { receive(); };
 
     void receive();
     void send(Address src, Address dst, char* payload, unsigned int payload_size);
-    bool end_transmission();
-
     void init_regs();
 
 public:
@@ -124,7 +123,6 @@ SiFiveU_NIC::SiFiveU_NIC()
     {
         addr_desc = rx_desc_phy + (i * DESC_SIZE);
         addr_data = rx_data_phy + (i * FRAME_SIZE);
-     
 
         // Configure Buffer Descriptors, p. 1061
         // 3. Mark all entries in this list as owned by controller. Set bit [0] of word [0] of each buffer descriptor to 0.
@@ -133,21 +131,11 @@ SiFiveU_NIC::SiFiveU_NIC()
         Desc *rx_desc = addr_desc;
         rx_desc->address = addr_data & RX_WORD0_3_LSB; // Os 3 últimos bits da palavra 0 estao sendo zerados
 
-
         // Setando o bit WRP no último descritor
-        if (i == (SLOTS_BUFFER - 1))
-        {
-            rx_desc->address = rx_desc->address | RX_WORD0_3_LSB_WRP;
-        }
+        if (i == (SLOTS_BUFFER - 1)) rx_desc->address = rx_desc->address | RX_WORD0_3_LSB_WRP;
 
 
     }
-
-    // Configure Buffer Descriptor, p.1061
-    // 6. Write the base address of this buffer descriptor list to the gem.receive_q{ , 1}_ptr
-    // registers.
-    set_reg(RECEIVE_Q_PTR, rx_desc_phy);
-    // set_reg(RECEIVE_Q1_PTR, rx_desc_phy);
 
     // setting TX buffers
     for (unsigned int i = 0; i < SLOTS_BUFFER; i++)
@@ -155,45 +143,28 @@ SiFiveU_NIC::SiFiveU_NIC()
         addr_desc = tx_desc_phy + (i * DESC_SIZE);
         addr_data = tx_data_phy + (i * FRAME_SIZE);
 
-
-        unsigned int addr_data_lsb = addr_data;         // pegou os 32 menos significativos
-
-
         // Configure BUffer Descriptors, p. 1062
         // 2. Mark all entries in this list as owned by the controller. Set bit [31] of word [1] to 0.  (TX_WORD1_OWN_CONTROLLER)
         // 3. Mark the last descriptor in the list with the wrap bit. Set bit [30] in word [1] to 1.
         // 4. Write the base address of transmit buffer descriptor list to Controller registers gem.transmit_q{ , 1}_ptr.
         Desc *tx_desc = addr_desc;
-        tx_desc->address = addr_data_lsb;
+        tx_desc->address = addr_data;
         tx_desc->control = 0;
         tx_desc->control = TX_WORD1_OWN_CPU | tx_desc->control;
 
         // Setando o bit WRP no último descritor (item 3)
-        if (i == (SLOTS_BUFFER - 1))
-        {
-            tx_desc->control = TX_WORD1_WRP_BIT | tx_desc->control;
-        }
+        if (i == (SLOTS_BUFFER - 1)) tx_desc->control = TX_WORD1_WRP_BIT | tx_desc->control;
 
-
-        // cout << "tx_data_phy: " << hex << addr_data << endl;
-        // cout << "tx->address: " << hex << tx_desc->address << endl;
-        // cout << "tx->control: " << hex << tx_desc->control << endl;
     }
+
+    // Configure Buffer Descriptor, p.1061
+    // 6. Write the base address of this buffer descriptor list to the gem.receive_q{ , 1}_ptr
+    // registers.
+    set_reg(RECEIVE_Q_PTR, rx_desc_phy);
 
     // Configure Buffer Descriptor, p.1062
     //4. Write the base address of transmit buffer descriptor list to Controller registers gem.transmit_q{ , 1}_ptr..
     set_reg(TRANSMIT_Q_PTR, tx_desc_phy);
-    // set_reg(TRANSMIT_Q1_PTR, tx_desc_phy);
-
-
-    // Reg32 * rec = reinterpret_cast<Reg32 *>(Memory_Map::ETH_BASE + RECEIVE_Q_PTR);
-    // // cout << "RECEIVE: " << hex << rec << " Valor: "<< hex << ((* rec)) << endl;
-
-    // Reg32 * t = reinterpret_cast<Reg32 *>(Memory_Map::ETH_BASE + TRANSMIT_Q_PTR);
-    // // cout << "TRANSMIT: " << hex << t << " Valor: "<< hex << ((* t)) << endl;
-
-    // cout << "tx desc phy: " << hex << tx_desc_phy << endl;
-    // cout << "rx desc phy: " << hex << rx_desc_phy << endl;
 
 
 }
@@ -207,23 +178,13 @@ void SiFiveU_NIC::send(Address src, Address dst, char* payload, unsigned int pay
         for (; last_desc_idx < SLOTS_BUFFER; )
         {
             Desc *tx_desc = tx_desc_phy + (last_desc_idx * DESC_SIZE);
-
-            unsigned int bit_free = (tx_desc->control >> 31);
-            // unsigned int bit_used = ~(1 << 31);
-
-            cout << "i: " << last_desc_idx << endl;
             last_desc_idx = (last_desc_idx + 1) % SLOTS_BUFFER;
             
-            if (bit_free) {
-
-                cout << "Entrou no if bit_free" << endl;
-                cout << "Endereco do desc " << hex << tx_desc->address << endl; 
+            if (tx_desc->control >> 31) {
                 
-                // Copia o dado a ser enviado para o endereço de dados do TX
-                // memcpy(reinterpret_cast<void *>(tx_desc->address), frame, size);
+                // Montando o Frame para ser enviado 
                 Frame* frame = new (reinterpret_cast<void *>(tx_desc->address)) Frame(src, dst, 0x8888, payload, payload_size);
 
-                
                 // Seta o tamanho do buffer de dados a ser lido
                 tx_desc->control = tx_desc->control | (payload_size + sizeof(*(frame->header())));
 
@@ -236,26 +197,12 @@ void SiFiveU_NIC::send(Address src, Address dst, char* payload, unsigned int pay
                 // Habilita a NIC para a execução
                 set_bits(NETWORK_CONTROL, TX_START_PCLK);
 
+                // Espera o envio 
+                while (!(tx_desc->control & TX_WORD1_OWN_CPU )) ;
 
-                // !! APAGAR
-                // Reg32 * teste = reinterpret_cast<Reg32*>(Memory_Map::ETH_BASE + NETWORK_CONFIG);
-                // cout << "Config " << hex << * teste << endl;
-                // char * dado = reinterpret_cast<char*>(tx_desc->address);
-                // cout << "Dado " << dado[0] << endl;
-                // Reg32 * ctrl = reinterpret_cast<Reg32*>(Memory_Map::ETH_BASE + NETWORK_CONTROL);
-                // cout << "control " << hex <<  * ctrl << endl;
-                cout << "ctrl desc" << hex << tx_desc->control << endl;
-
-                // TODO: Verificar registrador int_status[7]: transmit complete pg 1064 (item 6)
-                while (!(tx_desc->control & TX_WORD1_OWN_CPU));
-
+                // Se conseguiu enviar, sai do for
                 break;
-            } else {
-                if (last_desc_idx == SLOTS_BUFFER - 1)
-                    // !! APAGAR
-                    cout << "Acabou o buffer" << endl;
             }
-    
         }
         
         
@@ -277,7 +224,6 @@ void SiFiveU_NIC::receive()
     notify(buffer);
 }
 
-
 void SiFiveU_NIC::init_regs() 
 {
     // 1. Clear the network control register
@@ -286,14 +232,7 @@ void SiFiveU_NIC::init_regs()
 
     // 2. Clear the statistics registers
     // Write a 1 to the gem.network_control [clear_all_stats_regs].
-    // !!DUVIDA: Nâo conseguimos ver o bit CLEAR_ALL_STATS (Sempre estava zerado)
-    // ! É read/write
     set_bits(NETWORK_CONTROL, CLEAR_ALL_STATS_REGS);
-
-
-    // Reg32 * teste = reinterpret_cast<Reg32 *>(Memory_Map::ETH_BASE + NETWORK_CONTROL);
-    // cout << "Endereço: " << hex << teste << " Valor: "<< hex << ((* teste)) << endl;
-    // cout << hex << CLEAR_ALL_STATS_REGS << endl;
 
     // 3. Clear the status registers. Write a 1 to the status registers.
     // gem.receive_status = 0x0F
@@ -323,67 +262,51 @@ void SiFiveU_NIC::init_regs()
 
     // 1. Enable full duplex.
     // a. Write a 1 to the gem.network_config[full_duplex] bit.
-    // set_bits(NETWORK_CONFIG, FULL_DUPLEX);
+    set_bits(NETWORK_CONFIG, FULL_DUPLEX);
 
-    // TODO: REVISAR
-    // // b. Enable gigabit mode.
-    // // Write a 1 to the gem.network_config[gigabit_mode_enable] bit.
-    // set_bits(NETWORK_CONFIG, GIGABIT_MODE_ENABLE);
+    // b. Enable gigabit mode.
+    // Write a 1 to the gem.network_config[gigabit_mode_enable] bit.
+    set_bits(NETWORK_CONFIG, GIGABIT_MODE_ENABLE);
 
-    // // c. Enable reception of broadcast or multicast frames.
-    // // Write a 0 to the gem.network_config[no_broadcast] register to enable broadcast frames.
-    // set_bits_and(NETWORK_CONFIG, NO_BROADCAST);
+    // c. Enable reception of broadcast or multicast frames.
+    // Write a 0 to the gem.network_config[no_broadcast] register to enable broadcast frames.
+    set_bits_and(NETWORK_CONFIG, NO_BROADCAST);
 
 
-    // // write a 1 to the gem.network_config[multicast_hash_en] bit to enable multicast frames.
-    // set_bits(NETWORK_CONFIG, MULTICAST_HASH_ENABLE);
+    // write a 1 to the gem.network_config[multicast_hash_en] bit to enable multicast frames.
+    set_bits(NETWORK_CONFIG, MULTICAST_HASH_ENABLE);
 
-    // // d. Enable promiscuous mode.
-    // // Write a 1 to the gem.network_config[copy_all_frames] bit.
+    // d. Enable promiscuous mode.
+    // Write a 1 to the gem.network_config[copy_all_frames] bit.
     // set_bits(NETWORK_CONFIG, COPY_ALL_FRAMES);
 
-    // // e. Enable TCP/IP checksum offload feature on receive.
-    // // Write a 1 to the gem.network_config[receive_checksum_offload_enable] bit.
-    // set_bits(NETWORK_CONFIG, RECEIVE_CHECKSUM_OFFLOAD_ENABLE);
+    // e. Enable TCP/IP checksum offload feature on receive.
+    // Write a 1 to the gem.network_config[receive_checksum_offload_enable] bit.
+    set_bits(NETWORK_CONFIG, RECEIVE_CHECKSUM_OFFLOAD_ENABLE);
 
-    // // f.Enable pause frames. Write a 1 to gem.network_config[pause_enable] bit.
-    // set_bits(NETWORK_CONFIG, PAUSE_ENABLE);
+    // f.Enable pause frames. Write a 1 to gem.network_config[pause_enable] bit.
+    set_bits(NETWORK_CONFIG, PAUSE_ENABLE);
 
-    // // g. Set the MDC clock divisor.
-    // // Write the appropriate MDC clock divisor to the gem.network_config[mdc_clock_division] bit.
-    
-    // // !! PERGUNTAR PRA ALGUEM
-    // set_bits(NETWORK_CONFIG, MDC_CLOCK_DIVISION);
-
-
-    // ! APAGAR
-    set_bits(NETWORK_CONFIG, (1 << 2));
-    set_bits(NETWORK_CONFIG, (1 << 19));
-    set_bits(NETWORK_CONFIG, (1 << 17));
-
+    // g. Set the MDC clock divisor.
+    // Write the appropriate MDC clock divisor to the gem.network_config[mdc_clock_division] bit.
+    set_bits(NETWORK_CONFIG, MDC_CLOCK_DIVISION);
 
     // 2. Set the MAC address.
-    // Setando agora o endereço aleatório 0xFFFFFFFFFFFF
     // Write to the gem.spec_add1_bottom register.
-    // set_bits(SPEC_ADD1_BOTTOM, 0xFFFFFFFF);
-    Reg32 * addr1 = reinterpret_cast<Reg32*>(Memory_Map::ETH_BASE + SPEC_ADD1_BOTTOM);
-    Reg32 * addr2 = reinterpret_cast<Reg32*>(Memory_Map::ETH_BASE + SPEC_ADD1_TOP);
+    Reg32 * low = reinterpret_cast<Reg32*>(Memory_Map::ETH_BASE + SPEC_ADD1_BOTTOM);
+    set_reg(SPEC_ADD1_BOTTOM, *low);
     
-
-    set_reg(SPEC_ADD1_BOTTOM, *addr1);
-    set_reg(SPEC_ADD1_TOP, *addr2);
-    // set_bits(SPEC_ADD1_TOP, 1 << 16);
-
+    
     // Write to the gem.spec_add1_top register. The
     // most significant 16 bits go to gem.spec_add1_top
-    // set_bits(SPEC_ADD1_BOTTOM, 0x0000FFFF);
+    Reg32 * high = reinterpret_cast<Reg32*>(Memory_Map::ETH_BASE + SPEC_ADD1_TOP);
+    set_reg(SPEC_ADD1_TOP, *high);
 
     // 3. Program the DMA configuration register (gem.dma_config)
 
     // a. Set the receive buffer size to 1,600 bytes. Write a value of 8'h19 to the
     // gem.dma_config[rx_buf_size] bit field. (escrevendo 24, pois 24*64 = 1536)
     set_reg(DMA_CONFIG, RX_BUF_SIZE);
-
 
     // b. Set the receiver packet buffer memory size to the full configured addressable space
     // of 32 KB. Write 2'b11 to the gem.dma_config[rx_pbuf_size] bit field
@@ -406,7 +329,6 @@ void SiFiveU_NIC::init_regs()
     // performance.
     set_bits(DMA_CONFIG, AMBA_BURST_LENGTH);
 
-
     // 4. Program the network control register (gem.network_control).
     // a. Enable the MDIO. Write a 1 to the gem.network_control[man_port_en] bit.
     set_bits(NETWORK_CONTROL, MAN_PORT_EN);
@@ -416,20 +338,6 @@ void SiFiveU_NIC::init_regs()
     
     // c. Enable the receiver. Write a 1 to the gem.network_control[enable_receive] bit.
     set_bits(NETWORK_CONTROL, ENABLE_RECEIVE);
-
-}
-
-bool SiFiveU_NIC::end_transmission() {
-    
-    Reg32 * int_tc = reinterpret_cast<Reg32 *>(Memory_Map::ETH_BASE + INT_STATUS);
-    // Reg32 * trans_tc = reinterpret_cast<Reg32 *>(Memory_Map::ETH_BASE + TRANS_TRANSMIT_COMPLETE);
-
-    Reg32 conteudo = (*int_tc) & INT_TRASNMIT_COMPLETE;
-  
-    // cout << conteudo << endl;
-    
-    if (conteudo) return false;
-    return true;
 
 }
 

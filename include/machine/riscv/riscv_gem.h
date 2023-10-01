@@ -59,7 +59,7 @@ public:
         COPY_ALL_FRAMES = 1 << 4,
         RECEIVE_CHECKSUM_OFFLOAD_ENABLE = 1 << 24,
         PAUSE_ENABLE = 1 << 13,
-        MDC_CLOCK_DIVISION = 0x1C0000, // verificar
+        MDC_CLOCK_DIVISION = 0x1C0000,
 
         // DMA_CONFIG bits
         RX_BUF_SIZE  = 0x00180000,
@@ -70,7 +70,7 @@ public:
         AMBA_BURST_LENGTH = 0x10,
 
         // INT STATUS
-        INT_TRASNMIT_COMPLETE = 1 << 7,
+        INT_TRASNMIT_COMPLETE = 1 << 7,   
 
         // TRANSMIT STATUS
         TRANS_TRANSMIT_COMPLETE = 1 << 5,
