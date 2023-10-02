@@ -5,10 +5,7 @@
 #include <machine/riscv/riscv_gem.h>
 #include <network/ethernet.h>
 
-
 using namespace EPOS;
-
-// OStream cout;
 
 class NIC_Receiver : public Data_Observer<CT_Buffer, void>
 {
@@ -22,17 +19,11 @@ public:
 
           cout << "NIC_Receiver update: " << endl;
           cout << data[0] << " " << data[1] << " " << data[2] << " " << data[3] << endl;
-
      }
 };
 
-
 int main()
 {
-     cout << "\n\n ********************  P1 *********************\n\n"
-          << endl;
-
-
      SiFiveU_NIC sifiveu_nic = SiFiveU_NIC();
      NIC_Receiver nic_receiver = NIC_Receiver();
 
@@ -54,16 +45,13 @@ int main()
      dst[1] = 0x00;
      dst[0] = 0x00;
 
-
      char payload[100];
-     for(int i = 0; i < 20; i++) {
+     for (int i = 0; i < 20; i++)
+     {
           memset(payload, '0' + i, 100);
           payload[100 - 1] = '\n';
           sifiveu_nic.send(src, dst, payload, 100);
      }
-
-     cout << "\n\n ************************* P1 *************************\n\n"
-          << endl;
 
      return 0;
 }

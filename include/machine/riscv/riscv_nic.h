@@ -7,9 +7,7 @@
 #include <machine/riscv/riscv_gem.h>
 #include <system.h>
 
-
 __BEGIN_SYS
-
 
 class SiFiveU_NIC : public Data_Observed<CT_Buffer, void>, Cadence_GEM
 {
@@ -32,9 +30,9 @@ private:
         RX_WORD0_3_LSB_WRP = 0x00000002,
     };
     // Descriptor
-    enum  
+    enum
     {
-        TX_WORD1_OWN_CONTROLLER = ~(1 << 31), 
+        TX_WORD1_OWN_CONTROLLER = ~(1 << 31),
         TX_WORD1_OWN_CPU = 1 << 31,
         TX_WORD1_WRP_BIT = 1 << 30,
     };
@@ -42,7 +40,7 @@ private:
     // Utilizando modo de endereçamento de 64 bits
     struct Desc
     {
-        
+
         volatile Reg32 address;
         volatile Reg32 control;
     };
@@ -56,7 +54,7 @@ public:
     // void int_handler(int interrupt = 1) { receive(); };
 
     void receive();
-    void send(Address src, Address dst, char* payload, unsigned int payload_size);
+    void send(Address src, Address dst, char *payload, unsigned int payload_size);
     void init_regs();
 
 public:
@@ -86,7 +84,7 @@ public:
 };
 
 SiFiveU_NIC::SiFiveU_NIC()
-{ 
+{
     init_regs();
 
     // TX Alocando memoria para os buffers tx de descritores e dados
@@ -117,7 +115,6 @@ SiFiveU_NIC::SiFiveU_NIC()
     Phy_Addr addr_desc;
     Phy_Addr addr_data;
 
-
     // setting RX buffers
     for (unsigned int i = 0; i < SLOTS_BUFFER; i++)
     {
@@ -132,9 +129,8 @@ SiFiveU_NIC::SiFiveU_NIC()
         rx_desc->address = addr_data & RX_WORD0_3_LSB; // Os 3 últimos bits da palavra 0 estao sendo zerados
 
         // Setando o bit WRP no último descritor
-        if (i == (SLOTS_BUFFER - 1)) rx_desc->address = rx_desc->address | RX_WORD0_3_LSB_WRP;
-
-
+        if (i == (SLOTS_BUFFER - 1))
+            rx_desc->address = rx_desc->address | RX_WORD0_3_LSB_WRP;
     }
 
     // setting TX buffers
@@ -153,8 +149,8 @@ SiFiveU_NIC::SiFiveU_NIC()
         tx_desc->control = TX_WORD1_OWN_CPU | tx_desc->control;
 
         // Setando o bit WRP no último descritor (item 3)
-        if (i == (SLOTS_BUFFER - 1)) tx_desc->control = TX_WORD1_WRP_BIT | tx_desc->control;
-
+        if (i == (SLOTS_BUFFER - 1))
+            tx_desc->control = TX_WORD1_WRP_BIT | tx_desc->control;
     }
 
     // Configure Buffer Descriptor, p.1061
@@ -163,27 +159,25 @@ SiFiveU_NIC::SiFiveU_NIC()
     set_reg(RECEIVE_Q_PTR, rx_desc_phy);
 
     // Configure Buffer Descriptor, p.1062
-    //4. Write the base address of transmit buffer descriptor list to Controller registers gem.transmit_q{ , 1}_ptr..
+    // 4. Write the base address of transmit buffer descriptor list to Controller registers gem.transmit_q{ , 1}_ptr..
     set_reg(TRANSMIT_Q_PTR, tx_desc_phy);
-
-
 }
 
-void SiFiveU_NIC::send(Address src, Address dst, char* payload, unsigned int payload_size)
+void SiFiveU_NIC::send(Address src, Address dst, char *payload, unsigned int payload_size)
 {
 
     if (payload_size <= FRAME_SIZE)
     {
         // Varrer descriptors de tx procurando buffer livre
-        for (; last_desc_idx < SLOTS_BUFFER; )
+        for (; last_desc_idx < SLOTS_BUFFER;)
         {
             Desc *tx_desc = tx_desc_phy + (last_desc_idx * DESC_SIZE);
             last_desc_idx = (last_desc_idx + 1) % SLOTS_BUFFER;
-            
-            if (tx_desc->control >> 31) {
-                
-                // Montando o Frame para ser enviado 
-                Frame* frame = new (reinterpret_cast<void *>(tx_desc->address)) Frame(src, dst, 0x8888, payload, payload_size);
+
+            if (tx_desc->control >> 31)
+            {
+                // Montando o Frame para ser enviado
+                Frame *frame = new (reinterpret_cast<void *>(tx_desc->address)) Frame(src, dst, 0x8888, payload, payload_size);
 
                 // Seta o tamanho do buffer de dados a ser lido
                 tx_desc->control = tx_desc->control | (payload_size + sizeof(*(frame->header())));
@@ -197,15 +191,14 @@ void SiFiveU_NIC::send(Address src, Address dst, char* payload, unsigned int pay
                 // Habilita a NIC para a execução
                 set_bits(NETWORK_CONTROL, TX_START_PCLK);
 
-                // Espera o envio 
-                while (!(tx_desc->control & TX_WORD1_OWN_CPU )) ;
+                // Espera o envio
+                while (!(tx_desc->control & TX_WORD1_OWN_CPU))
+                    ;
 
                 // Se conseguiu enviar, sai do for
                 break;
             }
         }
-        
-        
     }
 }
 
@@ -224,7 +217,7 @@ void SiFiveU_NIC::receive()
     notify(buffer);
 }
 
-void SiFiveU_NIC::init_regs() 
+void SiFiveU_NIC::init_regs()
 {
     // 1. Clear the network control register
     //  Write 0x0 to the gem.network_control register.
@@ -255,7 +248,7 @@ void SiFiveU_NIC::init_regs()
     // Write 0x0 to the gem.receive_q{}_ptr
     set_reg(RECEIVE_Q_PTR, 0x0);
 
-     // Write 0x0 to the gem.receive_q{1}_ptr
+    // Write 0x0 to the gem.receive_q{1}_ptr
     set_reg(RECEIVE_Q1_PTR, 0x0);
 
     // Configure the controller
@@ -271,7 +264,6 @@ void SiFiveU_NIC::init_regs()
     // c. Enable reception of broadcast or multicast frames.
     // Write a 0 to the gem.network_config[no_broadcast] register to enable broadcast frames.
     set_bits_and(NETWORK_CONFIG, NO_BROADCAST);
-
 
     // write a 1 to the gem.network_config[multicast_hash_en] bit to enable multicast frames.
     set_bits(NETWORK_CONFIG, MULTICAST_HASH_ENABLE);
@@ -293,13 +285,12 @@ void SiFiveU_NIC::init_regs()
 
     // 2. Set the MAC address.
     // Write to the gem.spec_add1_bottom register.
-    Reg32 * low = reinterpret_cast<Reg32*>(Memory_Map::ETH_BASE + SPEC_ADD1_BOTTOM);
+    Reg32 *low = reinterpret_cast<Reg32 *>(Memory_Map::ETH_BASE + SPEC_ADD1_BOTTOM);
     set_reg(SPEC_ADD1_BOTTOM, *low);
-    
-    
+
     // Write to the gem.spec_add1_top register. The
     // most significant 16 bits go to gem.spec_add1_top
-    Reg32 * high = reinterpret_cast<Reg32*>(Memory_Map::ETH_BASE + SPEC_ADD1_TOP);
+    Reg32 *high = reinterpret_cast<Reg32 *>(Memory_Map::ETH_BASE + SPEC_ADD1_TOP);
     set_reg(SPEC_ADD1_TOP, *high);
 
     // 3. Program the DMA configuration register (gem.dma_config)
@@ -332,13 +323,12 @@ void SiFiveU_NIC::init_regs()
     // 4. Program the network control register (gem.network_control).
     // a. Enable the MDIO. Write a 1 to the gem.network_control[man_port_en] bit.
     set_bits(NETWORK_CONTROL, MAN_PORT_EN);
-    
+
     // b. Enable the transmitter. Write a 1 to the gem.network_control[enable_transmit] bit.
     set_bits(NETWORK_CONTROL, ENABLE_TRANSMIT);
-    
+
     // c. Enable the receiver. Write a 1 to the gem.network_control[enable_receive] bit.
     set_bits(NETWORK_CONTROL, ENABLE_RECEIVE);
-
 }
 
 __END_SYS
