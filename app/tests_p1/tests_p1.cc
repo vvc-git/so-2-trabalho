@@ -29,9 +29,6 @@ public:
 
 int main()
 {
-     cout << "\n\n ********************  P1 *********************\n\n"
-          << endl;
-
 
      SiFiveU_NIC sifiveu_nic = SiFiveU_NIC();
      NIC_Receiver nic_receiver = NIC_Receiver();
@@ -61,9 +58,6 @@ int main()
           payload[100 - 1] = '\n';
           sifiveu_nic.send(src, dst, payload, 100);
      }
-
-     cout << "\n\n ************************* P1 *************************\n\n"
-          << endl;
 
      return 0;
 }

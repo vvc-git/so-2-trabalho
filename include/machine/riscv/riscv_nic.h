@@ -200,7 +200,7 @@ void SiFiveU_NIC::send(Address src, Address dst, char* payload, unsigned int pay
                 // Espera o envio 
                 while (!(tx_desc->control & TX_WORD1_OWN_CPU )) ;
 
-                // Se conseguiu enviar, sai do for
+                // Se conseguiu enviar, sai do loop
                 break;
             }
         }
