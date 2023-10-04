@@ -3,6 +3,8 @@
 
 __BEGIN_SYS
 
+SiFiveU_NIC* SiFiveU_NIC::_device;
+
 SiFiveU_NIC::SiFiveU_NIC()
 { 
     init_regs();

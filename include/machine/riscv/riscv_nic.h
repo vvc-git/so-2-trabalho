@@ -175,6 +175,9 @@ public:
     unsigned int DESC_SIZE = 8;
     unsigned int SLOTS_BUFFER = 4;
     unsigned int last_desc_idx = 0;
+
+    // Atributo estático para ser acessado pelo tratador de interrupções
+    static SiFiveU_NIC* _device; 
 };
 
 __END_SYS
