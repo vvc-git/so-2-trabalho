@@ -2,13 +2,12 @@
 #include <utility/observer.h>
 #include <utility/ct_buffer.h>
 #include <machine/riscv/riscv_nic.h>
-#include <machine/riscv/riscv_gem.h>
 #include <network/ethernet.h>
 
 
 using namespace EPOS;
 
-// OStream cout;
+OStream cout;
 
 class NIC_Receiver : public Data_Observer<CT_Buffer, void>
 {
