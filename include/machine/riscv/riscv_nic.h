@@ -145,11 +145,12 @@ public:
     void attach(Data_Observer<CT_Buffer, void> *o) { Data_Observed<CT_Buffer, void>::attach(o); };
 
     // TODO: Será utilizado para o P2
-    // void int_handler(int interrupt = 1) { receive(); };
+    static void int_handler(int interrupt = 1) { _device->handle_interrupt() ;};
 
     void receive();
     void send(Address src, Address dst, char* payload, unsigned int payload_size);
     void init_regs();
+    void handle_interrupt();
 
 public:
     CT_Buffer *tx_desc_buffer;

@@ -261,4 +261,9 @@ void SiFiveU_NIC::init_regs()
 
 }
 
+void SiFiveU_NIC::handle_interrupt() {
+    // Setup interrupt 
+    return;
+
+}
 __END_SYS
