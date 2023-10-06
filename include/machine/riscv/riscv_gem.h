@@ -54,16 +54,10 @@ public:
 
   // Network Configuration Register bits
   enum {
-    SPEED_100 = 1 << 0,   /**< Speed 100 */
     FULL_DUPLEX = 1 << 1, /**< Full duplex */
     PROMISC = 1 << 4,     /**< Promiscuous mode */
-    MDC_DIV_48 = 3 << 18,          /**< MDC clock divider 48 */
     STRIP_FCS = 1 << 17,     /**< Strip FCS field */
-    RX_BUF_OFFSET = 2 << 14,  /**< RX buffer offset for Ethernet */
-    MDC_CLK_DIV_MASK = 7 << 18, /**< MDC clock divider mask */
     _32_DBUS_WIDTH_SIZE = 0 << 21, /**< 32 bits size */
-    _64_DBUS_WIDTH_SIZE = 1 << 21, /**< 64 bits size */
-    DBUS_WIDTH_MASK = 3 << 21,  /**< DBUS width mask */
     IGNORE_FCS = 1 << 26,
   };
 
@@ -163,19 +157,12 @@ private:
   static const unsigned int TX_BUFS = Traits<SiFive_U_NIC>::SEND_BUFFERS;
   static const unsigned int RX_BUFS = Traits<SiFive_U_NIC>::RECEIVE_BUFFERS;
 
-  // Size of the DMA Buffer that will host the ring buffers and the init block
+  // Size of the DMA Buffer that will host the ring buffers
   static const unsigned int DMA_BUFFER_SIZE =
       RX_BUFS * ((sizeof(Rx_Desc) + 15) & ~15U) +
       TX_BUFS * ((sizeof(Tx_Desc) + 15) & ~15U) +
       RX_BUFS * ((sizeof(Buffer) + 15) & ~15U) +
       TX_BUFS * ((sizeof(Buffer) + 15) & ~15U);
-
-  // Interrupt dispatching binding
-  struct Device {
-    SiFive_U_NIC *device;
-    unsigned int interrupt;
-  };
-
 
 protected:
   SiFive_U_NIC(unsigned int unit, DMA_Buffer *dma_buf);

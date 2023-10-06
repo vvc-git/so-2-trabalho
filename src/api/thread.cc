@@ -286,12 +286,9 @@ void Thread::wakeup_all(Queue * q)
 
     assert(locked()); // locking handled by caller
 
-    db<Thread>(TRC) << "Thread::wakeup_all() AFTER assert(locked())." << endl;
 
     if(!q->empty()) {
-        db<Thread>(TRC) << "Thread::wakeup_all() - Queue is not empty." << endl;
         while(!q->empty()) {
-            db<Thread>(TRC) << "Thread::wakeup_all() - INSIDE WHILE Queue is not empty." << endl;
             Thread * t = q->remove()->object();
             t->_state = READY;
             t->_waiting = 0;
@@ -299,7 +296,6 @@ void Thread::wakeup_all(Queue * q)
         }
 
         if(preemptive){
-            db<Thread>(TRC) << "Thread::wakeup_all() - INSIDE PREEMPTIVE." << endl;
             reschedule();
         }
     }

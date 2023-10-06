@@ -36,7 +36,7 @@ int main()
 
     cout << "Philosophers are alive and hungry!" << endl;
 
-    /*
+    
     Display::position(7, 44);
     cout << '/';
     Display::position(13, 44);
@@ -48,17 +48,17 @@ int main()
     Display::position(7, 27);
     cout << '\\';
     Display::position(19, 0);
-    */
+    
 
     cout << "The dinner is served ..." << endl;
-    //
+    
 
     for(int i = 0; i < 5; i++) {
         int ret = phil[i]->join();
-        //
-        //Display::position(20 + i, 0);
+        
+        Display::position(20 + i, 0);
         cout << "Philosopher " << i << " ate " << ret << " times " << endl;
-        //
+        
     }
 
     for(int i = 0; i < 5; i++)
@@ -79,13 +79,13 @@ int philosopher(int n, int l, int c)
     for(int i = iterations; i > 0; i--) {
 
         
-        //Display::position(l, c);
+        Display::position(l, c);
         cout << "thinking\n";
         
 
         Delay thinking(10000000);
 
-        //Display::position(l, c);
+        Display::position(l, c);
         table.lock();
         cout << "\nFirst: " << first << ".\n" << endl;
         table.unlock();
@@ -97,14 +97,14 @@ int philosopher(int n, int l, int c)
         chopstick[second]->p();  // get second chopstick
 
         
-        //Display::position(l, c);
+        Display::position(l, c);
         cout << "eating\n";
         
 
         Delay eating(500000);
 
         
-        //Display::position(l, c);
+        Display::position(l, c);
         cout << "\n  sate  \n";
         
 
@@ -113,8 +113,8 @@ int philosopher(int n, int l, int c)
     }
 
     
-    //Display::position(l, c);
-    //cout << "  done  ";
+    Display::position(l, c);
+    cout << "  done  ";
     
 
     return iterations;
