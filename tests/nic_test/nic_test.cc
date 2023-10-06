@@ -36,20 +36,13 @@ void ethernet_test() {
     NIC<Ethernet>::Address self = nic->address();
     cout << "  MAC: " << self << endl;
 
-    dst[5] = 0x08;
-    dst[4] = 0x54;
-    dst[3] = 0x00;
-    dst[2] = 0x12;
-    dst[1] = 0x34;
-    dst[0] = 0x56;
-
     if(self[5] % 2) { // sender
-        Delay (5000000);
+        //Delay (5000000);
 
         for(int i = 0; i < 10; i++) {
             memset(data, '0' + i, nic->mtu());
             data[nic->mtu() - 1] = '\n';
-            nic->send(dst, 0x8888, data, nic->mtu());
+            nic->send(nic->broadcast(), 0x8888, data, nic->mtu());
         }
     } else { // receiver
         for(int i = 0; i < 10; i++) {
@@ -63,8 +56,7 @@ void ethernet_test() {
          << "Tx Packets: " << stat.tx_packets << "\n"
          << "Tx Bytes:   " << stat.tx_bytes << "\n"
          << "Rx Packets: " << stat.rx_packets << "\n"
-         << "Rx Bytes:   " << stat.rx_bytes << "\n"
-         << "Rx Overruns:  " << stat.rx_overruns << "\n";
+         << "Rx Bytes:   " << stat.rx_bytes << "\n";
 }
 
 #endif

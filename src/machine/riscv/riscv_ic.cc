@@ -10,6 +10,7 @@ extern "C" { static void print_context(bool push); }
 
 __BEGIN_SYS
 
+PLIC::Reg32 PLIC::_claimed;
 IC::Interrupt_Handler IC::_int_vector[IC::INTS];
 
 void IC::entry()
@@ -34,12 +35,21 @@ void IC::dispatch()
 {
     Interrupt_Id id = int_id();
 
-    if((id != INT_SYS_TIMER) || Traits<IC>::hysterically_debugged)
-        db<IC, System>(TRC) << "IC::dispatch(i=" << id << ") [sp=" << CPU::sp() << "]" << endl;
+    if(((id != INT_SYS_TIMER) && (id != INT_SYSCALL) && ((id == CPU::EXC_IPF) && (CPU::epc() != CPU::Log_Addr(&__exit)))) || Traits<IC>::hysterically_debugged)
+        db<IC, System>(TRC) << "IC::dispatch(i=" << id << ") [cpu=" << CPU::id() << ", sp=" << CPU::sp() << "]" << endl;
 
-    if(id == INT_SYS_TIMER)
-        Timer::reset(); // MIP.MTI is a direct logic on (MTIME == MTIMECMP) and reseting the Timer seems to be the only way to clear it
+
+    if(id == INT_RESCHEDULER)
+        IC::ipi_eoi(id & CLINT::INT_MASK);
+    else if(id == INT_SYS_TIMER)
+        Timer::reset();             // MIP.MTI is a direct logic on (MTIME == MTIMECMP) and reseting the Timer seems to be the only way to clear it
+
     _int_vector[id](id);
+
+    if(id > HARD_INT) {
+        complete(int2irq(id));
+        db<IC, System>(TRC) << "IC::dispatch(i=" << id << ") => interrupt handled!" << endl;
+    }
 
     if(id >= EXCS)
         CPU::fr(0); // tell CPU::Context::pop(true) not to increment PC since it is automatically incremented for hardware interrupts
@@ -47,25 +57,23 @@ void IC::dispatch()
 
 void IC::int_not(Interrupt_Id id)
 {
-    db<IC, System>(TRC) << "IC::int_not(i=" << id << ")" << endl;
+    db<IC>(WRN) << "IC::int_not(i=" << id << ")" << endl;
     if(Traits<Build>::hysterically_debugged)
         Machine::panic();
-    
-    if (id == 11 + EXCS) {
-        external();
-    }
 }
 
 void IC::exception(Interrupt_Id id)
 {
-    CPU::Log_Addr sp = CPU::sp();
+    CPU::Log_Addr ksp = CPU::sp();
+    CPU::Log_Addr usp = multitask ? CPU::sscratch() : 0;
+    CPU::Log_Addr atp = 0;
     CPU::Log_Addr epc = CPU::epc();
     CPU::Reg status = CPU::status();
     CPU::Reg cause = CPU::cause();
     CPU::Log_Addr tval = CPU::tval();
     Thread * thread = Thread::self();
-
-    db<IC,System>(WRN) << "IC::Exception(" << id << ") => {" << hex << "thread=" << thread << ",sp=" << sp << ",status=" << status << ",cause=" << cause << ",epc=" << epc << ",tval=" << tval << "}" << dec;
+    
+    db<IC,System>(WRN) << "IC::Exception(" << id << ") => {" << hex << "thread=" << thread << ",atp=" << atp << ",usp=" << usp << ",ksp=" << ksp << ",status=" << status << ",cause=" << cause << ",epc=" << epc << ",tval=" << tval << "}" << dec;
 
     switch(id) {
     case CPU::EXC_IALIGN: // instruction address misaligned
@@ -104,7 +112,12 @@ void IC::exception(Interrupt_Id id)
     case CPU::EXC_DRPF: // load page fault
     case CPU::EXC_RES: // reserved
     case CPU::EXC_DWPF: // store/AMO page fault
-        db<IC, System>(WRN) << " => data page fault";
+        if(ksp < thread->_stack)
+            db<IC, Thread>(WRN) << " => kernel stack underflow";
+        else if(ksp > thread->_stack + thread->STACK_SIZE)
+            db<IC, Thread>(WRN) << " => kernel stack overflow";
+        else
+            db<IC, System>(WRN) << " => data page fault";
         break;
     default:
         int_not(id);
@@ -121,18 +134,6 @@ void IC::exception(Interrupt_Id id)
     }
 
     CPU::fr(4); // since exceptions do not increment PC, tell CPU::Context::pop(true) to perform PC = PC + 4 on return
-}
-
-void IC::external()
-{
-    db<IC>(TRC) << "IC got external interruption. Sending to PLIC" << endl;
-    Interrupt_Id eirq = next_external_pending();
-    db<IC>(TRC) << "IC got external interruption, externalId=" << eirq << endl;
-    Interrupt_Id id = eirq2int(eirq);
-    if (id != EXCS + IRQS) { // claim != 0
-        _int_vector[id](eirq);
-        complete_external(eirq);
-    }
 }
 
 __END_SYS

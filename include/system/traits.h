@@ -78,7 +78,7 @@ class RTL8139;
 class C905;
 class E100;
 class M95;
-class SiFive_U_NIC;
+class GEM;
 class IEEE802_15_4_NIC;
 class Ethernet_NIC;
 
@@ -200,6 +200,40 @@ struct Traits_Tokens
 
     // SmartData predictors
     enum :unsigned char {NONE, LVP, DBP};
+};
+
+// Interrupt souces names (for all machines; overridden at Traits<IC>; 0 => not used)
+struct Interrupt_Source {
+    static const unsigned int IRQ_DDR         = 0;
+    static const unsigned int IRQ_DMA0        = 0;
+    static const unsigned int IRQ_DMA1        = 0;
+    static const unsigned int IRQ_ETH0        = 0;
+    static const unsigned int IRQ_ETH1        = 0;
+    static const unsigned int IRQ_GPIO0       = 0;
+    static const unsigned int IRQ_GPIO1       = 0;
+    static const unsigned int IRQ_GPIO2       = 0;
+    static const unsigned int IRQ_GPIO3       = 0;
+    static const unsigned int IRQ_I2C         = 0;
+    static const unsigned int IRQ_L2_CACHE    = 0;
+    static const unsigned int IRQ_MSI0        = 0;
+    static const unsigned int IRQ_PWM0        = 0;
+    static const unsigned int IRQ_PWM1        = 0;
+    static const unsigned int IRQ_PWM2        = 0;
+    static const unsigned int IRQ_PWM3        = 0;
+    static const unsigned int IRQ_QSPI0       = 0;
+    static const unsigned int IRQ_QSPI1       = 0;
+    static const unsigned int IRQ_QSPI2       = 0;
+    static const unsigned int IRQ_QSPI3       = 0;
+    static const unsigned int IRQ_RTC         = 0;
+    static const unsigned int IRQ_SPI0        = 0;
+    static const unsigned int IRQ_SPI1        = 0;
+    static const unsigned int IRQ_SPI2        = 0;
+    static const unsigned int IRQ_SPI3        = 0;
+    static const unsigned int IRQ_UART0       = 0;
+    static const unsigned int IRQ_UART1       = 0;
+    static const unsigned int IRQ_UART2       = 0;
+    static const unsigned int IRQ_UART3       = 0;
+    static const unsigned int IRQ_WDOG        = 0;
 };
 
 // Monitor events (Transducers)
