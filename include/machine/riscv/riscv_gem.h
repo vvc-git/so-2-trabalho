@@ -85,8 +85,8 @@ public:
     enum : Reg32 {                              // Description
         DMA_ADDR_BUS_WIDTH      =    1 << 30,   // DMA address bus width (0 = 32b, 1 = 64b)
         FORCE_DISCARD_ON_ERR    =    1 << 24,   // Auto Discard RX packets on lack of resource
-        RX_BUF_SIZE             = 0xff << 16,   // DMA receive buffer size x 64 (0x18 for 1536 bytes)
-        RX_BUF_SIZE_SHIFT       = 16
+        RX_BUF_SIZE             = 0xff << 18,   // DMA receive buffer size x 64 (0x18 for 1536 bytes)
+        RX_BUF_SIZE_SHIFT       = 14
     };
 
     // Interrupt register meaningful bits
