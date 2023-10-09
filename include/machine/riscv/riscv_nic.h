@@ -102,7 +102,7 @@ public:
 
 };
 
-
+// TODO: Mudara essa heranca CADENCE GEM
 class SiFiveU_NIC : public Data_Observed<CT_Buffer, void>, Cadence_GEM
 {
 
@@ -144,12 +144,14 @@ public:
     ~SiFiveU_NIC(){};
     void attach(Data_Observer<CT_Buffer, void> *o) { Data_Observed<CT_Buffer, void>::attach(o); };
 
-    // TODO: Será utilizado para o P2
-    static void int_handler(int interrupt = 1) { _device->handle_interrupt() ;};
+   
 
     void receive();
     void send(Address src, Address dst, char* payload, unsigned int payload_size);
     void init_regs();
+
+     // Métododos para o tratamento de interrupções
+    static void int_handler(int interrupt = 1) { _device->handle_interrupt() ;};
     void handle_interrupt();
 
 public:
