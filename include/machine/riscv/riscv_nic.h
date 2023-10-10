@@ -12,7 +12,9 @@ __BEGIN_SYS
 class Cadence_GEM
 {
 protected:
+    // TODO: Talvez mudar para o tipo ADDRESS
     typedef CPU::Reg32 Reg32;
+    typedef CPU::Reg16 Reg16;
     typedef CPU::Log_Addr Log_Addr;
     typedef CPU::Phy_Addr Phy_Addr;
 
@@ -117,13 +119,14 @@ private:
     typedef Ethernet::Frame Frame;
     typedef NIC<Ethernet>::Address Address;
 
-    // masks
+    // Descriptor RX
     enum : unsigned int
     {
-        RX_WORD0_3_LSB = 0xfffffff8,
+        RX_WORD0_3_LSB = 0xfffffffc,
         RX_WORD0_3_LSB_WRP = 0x00000002,
+        RX_OWN = (1 << 0),
     };
-    // Descriptor
+    // Descriptor TX
     enum  
     {
         TX_WORD1_OWN_CONTROLLER = ~(1 << 31), 
@@ -145,7 +148,7 @@ public:
     void attach(Data_Observer<CT_Buffer, void> *o) { Data_Observed<CT_Buffer, void>::attach(o); };
 
    
-
+    void receive(Address src, char* payload, unsigned int payload_size);
     void receive();
     void send(Address src, Address dst, char* payload, unsigned int payload_size);
     void init_regs();
@@ -181,6 +184,9 @@ public:
 
     // Atributo estático para ser acessado pelo tratador de interrupções
     static SiFiveU_NIC* _device; 
+
+    Reg32 mac_low;
+    Reg16 mac_high;
 };
 
 __END_SYS

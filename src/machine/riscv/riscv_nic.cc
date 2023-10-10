@@ -49,7 +49,7 @@ SiFiveU_NIC::SiFiveU_NIC()
         // 4. Mark the last descriptor in the buffer descriptor list with the wrap bit, (bit [1] in word [0]) set.
         // 5. Fill the addresses of the allocated buffers in the buffer descriptors (bits [31-2], Word [0])
         Desc *rx_desc = addr_desc;
-        rx_desc->address = addr_data & RX_WORD0_3_LSB; // Os 3 últimos bits da palavra 0 estao sendo zerados
+        rx_desc->address = addr_data & RX_WORD0_3_LSB; // Os 2 últimos bits da palavra 0 estao sendo zerados
 
         // Setando o bit WRP no último descritor
         if (i == (SLOTS_BUFFER - 1)) rx_desc->address = rx_desc->address | RX_WORD0_3_LSB_WRP;
@@ -144,6 +144,38 @@ void SiFiveU_NIC::receive()
     notify(buffer);
 }
 
+void SiFiveU_NIC::receive(Address src, char* payload, unsigned int payload_size)
+{
+    Desc *desc = rx_desc_phy;
+
+    Phy_Addr addr = desc->address;
+
+    db<SiFiveU_NIC>(WRN) << "Addr:       " << addr << endl;
+    db<SiFiveU_NIC>(WRN) << "bit_own:    " << RX_OWN << endl;
+    db<SiFiveU_NIC>(WRN) << "E logico:   " << (addr & RX_OWN) << endl;
+
+
+    for (int i = 0; !(addr & RX_OWN); i=(i+1)%SLOTS_BUFFER) {
+
+        addr = desc->address + i * DESC_SIZE;
+        db<SiFiveU_NIC>(WRN) << "TESTE RECEIVE " << addr << endl;
+
+        // if (i==3) break;
+        
+    }
+
+    return;
+  
+
+    // CT_Buffer *buffer = new CT_Buffer(FRAME_SIZE);
+
+    // // Colocando o valor de RX data (addr) para o CT_buffer alocado
+    // buffer->set_dma_data((char *)addr, 1);
+
+    // // Chamando notify (Observed)
+    // notify(buffer);
+}
+
 void SiFiveU_NIC::init_regs() 
 {
     // 1. Clear the network control register
@@ -194,11 +226,11 @@ void SiFiveU_NIC::init_regs()
 
 
     // write a 1 to the gem.network_config[multicast_hash_en] bit to enable multicast frames.
-    set_bits(NETWORK_CONFIG, MULTICAST_HASH_ENABLE);
+    // set_bits(NETWORK_CONFIG, MULTICAST_HASH_ENABLE);
 
     // d. Enable promiscuous mode.
     // Write a 1 to the gem.network_config[copy_all_frames] bit.
-    // set_bits(NETWORK_CONFIG, COPY_ALL_FRAMES);
+    set_bits(NETWORK_CONFIG, COPY_ALL_FRAMES);
 
     // e. Enable TCP/IP checksum offload feature on receive.
     // Write a 1 to the gem.network_config[receive_checksum_offload_enable] bit.
@@ -221,6 +253,9 @@ void SiFiveU_NIC::init_regs()
     // most significant 16 bits go to gem.spec_add1_top
     Reg32 * high = reinterpret_cast<Reg32*>(Memory_Map::ETH_BASE + SPEC_ADD1_TOP);
     set_reg(SPEC_ADD1_TOP, *high);
+
+    mac_low = * low;
+    mac_high = * high;
 
     // 3. Program the DMA configuration register (gem.dma_config)
 
