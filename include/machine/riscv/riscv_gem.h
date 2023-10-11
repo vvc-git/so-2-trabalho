@@ -85,8 +85,8 @@ public:
     enum : Reg32 {                              // Description
         DMA_ADDR_BUS_WIDTH      =    1 << 30,   // DMA address bus width (0 = 32b, 1 = 64b)
         FORCE_DISCARD_ON_ERR    =    1 << 24,   // Auto Discard RX packets on lack of resource
-        RX_BUF_SIZE             = 0xff << 18,   // DMA receive buffer size x 64 (0x18 for 1536 bytes)
-        RX_BUF_SIZE_SHIFT       = 14
+        RX_BUF_SIZE             = 0xff << 16,   // DMA receive buffer size x 64 (0x18 for 1536 bytes)
+        RX_BUF_SIZE_SHIFT       = 16
     };
 
     // Interrupt register meaningful bits
@@ -211,7 +211,7 @@ public:
             reg(NWCFG) &= ~PROMISC;
     };
 
-    void dma_rx_buffer_size(unsigned int size) { reg(DMACFG) = (reg(DMACFG) & ~RX_BUF_SIZE) | ((size << RX_BUF_SIZE_SHIFT) & RX_BUF_SIZE); };
+    void dma_rx_buffer_size(unsigned int size) { reg(DMACFG) = (reg(DMACFG) & ~RX_BUF_SIZE) | ((((size + 63) / 64) << RX_BUF_SIZE_SHIFT) & RX_BUF_SIZE); };
 
 private:
     static volatile Reg32 & reg(unsigned int o) { return reinterpret_cast<volatile Reg32 *>(Memory_Map::ETH_BASE)[o / sizeof(Reg32)]; }

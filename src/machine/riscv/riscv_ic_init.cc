@@ -27,6 +27,7 @@ void IC::init()
     for(Interrupt_Id i = EXCS; i < INTS; i++)
         _int_vector[i] = &int_not;
 
+    enable(INT_PLIC); // enable PLIC interrupt (external interrupts)
     PLIC::threshold(0); // set the threshold to 0 so all enabled external interrupts will be dispatched
 }
 

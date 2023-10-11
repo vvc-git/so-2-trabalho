@@ -37,7 +37,7 @@ void ethernet_test() {
     cout << "  MAC: " << self << endl;
 
     if(self[5] % 2) { // sender
-        //Delay (5000000);
+        Delay (5000000);
 
         for(int i = 0; i < 10; i++) {
             memset(data, '0' + i, nic->mtu());
