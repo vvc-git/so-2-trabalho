@@ -103,7 +103,7 @@ void SiFiveU_NIC::send(Address src, Address dst, char* payload, unsigned int pay
             if (tx_desc->control >> 31) {
                 
                 // Montando o Frame para ser enviado 
-                Frame* frame = new (reinterpret_cast<void *>(tx_desc->address)) Frame(src, dst, 0x8888, payload, payload_size);
+                Frame* frame = new (reinterpret_cast<void *>(tx_desc->address)) Frame(this->address, dst, 0x8888, payload, payload_size);
 
                 // Seta o tamanho do buffer de dados a ser lido
                 tx_desc->control = tx_desc->control | (payload_size + sizeof(*(frame->header())));
@@ -160,7 +160,7 @@ void SiFiveU_NIC::receive(Address src, char* payload, unsigned int payload_size)
         addr = desc->address + i * DESC_SIZE;
         db<SiFiveU_NIC>(WRN) << "TESTE RECEIVE " << addr << endl;
 
-        // if (i==3) break;
+        if (i==3) break;
         
     }
 
@@ -256,6 +256,14 @@ void SiFiveU_NIC::init_regs()
 
     mac_low = * low;
     mac_high = * high;
+
+    address[0] = *low >> 0;
+    address[1] = *low >> 8;
+    address[2] = *low >> 16;
+    address[3] = *low >> 24;
+    address[4] = *high >> 0;
+    address[5] = *high >> 8;
+
 
     // 3. Program the DMA configuration register (gem.dma_config)
 

@@ -185,6 +185,10 @@ public:
     // Atributo estático para ser acessado pelo tratador de interrupções
     static SiFiveU_NIC* _device; 
 
+
+    // Address
+    Address address;
+
     Reg32 mac_low;
     Reg16 mac_high;
 };

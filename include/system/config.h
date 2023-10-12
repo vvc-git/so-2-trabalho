@@ -11,7 +11,7 @@
 #define ARCH rv64
 #define MACH riscv
 #define MMOD sifive_u
-#define APPL tests_p1
+#define APPL tests_p2
 #define __library__
 #define __rv64__
 #define __riscv__

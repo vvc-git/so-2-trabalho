@@ -36,37 +36,34 @@ int main()
 
      NIC<Ethernet>::Address src, dst;
 
-     src[5] = 0x01;
-     src[4] = 0x00;
-     src[3] = 0x00;
-     src[2] = 0x00;
-     src[1] = 0x00;
-     src[0] = 0x00;
+     // src[5] = 0x00;
+     // src[4] = 0x00;
+     // src[3] = 0x00;
+     // src[2] = 0x00;
+     // src[1] = 0x00;
+     // src[0] = 0x01;
 
-     dst[5] = 0x02;
-     dst[4] = 0x00;
-     dst[3] = 0x00;
-     dst[2] = 0x00;
-     dst[1] = 0x00;
-     dst[0] = 0x00;
+     dst[0] = 0xff;
+     dst[1] = 0xff;
+     dst[2] = 0xff;
+     dst[3] = 0xff;
+     dst[4] = 0xff;
+     dst[5] = 0xff;
 
 
      char payload[100];
-     cout << hex << sifiveu_nic.mac_high << endl;
-     cout << hex << sifiveu_nic.mac_low << endl;
+     cout << "  MAC: " << sifiveu_nic.address << endl;
 
-     if(!(sifiveu_nic.mac_high >> 9)) { // sender
-          cout << "O cara que envia" << endl;
-          cout << hex << sifiveu_nic.mac_high << endl;
-          for(int i = 0; i < 2; i++) {
+     if(!(sifiveu_nic.address[5] % 2 )) { // sender
+          cout << "Sender" << endl;
+          for(int i = 0; i < 1; i++) {
                memset(payload, '0' + i, 100);
                payload[100 - 1] = '\n';
+               cout << "  dest: " << dst << endl;
                sifiveu_nic.send(src, dst, payload, 100);
           }
      } else {
-          cout << "O cara que recebe" << endl;
-          cout << hex << sifiveu_nic.mac_high << endl;
-          
+          cout << "Receiver" << endl;
           sifiveu_nic.receive(src, payload, 100);
      }
 
