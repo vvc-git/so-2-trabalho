@@ -4,6 +4,9 @@
 #include <machine/riscv/riscv_nic.h>
 #include <network/ethernet.h>
 
+// Para o delay
+#include <time.h>
+
 
 using namespace EPOS;
 
@@ -36,46 +39,40 @@ int main()
 
      NIC<Ethernet>::Address src, dst;
 
-     // src[5] = 0x00;
-     // src[4] = 0x00;
-     // src[3] = 0x00;
-     // src[2] = 0x00;
-     // src[1] = 0x00;
-     // src[0] = 0x01;
+     src[0] = 0x01;
+     src[1] = 0x00;
+     src[2] = 0x00;
+     src[3] = 0x00;
+     src[4] = 0x00;
+     src[5] = 0x00;
 
-     dst[0] = 0xff;
-     dst[1] = 0xff;
-     dst[2] = 0xff;
-     dst[3] = 0xff;
-     dst[4] = 0xff;
-     dst[5] = 0xff;
+     dst[0] = 0x02;
+     dst[1] = 0x00;
+     dst[2] = 0x00;
+     dst[3] = 0x00;
+     dst[4] = 0x00;
+     dst[5] = 0x00;
 
-
-     char payload[100];
+     unsigned int MTU = 1500;
+     char payload[MTU];
      cout << "  MAC: " << sifiveu_nic.address << endl;
 
-     if(!(sifiveu_nic.address[5] % 2 )) { // sender
+     if((sifiveu_nic.address[5] % 2 )) { // sender
+          
           cout << "Sender" << endl;
           for(int i = 0; i < 1; i++) {
                memset(payload, '0' + i, 100);
                payload[100 - 1] = '\n';
-               cout << "  dest: " << dst << endl;
-               sifiveu_nic.send(src, dst, payload, 100);
+               sifiveu_nic.send(src, dst, payload, MTU);
           }
      } else {
+
+          Delay (5000000);
           cout << "Receiver" << endl;
-          sifiveu_nic.receive(src, payload, 100);
+          sifiveu_nic.receive(src, payload, MTU);
+          cout << "  Data: " << payload << endl;
+          // cout << "Fim do receive" <<  payload[0] << endl;
      }
-
-
-//     } else { // receiver
-//         for(int i = 0; i < 10; i++) {
-//            nic->receive(&src, &prot, data, nic->mtu());
-//            cout << "  Data: " << data;
-//         }
-//     }
-
-
 
      return 0;
 }

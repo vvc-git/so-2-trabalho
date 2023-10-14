@@ -38,6 +38,7 @@ SiFiveU_NIC::SiFiveU_NIC()
     Phy_Addr addr_data;
 
 
+    db<SiFiveU_NIC>(WRN) << "Endereços utilizados para o rx de dados (Construtor)"<< endl;
     // setting RX buffers
     for (unsigned int i = 0; i < SLOTS_BUFFER; i++)
     {
@@ -50,6 +51,7 @@ SiFiveU_NIC::SiFiveU_NIC()
         // 5. Fill the addresses of the allocated buffers in the buffer descriptors (bits [31-2], Word [0])
         Desc *rx_desc = addr_desc;
         rx_desc->address = addr_data & RX_WORD0_3_LSB; // Os 2 últimos bits da palavra 0 estao sendo zerados
+        db<SiFiveU_NIC>(WRN) << "Endereço:  "<< i << " " << hex << rx_desc->address << endl;
 
         // Setando o bit WRP no último descritor
         if (i == (SLOTS_BUFFER - 1)) rx_desc->address = rx_desc->address | RX_WORD0_3_LSB_WRP;
@@ -144,36 +146,33 @@ void SiFiveU_NIC::receive()
     notify(buffer);
 }
 
-void SiFiveU_NIC::receive(Address src, char* payload, unsigned int payload_size)
+void SiFiveU_NIC::receive(Address src, void* payload, unsigned int payload_size)
 {
-    Desc *desc = rx_desc_phy;
+    Desc *rx_desc = rx_desc_phy;
 
-    Phy_Addr addr = desc->address;
+    // ! Apagar 
+    int i;
 
-    db<SiFiveU_NIC>(WRN) << "Addr:       " << addr << endl;
-    db<SiFiveU_NIC>(WRN) << "bit_own:    " << RX_OWN << endl;
-    db<SiFiveU_NIC>(WRN) << "E logico:   " << (addr & RX_OWN) << endl;
+    // Varredura no buffer de descritores
+    for (i = 0; !(rx_desc->address & RX_OWN); i=(i+1)%SLOTS_BUFFER) {
 
-
-    for (int i = 0; !(addr & RX_OWN); i=(i+1)%SLOTS_BUFFER) {
-
-        addr = desc->address + i * DESC_SIZE;
-        db<SiFiveU_NIC>(WRN) << "TESTE RECEIVE " << addr << endl;
-
-        if (i==3) break;
-        
+        rx_desc = rx_desc_phy + i * DESC_SIZE;
     }
 
-    return;
-  
 
-    // CT_Buffer *buffer = new CT_Buffer(FRAME_SIZE);
-
-    // // Colocando o valor de RX data (addr) para o CT_buffer alocado
-    // buffer->set_dma_data((char *)addr, 1);
-
-    // // Chamando notify (Observed)
-    // notify(buffer);
+    db<SiFiveU_NIC>(WRN) << "Endereço para construir o frame (dado) ["<< i <<"] "<<  hex << rx_data_phy + i * FRAME_SIZE << endl;
+    Frame * frame = new Frame(src, address, 0x888,  rx_data_phy + i * FRAME_SIZE, payload_size);
+    
+   ;
+    
+     // Copy the data
+    memcpy(payload,  frame->data<void>(), payload_size);
+   
+    //db<SiFiveU_NIC>(WRN) << "Endereço o buffer rx de dados : "<< hex << endereco_dados << endl;
+    // db<SiFiveU_NIC>(WRN) << "Endereço: ["<< i << "]"<< hex << frame << endl;
+    db<SiFiveU_NIC>(WRN) << "src: "<< hex << frame->src() << endl;
+    db<SiFiveU_NIC>(WRN) << "dst: "<< hex << frame->dst() << endl;
+   
 }
 
 void SiFiveU_NIC::init_regs() 
