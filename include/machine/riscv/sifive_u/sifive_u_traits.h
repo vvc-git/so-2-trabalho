@@ -146,8 +146,8 @@ template<> struct Traits<Scratchpad>: public Traits<Machine_Common>
 
 //     static const bool enabled = (Traits<Build>::NODES > 1) && (UNITS > 0);
 
-    static const bool promiscuous = false;
-};
+//     static const bool promiscuous = false;
+// };
 
 // template<> struct Traits<SiFive_U_NIC>: public Traits<Ethernet>
 // {
