@@ -315,4 +315,12 @@ void SiFiveU_NIC::handle_interrupt() {
     return;
 
 }
+
+
+void SiFiveU_NIC::init() {
+
+    _device = new (SYSTEM) SiFiveU_NIC();
+
+
+}
 __END_SYS

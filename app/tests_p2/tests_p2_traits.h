@@ -78,10 +78,10 @@ template<> struct Traits<Aspect>: public Traits<Build>
     static const bool debugged = hysterically_debugged;
 };
 
-template<> struct Traits<SiFiveU_NIC>: public Traits<Build>
-{
-    static const bool debugged = true;
-};
+// template<> struct Traits<SiFiveU_NIC>: public Traits<Build>
+// {
+//     static const bool debugged = true;
+// };
 
 
 __END_SYS

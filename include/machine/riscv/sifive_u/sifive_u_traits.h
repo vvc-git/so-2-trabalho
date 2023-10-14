@@ -167,6 +167,10 @@ template<> struct Traits<PLIC>: public Traits<Machine_Common>
     static const unsigned int INT_GIGABIT_ETH = 53;
 
 };
+template<> struct Traits<SiFiveU_NIC>: public Traits<Machine_Common>
+{
+    static const bool enabled = true;
+};
 
 
 __END_SYS

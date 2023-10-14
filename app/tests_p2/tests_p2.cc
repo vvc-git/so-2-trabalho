@@ -33,10 +33,10 @@ public:
 int main()
 {
 
-     SiFiveU_NIC sifiveu_nic = SiFiveU_NIC();
+     SiFiveU_NIC * sifiveu_nic = SiFiveU_NIC::_device;
      NIC_Receiver nic_receiver = NIC_Receiver();
 
-     sifiveu_nic.attach(&nic_receiver);
+     sifiveu_nic->attach(&nic_receiver);
 
      NIC<Ethernet>::Address src, dst;
 
@@ -56,21 +56,21 @@ int main()
 
      unsigned int MTU = 1500;
      char payload[MTU];
-     cout << "  MAC: " << sifiveu_nic.address << endl;
+     cout << "  MAC: " << sifiveu_nic->address << endl;
 
-     if((sifiveu_nic.address[5] % 2 )) { // sender
+     if((sifiveu_nic->address[5] % 2 )) { // sender
           
           cout << "Sender" << endl;
           for(int i = 0; i < 1; i++) {
                memset(payload, '0' + i, 100);
                payload[100 - 1] = '\n';
-               sifiveu_nic.send(src, dst, payload, MTU);
+               sifiveu_nic->send(src, dst, payload, MTU);
           }
      } else {
 
           Delay (5000000);
           cout << "Receiver" << endl;
-          sifiveu_nic.receive(src, payload, MTU);
+          sifiveu_nic->receive(src, payload, MTU);
           cout << "  Data: " << payload << endl;
           // cout << "Fim do receive" <<  payload[0] << endl;
      }

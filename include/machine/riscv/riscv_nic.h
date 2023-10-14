@@ -159,6 +159,7 @@ public:
     void init_regs();
 
      // Métododos para o tratamento de interrupções
+    static void init();
     static void int_handler(int interrupt = 1) { _device->handle_interrupt() ;};
     void handle_interrupt();
 

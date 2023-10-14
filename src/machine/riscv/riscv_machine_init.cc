@@ -1,6 +1,7 @@
 // EPOS RISC V Initialization
 
 #include <machine.h>
+#include "machine/riscv/riscv_nic.h"
 
 __BEGIN_SYS
 
@@ -23,6 +24,9 @@ void Machine::init()
 
     if(Traits<Timer>::enabled)
         Timer::init();
+
+    if(Traits<SiFiveU_NIC>::enabled)
+        SiFiveU_NIC::init();
 }
 
 __END_SYS
