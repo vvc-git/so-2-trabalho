@@ -36,6 +36,7 @@ public:
         SPEC_ADD1_BOTTOM= 0x00000088,
         SPEC_ADD1_TOP   = 0x0000008c,
         INT_STATUS      = 0x00000024,
+        INT_ENABLE      = 0X00000028,
     };
 
     // Network Control Register bits
@@ -49,9 +50,9 @@ public:
 
     };
 
-    // Network Config Register bits
     enum
     {
+        // Network Config Register bits
         FULL_DUPLEX = 1 << 1,
         GIGABIT_MODE_ENABLE = 1 << 10,
         NO_BROADCAST = ~(1 << 5), // Bit que deve ser zero
@@ -62,7 +63,7 @@ public:
         MDC_CLOCK_DIVISION = 0x1C0000,
 
         // DMA_CONFIG bits
-        RX_BUF_SIZE  = 0x00180000,
+        RX_BUF_SIZE  = 0x00190000,
         RX_PBUF_SIZE = 0x00000300,
         TX_PBUF_SIZE = 1 << 10,
         TX_PBUF_TCP_EN = 1 << 11,
@@ -70,7 +71,9 @@ public:
         AMBA_BURST_LENGTH = 0x10,
 
         // INT STATUS
-        INT_TRASNMIT_COMPLETE = 1 << 7,   
+        INT_TRASNMIT_COMPLETE = 1 << 7,  
+        INT_RECEIVE_COMPLETE = 1 << 1,
+        INT_RECEIVE_OVERRUN = 1 << 10, 
 
         // TRANSMIT STATUS
         TRANS_TRANSMIT_COMPLETE = 1 << 5,
@@ -124,7 +127,7 @@ private:
     {
         RX_WORD0_3_LSB = 0xfffffffc,
         RX_WORD0_3_LSB_WRP = 0x00000002,
-        RX_OWN = (1 << 0),
+        RX_OWN = 0x00000001,
     };
     // Descriptor TX
     enum  
