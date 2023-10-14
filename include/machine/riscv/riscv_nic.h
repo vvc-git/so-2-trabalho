@@ -36,6 +36,7 @@ public:
         SPEC_ADD1_BOTTOM= 0x00000088,
         SPEC_ADD1_TOP   = 0x0000008c,
         INT_STATUS      = 0x00000024,
+        INT_ENABLE      = 0X00000028,
     };
 
     // Network Control Register bits
@@ -49,9 +50,9 @@ public:
 
     };
 
-    // Network Config Register bits
     enum
     {
+        // Network Config Register bits
         FULL_DUPLEX = 1 << 1,
         GIGABIT_MODE_ENABLE = 1 << 10,
         NO_BROADCAST = ~(1 << 5), // Bit que deve ser zero
@@ -70,7 +71,9 @@ public:
         AMBA_BURST_LENGTH = 0x10,
 
         // INT STATUS
-        INT_TRASNMIT_COMPLETE = 1 << 7,   
+        INT_TRASNMIT_COMPLETE = 1 << 7,  
+        INT_RECEIVE_COMPLETE = 1 << 1,
+        INT_RECEIVE_OVERRUN = 1 << 10, 
 
         // TRANSMIT STATUS
         TRANS_TRANSMIT_COMPLETE = 1 << 5,

@@ -3,6 +3,7 @@
 #include <utility/ct_buffer.h>
 #include <machine/riscv/riscv_nic.h>
 #include <network/ethernet.h>
+#include <time.h>
 
 // Para o delay
 #include <time.h>
@@ -23,7 +24,7 @@ public:
           buffer->get_dma_data(data);
 
           cout << "NIC_Receiver update: " << endl;
-          cout << data[0] << " " << data[1] << " " << data[2] << " " << data[3] << endl;
+          cout << data[0] << " " << data[10] << " " << data[25] << " " << data[70] << endl;
 
      }
 };

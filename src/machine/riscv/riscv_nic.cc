@@ -56,7 +56,6 @@ SiFiveU_NIC::SiFiveU_NIC()
         // Setando o bit WRP no último descritor
         if (i == (SLOTS_BUFFER - 1)) rx_desc->address = rx_desc->address | RX_WORD0_3_LSB_WRP;
 
-
     }
 
     // setting TX buffers
@@ -87,8 +86,6 @@ SiFiveU_NIC::SiFiveU_NIC()
     // Configure Buffer Descriptor, p.1062
     //4. Write the base address of transmit buffer descriptor list to Controller registers gem.transmit_q{ , 1}_ptr..
     set_reg(TRANSMIT_Q_PTR, tx_desc_phy);
-
-
 }
 
 void SiFiveU_NIC::send(Address src, Address dst, char* payload, unsigned int payload_size)
@@ -106,6 +103,7 @@ void SiFiveU_NIC::send(Address src, Address dst, char* payload, unsigned int pay
                 
                 // Montando o Frame para ser enviado 
                 Frame* frame = new (reinterpret_cast<void *>(tx_desc->address)) Frame(this->address, dst, 0x8888, payload, payload_size);
+                //memcpy(reinterpret_cast<void *>(tx_desc->address), payload, payload_size);
 
                 // Seta o tamanho do buffer de dados a ser lido
                 tx_desc->control = tx_desc->control | (payload_size + sizeof(*(frame->header())));
@@ -126,8 +124,8 @@ void SiFiveU_NIC::send(Address src, Address dst, char* payload, unsigned int pay
                 break;
             }
         }
-        
-        
+        Reg32 *add = reinterpret_cast<Reg32*>(Memory_Map::ETH_BASE + INT_STATUS);
+        db<SiFiveU_NIC>(WRN) << "INT_STATUS: " << hex << *add << endl;
     }
 }
 
@@ -148,31 +146,37 @@ void SiFiveU_NIC::receive()
 
 void SiFiveU_NIC::receive(Address src, void* payload, unsigned int payload_size)
 {
-    Desc *rx_desc = rx_desc_phy;
+    Desc *desc = rx_desc_phy;
+    int indx = 0;
 
-    // ! Apagar 
-    int i;
+    Reg32 *add = reinterpret_cast<Reg32*>(Memory_Map::ETH_BASE + INT_STATUS);
+    db<SiFiveU_NIC>(WRN) << "INT_STATUS: " << hex << *add << endl;
 
-    // Varredura no buffer de descritores
-    for (i = 0; !(rx_desc->address & RX_OWN); i=(i+1)%SLOTS_BUFFER) {
-
-        rx_desc = rx_desc_phy + i * DESC_SIZE;
+    for (int i = 0; !(desc->address & RX_OWN); i=(i+1)%SLOTS_BUFFER) {
+        desc = rx_desc_phy + i * DESC_SIZE;
+        indx = i;
+        db<SiFiveU_NIC>(WRN) << "for -> addr: " << hex << desc->address << endl;
     }
 
+    db<SiFiveU_NIC>(WRN) << "Addr final: " << hex << desc->address << endl;
+    db<SiFiveU_NIC>(WRN) << "i: " << hex << indx << endl;
+    Reg32 addr = rx_data_phy + indx * FRAME_SIZE; 
+    db<SiFiveU_NIC>(WRN) << "Addr final: " << hex << addr << endl;
 
-    db<SiFiveU_NIC>(WRN) << "Endereço para construir o frame (dado) ["<< i <<"] "<<  hex << rx_data_phy + i * FRAME_SIZE << endl;
-    Frame * frame = new Frame(src, address, 0x888,  rx_data_phy + i * FRAME_SIZE, payload_size);
-    
-   ;
-    
-     // Copy the data
-    memcpy(payload,  frame->data<void>(), payload_size);
-   
-    //db<SiFiveU_NIC>(WRN) << "Endereço o buffer rx de dados : "<< hex << endereco_dados << endl;
-    // db<SiFiveU_NIC>(WRN) << "Endereço: ["<< i << "]"<< hex << frame << endl;
-    db<SiFiveU_NIC>(WRN) << "src: "<< hex << frame->src() << endl;
-    db<SiFiveU_NIC>(WRN) << "dst: "<< hex << frame->dst() << endl;
-   
+    char data[1500];
+  
+    memcpy(data, reinterpret_cast<char*>(addr), 1500);
+
+    db<SiFiveU_NIC>(WRN) << "data[0]: " << hex << data[0] << endl;
+    db<SiFiveU_NIC>(WRN) << "data[100]: " << hex << data[100] << endl;
+
+    // CT_Buffer *buffer = new CT_Buffer(FRAME_SIZE);
+
+    // Colocando o valor de RX data (addr) para o CT_buffer alocado
+    // buffer->set_dma_data(reinterpret_cast<char*>(addr), 100);
+
+    // Chamando notify (Observed)
+    // notify(buffer);
 }
 
 void SiFiveU_NIC::init_regs() 
@@ -225,7 +229,7 @@ void SiFiveU_NIC::init_regs()
 
 
     // write a 1 to the gem.network_config[multicast_hash_en] bit to enable multicast frames.
-    // set_bits(NETWORK_CONFIG, MULTICAST_HASH_ENABLE);
+    set_bits(NETWORK_CONFIG, MULTICAST_HASH_ENABLE);
 
     // d. Enable promiscuous mode.
     // Write a 1 to the gem.network_config[copy_all_frames] bit.
@@ -300,6 +304,9 @@ void SiFiveU_NIC::init_regs()
     
     // c. Enable the receiver. Write a 1 to the gem.network_control[enable_receive] bit.
     set_bits(NETWORK_CONTROL, ENABLE_RECEIVE);
+
+    set_reg(INT_ENABLE, 0x2fffffff); // habilitando todas as interrupcoes
+    //set_reg(INT_ENABLE, INT_TRASNMIT_COMPLETE | INT_RECEIVE_OVERRUN | INT_RECEIVE_COMPLETE);
 
 }
 
