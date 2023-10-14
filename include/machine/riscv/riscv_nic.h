@@ -5,6 +5,7 @@
 #include <utility/ct_buffer.h>
 #include <architecture/cpu.h>
 #include <system.h>
+// #include <riscv_ic.h>
 
 
 __BEGIN_SYS
@@ -121,6 +122,7 @@ private:
     typedef CPU::Log_Addr Log_Addr;
     typedef Ethernet::Frame Frame;
     typedef NIC<Ethernet>::Address Address;
+    typedef IC::Interrupt_Id Interrupt_Id;
 
     // Descriptor RX
     enum : unsigned int
@@ -160,7 +162,7 @@ public:
 
      // Métododos para o tratamento de interrupções
     static void init();
-    static void int_handler(int interrupt = 1) { _device->handle_interrupt() ;};
+    static void int_handler(Interrupt_Id interrupt = 1);
     void handle_interrupt();
 
 public:
@@ -192,8 +194,9 @@ public:
     unsigned int SLOTS_BUFFER = 4;
     unsigned int last_desc_idx = 0;
 
-    // Atributo estático para ser acessado pelo tratador de interrupções
-    static SiFiveU_NIC* _device; 
+    // Atributos estáticos para serem acessados pelo tratador de interrupções
+    static SiFiveU_NIC* _device;
+    static Interrupt_Id _interrupt;
 
     // Address
     Address address;

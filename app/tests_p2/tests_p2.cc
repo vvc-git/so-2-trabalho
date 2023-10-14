@@ -32,7 +32,6 @@ public:
 
 int main()
 {
-
      SiFiveU_NIC * sifiveu_nic = SiFiveU_NIC::_device;
      NIC_Receiver nic_receiver = NIC_Receiver();
 
@@ -47,12 +46,12 @@ int main()
      src[4] = 0x00;
      src[5] = 0x00;
 
-     dst[0] = 0x02;
+     dst[0] = 0x00;
      dst[1] = 0x00;
      dst[2] = 0x00;
      dst[3] = 0x00;
      dst[4] = 0x00;
-     dst[5] = 0x00;
+     dst[5] = 0x02;
 
      unsigned int MTU = 1500;
      char payload[MTU];
@@ -70,8 +69,8 @@ int main()
 
           Delay (5000000);
           cout << "Receiver" << endl;
-          sifiveu_nic->receive(src, payload, MTU);
-          cout << "  Data: " << payload << endl;
+          // sifiveu_nic->receive(src, payload, MTU);
+          // cout << "  Data: " << payload << endl;
           // cout << "Fim do receive" <<  payload[0] << endl;
      }
 

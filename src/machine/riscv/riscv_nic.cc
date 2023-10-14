@@ -4,6 +4,7 @@
 __BEGIN_SYS
 
 SiFiveU_NIC* SiFiveU_NIC::_device;
+SiFiveU_NIC::Interrupt_Id SiFiveU_NIC::_interrupt;
 
 SiFiveU_NIC::SiFiveU_NIC()
 { 
@@ -51,7 +52,7 @@ SiFiveU_NIC::SiFiveU_NIC()
         // 5. Fill the addresses of the allocated buffers in the buffer descriptors (bits [31-2], Word [0])
         Desc *rx_desc = addr_desc;
         rx_desc->address = addr_data & RX_WORD0_3_LSB; // Os 2 últimos bits da palavra 0 estao sendo zerados
-        db<SiFiveU_NIC>(WRN) << "Endereço:  "<< i << " " << hex << rx_desc->address << endl;
+        // db<SiFiveU_NIC>(WRN) << "Endereço:  "<< i << " " << hex << rx_desc->address << endl;
 
         // Setando o bit WRP no último descritor
         if (i == (SLOTS_BUFFER - 1)) rx_desc->address = rx_desc->address | RX_WORD0_3_LSB_WRP;
@@ -124,8 +125,8 @@ void SiFiveU_NIC::send(Address src, Address dst, char* payload, unsigned int pay
                 break;
             }
         }
-        Reg32 *add = reinterpret_cast<Reg32*>(Memory_Map::ETH_BASE + INT_STATUS);
-        db<SiFiveU_NIC>(WRN) << "INT_STATUS: " << hex << *add << endl;
+        // Reg32 *add = reinterpret_cast<Reg32*>(Memory_Map::ETH_BASE + INT_STATUS);
+        // db<SiFiveU_NIC>(WRN) << "INT_STATUS: " << hex << *add << endl;
     }
 }
 
@@ -133,25 +134,7 @@ void SiFiveU_NIC::receive()
 {
     Desc *desc = rx_desc_phy;
 
-    Phy_Addr addr = desc->address;
-
-    CT_Buffer *buffer = new CT_Buffer(FRAME_SIZE);
-
-    // Colocando o valor de RX data (addr) para o CT_buffer alocado
-    buffer->set_dma_data((char *)addr, 1);
-
-    // Chamando notify (Observed)
-    notify(buffer);
-}
-
-void SiFiveU_NIC::receive(Address src, void* payload, unsigned int payload_size)
-{
-    Desc *desc = rx_desc_phy;
     int indx = 0;
-
-    Reg32 *add = reinterpret_cast<Reg32*>(Memory_Map::ETH_BASE + INT_STATUS);
-    db<SiFiveU_NIC>(WRN) << "INT_STATUS: " << hex << *add << endl;
-
     for (int i = 0; !(desc->address & RX_OWN); i=(i+1)%SLOTS_BUFFER) {
         desc = rx_desc_phy + i * DESC_SIZE;
         indx = i;
@@ -162,6 +145,42 @@ void SiFiveU_NIC::receive(Address src, void* payload, unsigned int payload_size)
     db<SiFiveU_NIC>(WRN) << "i: " << hex << indx << endl;
     Reg32 addr = rx_data_phy + indx * FRAME_SIZE; 
     db<SiFiveU_NIC>(WRN) << "Addr final: " << hex << addr << endl;
+
+    char data[1500];
+  
+    memcpy(data, reinterpret_cast<char*>(addr), 1500);
+
+    db<SiFiveU_NIC>(WRN) << "data[0]: " << hex << data[0] << endl;
+    db<SiFiveU_NIC>(WRN) << "data[100]: " << hex << data[100] << endl;
+
+    // CT_Buffer *buffer = new CT_Buffer(FRAME_SIZE);
+
+    // // Colocando o valor de RX data (addr) para o CT_buffer alocado
+    // buffer->set_dma_data((char *)addr, 1);
+
+    // // Chamando notify (Observed)
+    // notify(buffer);
+}
+
+void SiFiveU_NIC::receive(Address src, void* payload, unsigned int payload_size)
+{
+    Desc *desc = rx_desc_phy;
+    int indx = 0;
+
+    // Print do reg de interrupcoes INT_STATUS
+    // Reg32 *add = reinterpret_cast<Reg32*>(Memory_Map::ETH_BASE + INT_STATUS);
+    // db<SiFiveU_NIC>(WRN) << "INT_STATUS: " << hex << *add << endl;
+
+    for (int i = 0; !(desc->address & RX_OWN); i=(i+1)%SLOTS_BUFFER) {
+        desc = rx_desc_phy + i * DESC_SIZE;
+        indx = i;
+        db<SiFiveU_NIC>(WRN) << "for -> addr: " << hex << desc->address << endl;
+    }
+
+    // db<SiFiveU_NIC>(WRN) << "Addr final: " << hex << desc->address << endl;
+    // db<SiFiveU_NIC>(WRN) << "i: " << hex << indx << endl;
+    Reg32 addr = rx_data_phy + indx * FRAME_SIZE; 
+    // db<SiFiveU_NIC>(WRN) << "Addr final: " << hex << addr << endl;
 
     char data[1500];
   
@@ -302,24 +321,50 @@ void SiFiveU_NIC::init_regs()
     // b. Enable the transmitter. Write a 1 to the gem.network_control[enable_transmit] bit.
     set_bits(NETWORK_CONTROL, ENABLE_TRANSMIT);
     
-    // c. Enable the receiver. Write a 1 to the gem.network_control[enable_receive] bit.
-    set_bits(NETWORK_CONTROL, ENABLE_RECEIVE);
+    if (!(address[5] % 2)) {
+        db<SiFiveU_NIC>(WRN) << "riscv::init_regs ENABLE_RECEIVE: "<< endl;
+        db<SiFiveU_NIC>(WRN) << address << endl;
 
+        // c. Enable the receiver. Write a 1 to the gem.network_control[enable_receive] bit.
+        set_bits(NETWORK_CONTROL, ENABLE_RECEIVE);
+    }
+    
     set_reg(INT_ENABLE, 0x2fffffff); // habilitando todas as interrupcoes
     //set_reg(INT_ENABLE, INT_TRASNMIT_COMPLETE | INT_RECEIVE_OVERRUN | INT_RECEIVE_COMPLETE);
 
 }
 
 void SiFiveU_NIC::handle_interrupt() {
-    // Setup interrupt 
+    // Setup interrupt for receiving frames
+    db<SiFiveU_NIC>(WRN) << "riscv::handle_interrupt "<< endl;
+    Reg32 *add = reinterpret_cast<Reg32*>(Memory_Map::ETH_BASE + INT_STATUS);
+    if (*add & INT_RECEIVE_COMPLETE) {
+        db<SiFiveU_NIC>(WRN) << "Interrupt Received" << endl;
+        IC::disable(IC::INT_ETH0);
+        // setar INT_STATUS e RECEIVE_STATUS -> acho que limpa os bits (o pessoal fez isso)
+        receive();
+        IC::enable(IC::INT_ETH0);
+    }
     return;
-
 }
 
+void SiFiveU_NIC::int_handler(Interrupt_Id interrupt) {
+    db<SiFiveU_NIC>(TRC) << "riscv::int_handler " << interrupt << endl;
+     _device->handle_interrupt();
+};
 
 void SiFiveU_NIC::init() {
+    db<SiFiveU_NIC>(TRC) << "riscv::init "<< endl;
 
     _device = new (SYSTEM) SiFiveU_NIC();
+
+    _interrupt = IC::INT_ETH0;
+
+    // Install interrupt handler
+    IC::int_vector(IC::INT_ETH0, &int_handler);
+
+    // Enable interrupts for device
+    IC::enable(IC::INT_ETH0);
 
 
 }
