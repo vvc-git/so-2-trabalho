@@ -139,19 +139,19 @@ void SiFiveU_NIC::receive()
     for (unsigned int i = 0; !(desc->address & RX_OWN); i=(i+1)%SLOTS_BUFFER) {
         desc = rx_desc_phy + i * DESC_SIZE;
         indx = i;
-        db<SiFiveU_NIC>(WRN) << "for -> addr: " << hex << desc->address << endl;
+        // db<SiFiveU_NIC>(WRN) << "for -> addr: " << hex << desc->address << endl;
     }
 
     // Prints de debug
-    db<SiFiveU_NIC>(WRN) << "Addr final: " << hex << desc->address << endl;
-    db<SiFiveU_NIC>(WRN) << "i: " << hex << indx << endl;
+    // db<SiFiveU_NIC>(WRN) << "Addr final: " << hex << desc->address << endl;
+    // db<SiFiveU_NIC>(WRN) << "i: " << hex << indx << endl;
 
     // Pegando payload_size da word[1] do descriptor
-    unsigned int payload_size = (desc->control & GET_FRAME_LENGTH);
+    // unsigned int payload_size = (desc->control & GET_FRAME_LENGTH);
     
     // Definindo endereço do buffer de dados a partir do índice salvo
     Reg32 addr = rx_data_phy + indx * FRAME_SIZE; 
-    db<SiFiveU_NIC>(WRN) << "Addr com dados: " << hex << addr << endl;
+    // db<SiFiveU_NIC>(WRN) << "Addr com dados: " << hex << addr << endl;
 
     // Setando novamente desc->address, para recebimento de novos frames
     desc = rx_desc_phy + indx * DESC_SIZE;
@@ -163,24 +163,15 @@ void SiFiveU_NIC::receive()
     if (indx == (SLOTS_BUFFER - 1)) desc->address = desc->address | RX_WORD0_LSB_WRP;
 
     // Tentando copiar os dados
-    char data[payload_size];
-  
-    memcpy(data, reinterpret_cast<char*>(desc->address), payload_size);
+    // char data[payload_size];
 
-    db<SiFiveU_NIC>(WRN) << "data[0]: " << data[0] << endl;
-    db<SiFiveU_NIC>(WRN) << "data[1]: " << data[1] << endl;
-    db<SiFiveU_NIC>(WRN) << "data[25]: " << data[25] << endl;
-    db<SiFiveU_NIC>(WRN) << "data[26]: " << data[26] << endl;
-    db<SiFiveU_NIC>(WRN) << "data[50]: " << data[50] << endl;
-    db<SiFiveU_NIC>(WRN) << "data[51]: " << data[51] << endl;
+    CT_Buffer *buffer = new CT_Buffer(FRAME_SIZE);
 
-    // CT_Buffer *buffer = new CT_Buffer(FRAME_SIZE);
+    // Colocando o valor de RX data (addr) para o CT_buffer alocado
+    buffer->set_dma_data(reinterpret_cast<char*>(desc->address), 1);
 
-    // // Colocando o valor de RX data (addr) para o CT_buffer alocado
-    // buffer->set_dma_data((char *)addr, 1);
-
-    // // Chamando notify (Observed)
-    // notify(buffer);
+    // Chamando notify (Observed)
+    notify(buffer);
 }
 
 void SiFiveU_NIC::receive(Address src, void* payload, unsigned int payload_size)
@@ -343,15 +334,15 @@ void SiFiveU_NIC::init_regs()
     set_bits(NETWORK_CONTROL, ENABLE_TRANSMIT);
     
     if (!(address[5] % 2)) {
-        db<SiFiveU_NIC>(WRN) << "riscv::init_regs ENABLE_RECEIVE: "<< endl;
-        db<SiFiveU_NIC>(WRN) << address << endl;
+        db<SiFiveU_NIC>(TRC) << "riscv::init_regs ENABLE_RECEIVE: "<< endl;
+        db<SiFiveU_NIC>(TRC) << address << endl;
 
         // c. Enable the receiver. Write a 1 to the gem.network_control[enable_receive] bit.
         set_bits(NETWORK_CONTROL, ENABLE_RECEIVE);
     }
     
-    set_reg(INT_ENABLE, 0x2fffffff); // habilitando todas as interrupcoes
-    //set_reg(INT_ENABLE, INT_TRASNMIT_COMPLETE | INT_RECEIVE_OVERRUN | INT_RECEIVE_COMPLETE);
+    //set_reg(INT_ENABLE, 0x2fffffff); // habilitando todas as interrupcoes
+    set_reg(INT_ENABLE, INT_TRASNMIT_COMPLETE | INT_RECEIVE_OVERRUN | INT_RECEIVE_COMPLETE);
 
 }
 
@@ -362,9 +353,9 @@ void SiFiveU_NIC::handle_interrupt() {
     // Se INT_STATUS[receive_complete] estiver setado, chama receive()
     Reg32 *int_status = reinterpret_cast<Reg32*>(Memory_Map::ETH_BASE + INT_STATUS);
     if (*int_status & INT_RECEIVE_COMPLETE) {
-        db<SiFiveU_NIC>(WRN) << "Interrupt Received" << endl;
+        db<SiFiveU_NIC>(TRC) << "Interrupt Received" << endl;
 
-        IC::disable(IC::INT_ETH0);
+        //IC::disable(IC::INT_ETH0);
 
         // Read and clear the gem.int_status[receive_complete] register bit
         // by writing a 1 to the bit in the interrupt handler. Also, read and clear the
@@ -373,7 +364,8 @@ void SiFiveU_NIC::handle_interrupt() {
         set_bits(RECEIVE_STATUS, INT_RECEIVE_COMPLETE);
 
         receive();
-        IC::enable(IC::INT_ETH0);
+
+        //IC::enable(IC::INT_ETH0);
     }
 }
 

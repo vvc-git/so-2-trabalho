@@ -33,6 +33,7 @@ void CT_Buffer::set_dma_data(char *dma_data, int amnt_frames)
     count_frames = amnt_frames;
 };
 
+
 unsigned int CT_Buffer::allocated()
 {
     return count_frames;

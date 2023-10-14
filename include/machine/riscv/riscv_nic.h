@@ -192,7 +192,7 @@ public:
     Log_Addr log_init_rx_data;
 
     unsigned int DESC_SIZE = 8;
-    unsigned int SLOTS_BUFFER = 4;
+    unsigned int SLOTS_BUFFER = 64;
     unsigned int last_desc_idx = 0;
 
     // Atributos estáticos para serem acessados pelo tratador de interrupções

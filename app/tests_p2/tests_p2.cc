@@ -24,8 +24,10 @@ public:
           buffer->get_dma_data(data);
 
           cout << "NIC_Receiver update: " << endl;
-          cout << data[0] << " " << data[10] << " " << data[25] << " " << data[70] << endl;
-
+          for (int i = 0; i < 1500; i++) {
+               cout << data[i];
+          }
+          cout << endl;
      }
 };
 
@@ -58,16 +60,15 @@ int main()
      cout << "  MAC: " << sifiveu_nic->address << endl;
 
      if((sifiveu_nic->address[5] % 2 )) { // sender
-          
           cout << "Sender" << endl;
-          for(int i = 0; i < 5; i++) {
-               memset(payload, '0' + i + 1, MTU);
-               // payload[100 - 1] = '\n';
+          for(int i = 0; i < 10; i++) {
+               cout << "Sender " << i << endl;
+               memset(payload, '0' + i, MTU);
                sifiveu_nic->send(src, dst, payload, MTU);
+               Delay (50000);
           }
      } else {
-
-          Delay (5000000);
+          Delay (10000000);
           cout << "Receiver" << endl;
           // sifiveu_nic->receive(src, payload, MTU);
           // cout << "  Data: " << payload << endl;
