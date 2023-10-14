@@ -62,7 +62,7 @@ public:
         MDC_CLOCK_DIVISION = 0x1C0000,
 
         // DMA_CONFIG bits
-        RX_BUF_SIZE  = 0x00180000,
+        RX_BUF_SIZE  = 0x00190000,
         RX_PBUF_SIZE = 0x00000300,
         TX_PBUF_SIZE = 1 << 10,
         TX_PBUF_TCP_EN = 1 << 11,
@@ -124,7 +124,7 @@ private:
     {
         RX_WORD0_3_LSB = 0xfffffffc,
         RX_WORD0_3_LSB_WRP = 0x00000002,
-        RX_OWN = (1 << 0),
+        RX_OWN = (1 << 0), // 0 => NIC, 1 => Host
     };
     // Descriptor TX
     enum  
@@ -138,7 +138,9 @@ private:
     struct Desc
     {
         
+        // Word 0
         volatile Reg32 address;
+        // Word 1
         volatile Reg32 control;
     };
 
@@ -148,7 +150,7 @@ public:
     void attach(Data_Observer<CT_Buffer, void> *o) { Data_Observed<CT_Buffer, void>::attach(o); };
 
    
-    void receive(Address src, char* payload, unsigned int payload_size);
+    void receive(Address src, void* payload, unsigned int payload_size);
     void receive();
     void send(Address src, Address dst, char* payload, unsigned int payload_size);
     void init_regs();
@@ -158,6 +160,10 @@ public:
     void handle_interrupt();
 
 public:
+
+
+    // TODO: Talvez não armazenar esses CT_Buffer, porque o que importa dele é o endereço físico
+    // TODO: que é obtido pelo DMA.
     CT_Buffer *tx_desc_buffer;
     CT_Buffer *tx_data_buffer;
 
@@ -184,7 +190,6 @@ public:
 
     // Atributo estático para ser acessado pelo tratador de interrupções
     static SiFiveU_NIC* _device; 
-
 
     // Address
     Address address;
