@@ -360,12 +360,18 @@ void SiFiveU_NIC::handle_interrupt() {
     db<SiFiveU_NIC>(TRC) << "riscv::handle_interrupt "<< endl;
 
     // Se INT_STATUS[receive_complete] estiver setado, chama receive()
-    Reg32 *add = reinterpret_cast<Reg32*>(Memory_Map::ETH_BASE + INT_STATUS);
-    if (*add & INT_RECEIVE_COMPLETE) {
+    Reg32 *int_status = reinterpret_cast<Reg32*>(Memory_Map::ETH_BASE + INT_STATUS);
+    if (*int_status & INT_RECEIVE_COMPLETE) {
         db<SiFiveU_NIC>(WRN) << "Interrupt Received" << endl;
 
         IC::disable(IC::INT_ETH0);
-        // setar INT_STATUS e RECEIVE_STATUS -> acho que limpa os bits (o pessoal fez isso)
+
+        // Read and clear the gem.int_status[receive_complete] register bit
+        // by writing a 1 to the bit in the interrupt handler. Also, read and clear the
+        // gem.receive_status register by writing a 1 to gem.receive_status[frame_received] bit.
+        set_bits(INT_STATUS, INT_RECEIVE_COMPLETE);
+        set_bits(RECEIVE_STATUS, INT_RECEIVE_COMPLETE);
+
         receive();
         IC::enable(IC::INT_ETH0);
     }
