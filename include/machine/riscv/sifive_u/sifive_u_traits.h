@@ -17,8 +17,14 @@ protected:
 template<> struct Traits<Machine>: public Traits<Machine_Common>
 {
 public:
+
     // Value to be used for undefined addresses
     static const unsigned long NOT_USED         = -1UL;
+
+    static const bool supervisor = false;
+
+    // CPU numbering
+    static const unsigned long CPU_OFFSET       = 1;            // We skip core zero, which is a E CPU without MMU
 
     // Clocks
     static const unsigned long CLOCK            = 1000000000;                                   // CORECLK
@@ -57,6 +63,25 @@ public:
 template <> struct Traits<IC>: public Traits<Machine_Common>
 {
     static const bool debugged = hysterically_debugged;
+
+    static const unsigned int PLIC_IRQS = 54;           // IRQ0 is used by PLIC to signalize that there is no interrupt being serviced or pending
+
+    struct Interrupt_Source: public _SYS::Interrupt_Source {
+        static const unsigned int IRQ_L2_CACHE  = 1;    // 3 contiguous interrupt sources
+        static const unsigned int IRQ_UART0     = 4;
+        static const unsigned int IRQ_UART1     = 5;
+        static const unsigned int IRQ_QSPI2     = 6;
+        static const unsigned int IRQ_GPIO0     = 7;    // 16 contiguous interrupt sources
+        static const unsigned int IRQ_DMA0      = 23;   // 8 contiguous interrupt sources
+        static const unsigned int IRQ_DDR       = 31;
+        static const unsigned int IRQ_MSI0      = 32;   // 12 contiguous interrupt sources
+        static const unsigned int IRQ_PWM0      = 42;   // 4 contiguous interrupt sources
+        static const unsigned int IRQ_PWM1      = 46;   // 4 contiguous interrupt sources
+        static const unsigned int IRQ_I2C       = 50;
+        static const unsigned int IRQ_QSPI0     = 51;
+        static const unsigned int IRQ_QSPI1     = 52;
+        static const unsigned int IRQ_ETH0      = 53;
+    };
 };
 
 template <> struct Traits<Timer>: public Traits<Machine_Common>
@@ -121,8 +146,8 @@ template<> struct Traits<Scratchpad>: public Traits<Machine_Common>
 
 //     static const bool enabled = (Traits<Build>::NODES > 1) && (UNITS > 0);
 
-//     static const bool promiscuous = false;
-// };
+    static const bool promiscuous = false;
+};
 
 // template<> struct Traits<SiFive_U_NIC>: public Traits<Ethernet>
 // {

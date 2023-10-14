@@ -1,5 +1,6 @@
 // EPOS RISC-V Interrupt Controller Initialization
 
+#include <architecture/cpu.h>
 #include <machine/ic.h>
 #include <machine/timer.h>
 
@@ -17,20 +18,17 @@ void IC::init()
     for(Interrupt_Id i = 0; i < EXCS; i++)
         _int_vector[i] = &exception;
 
+    // Install the syscall trap handler
+#ifdef __kernel__
+    _int_vector[INT_SYSCALL] = &CPU::syscalled;
+#endif
+
     // Set all interrupt handlers to int_not()
     for(Interrupt_Id i = EXCS; i < INTS; i++)
         _int_vector[i] = &int_not;
 
-    // // TODO: map and treat these interrupts (fire non-stop)
-    // if (Traits<Build>::MODEL == Traits_Tokens::VisionFive2) {
-    //     set_priority(3, 0);
-    //     set_priority(4, 0);
-    //     set_priority(50, 0);
-    //     set_priority(98, 0);
-    // }
-
-    // Permits all interrupts with non-zero priority
-    permit_all_external();
+    enable(INT_PLIC); // enable PLIC interrupt (external interrupts)
+    PLIC::threshold(0); // set the threshold to 0 so all enabled external interrupts will be dispatched
 }
 
 __END_SYS
