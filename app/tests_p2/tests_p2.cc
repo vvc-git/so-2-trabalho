@@ -60,9 +60,9 @@ int main()
      if((sifiveu_nic->address[5] % 2 )) { // sender
           
           cout << "Sender" << endl;
-          for(int i = 0; i < 1; i++) {
-               memset(payload, '0' + i, 100);
-               payload[100 - 1] = '\n';
+          for(int i = 0; i < 5; i++) {
+               memset(payload, '0' + i + 1, MTU);
+               // payload[100 - 1] = '\n';
                sifiveu_nic->send(src, dst, payload, MTU);
           }
      } else {

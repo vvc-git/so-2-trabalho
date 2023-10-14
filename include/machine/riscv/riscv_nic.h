@@ -127,9 +127,10 @@ private:
     // Descriptor RX
     enum : unsigned int
     {
-        RX_WORD0_3_LSB = 0xfffffffc,
-        RX_WORD0_3_LSB_WRP = 0x00000002,
+        RX_WORD0_2_LSB = 0xfffffffc,
+        RX_WORD0_LSB_WRP = 0x00000002,
         RX_OWN = (1 << 0), // 0 => NIC, 1 => Host
+        GET_FRAME_LENGTH = 0x1FFF,
     };
     // Descriptor TX
     enum  

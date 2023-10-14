@@ -51,12 +51,13 @@ SiFiveU_NIC::SiFiveU_NIC()
         // 4. Mark the last descriptor in the buffer descriptor list with the wrap bit, (bit [1] in word [0]) set.
         // 5. Fill the addresses of the allocated buffers in the buffer descriptors (bits [31-2], Word [0])
         Desc *rx_desc = addr_desc;
-        rx_desc->address = addr_data & RX_WORD0_3_LSB; // Os 2 últimos bits da palavra 0 estao sendo zerados
+        rx_desc->address = addr_data & RX_WORD0_2_LSB; // Os 2 últimos bits da palavra 0 estao sendo zerados
         // db<SiFiveU_NIC>(WRN) << "Endereço:  "<< i << " " << hex << rx_desc->address << endl;
 
         // Setando o bit WRP no último descritor
-        if (i == (SLOTS_BUFFER - 1)) rx_desc->address = rx_desc->address | RX_WORD0_3_LSB_WRP;
+        if (i == (SLOTS_BUFFER - 1)) rx_desc->address = rx_desc->address | RX_WORD0_LSB_WRP;
 
+        rx_desc->control = 0;
     }
 
     // setting TX buffers
@@ -134,24 +135,44 @@ void SiFiveU_NIC::receive()
 {
     Desc *desc = rx_desc_phy;
 
-    int indx = 0;
-    for (int i = 0; !(desc->address & RX_OWN); i=(i+1)%SLOTS_BUFFER) {
+    unsigned int indx = 0;
+    for (unsigned int i = 0; !(desc->address & RX_OWN); i=(i+1)%SLOTS_BUFFER) {
         desc = rx_desc_phy + i * DESC_SIZE;
         indx = i;
         db<SiFiveU_NIC>(WRN) << "for -> addr: " << hex << desc->address << endl;
     }
 
+    // Prints de debug
     db<SiFiveU_NIC>(WRN) << "Addr final: " << hex << desc->address << endl;
     db<SiFiveU_NIC>(WRN) << "i: " << hex << indx << endl;
+
+    // Pegando payload_size da word[1] do descriptor
+    unsigned int payload_size = (desc->control & GET_FRAME_LENGTH);
+    
+    // Definindo endereço do buffer de dados a partir do índice salvo
     Reg32 addr = rx_data_phy + indx * FRAME_SIZE; 
-    db<SiFiveU_NIC>(WRN) << "Addr final: " << hex << addr << endl;
+    db<SiFiveU_NIC>(WRN) << "Addr com dados: " << hex << addr << endl;
 
-    char data[1500];
+    // Setando novamente desc->address, para recebimento de novos frames
+    desc = rx_desc_phy + indx * DESC_SIZE;
+    desc->address = addr;
+    
+    // Setando os 2 ultimos bits da word[0]
+    desc->address = desc->address & RX_WORD0_2_LSB; 
+    // Setando o bit WRP no último descritor
+    if (indx == (SLOTS_BUFFER - 1)) desc->address = desc->address | RX_WORD0_LSB_WRP;
+
+    // Tentando copiar os dados
+    char data[payload_size];
   
-    memcpy(data, reinterpret_cast<char*>(addr), 1500);
+    memcpy(data, reinterpret_cast<char*>(desc->address), payload_size);
 
-    db<SiFiveU_NIC>(WRN) << "data[0]: " << hex << data[0] << endl;
-    db<SiFiveU_NIC>(WRN) << "data[100]: " << hex << data[100] << endl;
+    db<SiFiveU_NIC>(WRN) << "data[0]: " << data[0] << endl;
+    db<SiFiveU_NIC>(WRN) << "data[1]: " << data[1] << endl;
+    db<SiFiveU_NIC>(WRN) << "data[25]: " << data[25] << endl;
+    db<SiFiveU_NIC>(WRN) << "data[26]: " << data[26] << endl;
+    db<SiFiveU_NIC>(WRN) << "data[50]: " << data[50] << endl;
+    db<SiFiveU_NIC>(WRN) << "data[51]: " << data[51] << endl;
 
     // CT_Buffer *buffer = new CT_Buffer(FRAME_SIZE);
 
@@ -336,16 +357,18 @@ void SiFiveU_NIC::init_regs()
 
 void SiFiveU_NIC::handle_interrupt() {
     // Setup interrupt for receiving frames
-    db<SiFiveU_NIC>(WRN) << "riscv::handle_interrupt "<< endl;
+    db<SiFiveU_NIC>(TRC) << "riscv::handle_interrupt "<< endl;
+
+    // Se INT_STATUS[receive_complete] estiver setado, chama receive()
     Reg32 *add = reinterpret_cast<Reg32*>(Memory_Map::ETH_BASE + INT_STATUS);
     if (*add & INT_RECEIVE_COMPLETE) {
         db<SiFiveU_NIC>(WRN) << "Interrupt Received" << endl;
+
         IC::disable(IC::INT_ETH0);
         // setar INT_STATUS e RECEIVE_STATUS -> acho que limpa os bits (o pessoal fez isso)
         receive();
         IC::enable(IC::INT_ETH0);
     }
-    return;
 }
 
 void SiFiveU_NIC::int_handler(Interrupt_Id interrupt) {
