@@ -174,42 +174,6 @@ void SiFiveU_NIC::receive()
     notify(buffer);
 }
 
-void SiFiveU_NIC::receive(Address src, void* payload, unsigned int payload_size)
-{
-    Desc *desc = rx_desc_phy;
-    int indx = 0;
-
-    // Print do reg de interrupcoes INT_STATUS
-    // Reg32 *add = reinterpret_cast<Reg32*>(Memory_Map::ETH_BASE + INT_STATUS);
-    // db<SiFiveU_NIC>(WRN) << "INT_STATUS: " << hex << *add << endl;
-
-    for (int i = 0; !(desc->address & RX_OWN); i=(i+1)%SLOTS_BUFFER) {
-        desc = rx_desc_phy + i * DESC_SIZE;
-        indx = i;
-        db<SiFiveU_NIC>(WRN) << "for -> addr: " << hex << desc->address << endl;
-    }
-
-    // db<SiFiveU_NIC>(WRN) << "Addr final: " << hex << desc->address << endl;
-    // db<SiFiveU_NIC>(WRN) << "i: " << hex << indx << endl;
-    Reg32 addr = rx_data_phy + indx * FRAME_SIZE; 
-    // db<SiFiveU_NIC>(WRN) << "Addr final: " << hex << addr << endl;
-
-    char data[1500];
-  
-    memcpy(data, reinterpret_cast<char*>(addr), 1500);
-
-    db<SiFiveU_NIC>(WRN) << "data[0]: " << hex << data[0] << endl;
-    db<SiFiveU_NIC>(WRN) << "data[100]: " << hex << data[100] << endl;
-
-    // CT_Buffer *buffer = new CT_Buffer(FRAME_SIZE);
-
-    // Colocando o valor de RX data (addr) para o CT_buffer alocado
-    // buffer->set_dma_data(reinterpret_cast<char*>(addr), 100);
-
-    // Chamando notify (Observed)
-    // notify(buffer);
-}
-
 void SiFiveU_NIC::init_regs() 
 {
     // 1. Clear the network control register
@@ -355,7 +319,7 @@ void SiFiveU_NIC::handle_interrupt() {
     if (*int_status & INT_RECEIVE_COMPLETE) {
         db<SiFiveU_NIC>(TRC) << "Interrupt Received" << endl;
 
-        //IC::disable(IC::INT_ETH0);
+        IC::disable(IC::INT_ETH0);
 
         // Read and clear the gem.int_status[receive_complete] register bit
         // by writing a 1 to the bit in the interrupt handler. Also, read and clear the
@@ -365,7 +329,7 @@ void SiFiveU_NIC::handle_interrupt() {
 
         receive();
 
-        //IC::enable(IC::INT_ETH0);
+        IC::enable(IC::INT_ETH0);
     }
 }
 

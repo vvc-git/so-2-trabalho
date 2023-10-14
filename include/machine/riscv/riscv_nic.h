@@ -143,7 +143,6 @@ private:
     // Utilizando modo de endereçamento de 64 bits
     struct Desc
     {
-        
         // Word 0
         volatile Reg32 address;
         // Word 1
@@ -155,16 +154,15 @@ public:
     ~SiFiveU_NIC(){};
     void attach(Data_Observer<CT_Buffer, void> *o) { Data_Observed<CT_Buffer, void>::attach(o); };
 
-   
-    void receive(Address src, void* payload, unsigned int payload_size);
     void receive();
     void send(Address src, Address dst, char* payload, unsigned int payload_size);
     void init_regs();
 
-     // Métododos para o tratamento de interrupções
     static void init();
-    static void int_handler(Interrupt_Id interrupt = 1);
+
+     // Métododos para o tratamento de interrupções
     void handle_interrupt();
+    static void int_handler(Interrupt_Id interrupt = 1);
 
 public:
 
