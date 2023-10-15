@@ -150,12 +150,6 @@ void SiFiveU_NIC::receive()
     // Definindo endereço do buffer de dados a partir do índice salvo
     Reg32 addr = rx_data_phy + indx * FRAME_SIZE; 
 
-    // Setando novamente desc->address, para recebimento de novos frames
-    desc = rx_desc_phy + indx * DESC_SIZE;
-    desc->address = addr;
-    
-    // Setando os 2 ultimos bits da word[0]
-    desc->address = desc->address & RX_WORD0_2_LSB; 
     // Setando o bit WRP no último descritor
     if (indx == (SLOTS_BUFFER - 1)) desc->address = desc->address | RX_WORD0_LSB_WRP;
 
@@ -169,6 +163,14 @@ void SiFiveU_NIC::receive()
 
     // Colocando o valor de RX data (addr) para o CT_buffer alocado
     Network_buffer::net_buffer->buf->save_data_frame(reinterpret_cast<char*>(desc->address));
+
+
+    // Setando novamente desc->address, para recebimento de novos frames
+    desc = rx_desc_phy + indx * DESC_SIZE;
+    desc->address = addr;
+    
+    // Setando os 2 ultimos bits da word[0]
+    desc->address = desc->address & RX_WORD0_2_LSB; 
 
     // Chamando notify (Observed)
     notify();
