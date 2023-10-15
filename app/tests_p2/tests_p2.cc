@@ -40,7 +40,7 @@ int main()
      sifiveu_nic->attach(&nic_receiver);
 
      NIC<Ethernet>::Address src, dst;
-
+     
      src[0] = 0x01;
      src[1] = 0x00;
      src[2] = 0x00;
@@ -70,9 +70,6 @@ int main()
      } else {
           Delay (10000000);
           cout << "Receiver" << endl;
-          // sifiveu_nic->receive(src, payload, MTU);
-          // cout << "  Data: " << payload << endl;
-          // cout << "Fim do receive" <<  payload[0] << endl;
      }
 
      return 0;

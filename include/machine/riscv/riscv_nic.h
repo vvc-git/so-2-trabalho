@@ -5,7 +5,8 @@
 #include <utility/ct_buffer.h>
 #include <architecture/cpu.h>
 #include <system.h>
-// #include <riscv_ic.h>
+#include <utility/network_buffer.h>
+
 
 
 __BEGIN_SYS

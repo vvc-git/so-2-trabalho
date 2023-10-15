@@ -142,16 +142,11 @@ void SiFiveU_NIC::receive()
         // db<SiFiveU_NIC>(WRN) << "for -> addr: " << hex << desc->address << endl;
     }
 
-    // Prints de debug
-    // db<SiFiveU_NIC>(WRN) << "Addr final: " << hex << desc->address << endl;
-    // db<SiFiveU_NIC>(WRN) << "i: " << hex << indx << endl;
-
     // Pegando payload_size da word[1] do descriptor
     // unsigned int payload_size = (desc->control & GET_FRAME_LENGTH);
     
     // Definindo endereço do buffer de dados a partir do índice salvo
     Reg32 addr = rx_data_phy + indx * FRAME_SIZE; 
-    // db<SiFiveU_NIC>(WRN) << "Addr com dados: " << hex << addr << endl;
 
     // Setando novamente desc->address, para recebimento de novos frames
     desc = rx_desc_phy + indx * DESC_SIZE;
@@ -165,6 +160,9 @@ void SiFiveU_NIC::receive()
     // Tentando copiar os dados
     // char data[payload_size];
 
+    // Network_buffer::net_buffer->alloc_frame(reinterpret_cast<char*>(desc->address));
+    
+    // Funcionando
     CT_Buffer *buffer = new CT_Buffer(FRAME_SIZE);
 
     // Colocando o valor de RX data (addr) para o CT_buffer alocado
