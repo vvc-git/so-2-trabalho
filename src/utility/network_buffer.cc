@@ -18,11 +18,7 @@ Network_buffer::Network_buffer() {
 
 int Network_buffer::copy_for_upper_layer() {
 
-    db<SiFiveU_NIC>(WRN) << "Thread no copy" << endl;
-
     while (true) {
-
-        db<SiFiveU_NIC>(WRN) << "Thread no while" << endl;
 
         // Bloqueia a execução da thread até que um paconte chegue
         // TODO: Não consegui usar o mutex
