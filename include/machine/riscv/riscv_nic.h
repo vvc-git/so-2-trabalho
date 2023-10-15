@@ -110,7 +110,7 @@ public:
 };
 
 // TODO: Mudara essa heranca CADENCE GEM
-class SiFiveU_NIC : public Data_Observed<CT_Buffer, void>, Cadence_GEM
+class SiFiveU_NIC : public Observed, Cadence_GEM
 {
 
 private:
@@ -153,7 +153,7 @@ private:
 public:
     SiFiveU_NIC();
     ~SiFiveU_NIC(){};
-    void attach(Data_Observer<CT_Buffer, void> *o) { Data_Observed<CT_Buffer, void>::attach(o); };
+    void attach(Observer *o) { Observed::attach(o); };
 
     void receive();
     void send(Address src, Address dst, char* payload, unsigned int payload_size);

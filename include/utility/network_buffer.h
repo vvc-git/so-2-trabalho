@@ -23,7 +23,7 @@ __BEGIN_UTIL
 // Observado pela aplicação
 
 class 
-Network_buffer :  public Data_Observer<CT_Buffer, void> // , Data_Observed<DT_Buffer, void>
+Network_buffer :  public Observer // , Data_Observed<DT_Buffer, void>
 {
     
     typedef CPU::Phy_Addr Phy_Addr;
@@ -38,7 +38,7 @@ public:
     static void init();
 
     // Teste
-   void update(Data_Observed<CT_Buffer, void> *obs, CT_Buffer *buffer);
+   void update(Observed *obs);
    static int copy_for_upper_layer();
 
 

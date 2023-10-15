@@ -46,7 +46,7 @@ void Network_buffer::init() {
 
 }
 
-void Network_buffer::update(Data_Observed<CT_Buffer, void> *obs, CT_Buffer* buffer)
+void Network_buffer::update(Observed *obs)
 {
     // net_buffer->buf->get_data_frame(buffer->log_address());
 

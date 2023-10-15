@@ -171,7 +171,7 @@ void SiFiveU_NIC::receive()
     Network_buffer::net_buffer->buf->save_data_frame(reinterpret_cast<char*>(desc->address));
 
     // Chamando notify (Observed)
-    notify(Network_buffer::net_buffer->buf);
+    notify();
 }
 
 void SiFiveU_NIC::init_regs() 
