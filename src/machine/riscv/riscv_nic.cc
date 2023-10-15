@@ -10,6 +10,8 @@ SiFiveU_NIC::SiFiveU_NIC()
 { 
     init_regs();
 
+    this->attach(Network_buffer::net_buffer);
+
     // TX Alocando memoria para os buffers tx de descritores e dados
     tx_desc_buffer = new CT_Buffer(DESC_SIZE * SLOTS_BUFFER);
     tx_data_buffer = new CT_Buffer(FRAME_SIZE * SLOTS_BUFFER);

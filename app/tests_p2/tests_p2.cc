@@ -13,31 +13,31 @@ using namespace EPOS;
 
 OStream cout;
 
-class NIC_Receiver : public Data_Observer<CT_Buffer, void>
-{
-public:
-     NIC_Receiver(){};
-     ~NIC_Receiver(){};
-     void update(Data_Observed<CT_Buffer, void> *obs, CT_Buffer *buffer)
-     {
-          char data[FRAME_SIZE];
-          buffer->get_dma_data(data);
+// class NIC_Receiver : public Data_Observer<CT_Buffer, void>
+// {
+// public:
+//      NIC_Receiver(){};
+//      ~NIC_Receiver(){};
+//      void update(Data_Observed<CT_Buffer, void> *obs, CT_Buffer *buffer)
+//      {
+//           char data[FRAME_SIZE];
+//           buffer->get_dma_data(data);
 
-          cout << "NIC_Receiver update: " << endl;
-          for (int i = 0; i < 1500; i++) {
-               cout << data[i];
-          }
-          cout << endl;
-     }
-};
+//           cout << "NIC_Receiver update: " << endl;
+//           for (int i = 0; i < 1500; i++) {
+//                cout << data[i];
+//           }
+//           cout << endl;
+//      }
+// };
 
 
 int main()
 {
      SiFiveU_NIC * sifiveu_nic = SiFiveU_NIC::_device;
-     NIC_Receiver nic_receiver = NIC_Receiver();
+     // NIC_Receiver nic_receiver = NIC_Receiver();
 
-     sifiveu_nic->attach(&nic_receiver);
+     // sifiveu_nic->attach(&nic_receiver);
 
      NIC<Ethernet>::Address src, dst;
      
@@ -68,7 +68,7 @@ int main()
                Delay (50000);
           }
      } else {
-          Delay (10000000);
+          Delay (10000000000000000);
           cout << "Receiver" << endl;
      }
 

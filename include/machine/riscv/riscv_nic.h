@@ -2,10 +2,10 @@
 #define __riscv_nic_h
 
 #include <network/ethernet.h>
-#include <utility/ct_buffer.h>
 #include <architecture/cpu.h>
 #include <system.h>
 #include <utility/network_buffer.h>
+#include <utility/ct_buffer.h>
 
 
 
@@ -175,6 +175,7 @@ public:
 
     CT_Buffer *rx_desc_buffer;
     CT_Buffer *rx_data_buffer;
+
 
     // Endereço físico base
     Phy_Addr tx_desc_phy;
