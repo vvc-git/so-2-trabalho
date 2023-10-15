@@ -44,7 +44,7 @@ public:
     char *base;
 
     // index of next empty space
-    int next;
+    int next = 0;
 
     // number of slots 
     int size;

@@ -16,11 +16,12 @@ __BEGIN_UTIL
 
 void CT_Buffer::get_data_frame(char * data)
 {
-
+    db<SiFiveU_NIC>(WRN) << "next" << next <<  endl;
     if (next < 0) {return;};
-    --next;
+    db<SiFiveU_NIC>(WRN) << "chegou no get frame" <<  endl;
     char * addr = base + next * FRAME_SIZE;
     memcpy(data, addr, FRAME_SIZE);
+    --next;
     return;
     
 
@@ -30,9 +31,11 @@ void CT_Buffer::get_data_frame(char * data)
 // Salva o dado do frame
 void CT_Buffer::save_data_frame(char *data)
 {
+    db<SiFiveU_NIC>(WRN) << "antes do if do save" <<  endl;
 
     if (next < size) {
         char * addr = base + next * FRAME_SIZE;
+        db<SiFiveU_NIC>(WRN) << "chegou no save frame" <<  endl;
         memcpy(addr, data, FRAME_SIZE);
         ++next; 
     }

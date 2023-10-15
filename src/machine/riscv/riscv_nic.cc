@@ -168,10 +168,10 @@ void SiFiveU_NIC::receive()
     // CT_Buffer *buffer = new CT_Buffer(FRAME_SIZE);
 
     // Colocando o valor de RX data (addr) para o CT_buffer alocado
-    rx_data_buffer->save_data_frame(reinterpret_cast<char*>(desc->address));
+    Network_buffer::net_buffer->buf->save_data_frame(reinterpret_cast<char*>(desc->address));
 
     // Chamando notify (Observed)
-    notify(rx_data_buffer);
+    notify(Network_buffer::net_buffer->buf);
 }
 
 void SiFiveU_NIC::init_regs() 
