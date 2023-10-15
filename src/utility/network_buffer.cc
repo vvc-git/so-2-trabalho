@@ -33,14 +33,15 @@ void Network_buffer::init() {
 
 }
 
-void Network_buffer::update(Data_Observed<CT_Buffer, void> *obs, CT_Buffer *buffer)
+void Network_buffer::update(Data_Observed<CT_Buffer, void> *obs, CT_Buffer* buffer)
 {
-    char data[FRAME_SIZE];
-
-    buffer->get_dma_data(data);
+    // Faz a copia do buffer rx para data
+    char  data[FRAME_SIZE];
+    buffer->get_data_frame(data);
 
     db<SiFiveU_NIC>(WRN) << "Network buffer update: "<< endl;
     for (int i = 0; i < 1500; i++) {
+        // data[i] = (*buffer)[i];
         db<SiFiveU_NIC>(WRN) << data[i];
     }
     db<SiFiveU_NIC>(WRN) << endl;

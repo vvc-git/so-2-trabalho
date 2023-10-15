@@ -13,6 +13,7 @@
 #include <utility/observer.h>
 #include <utility/ct_buffer.h>
 #include <synchronizer.h>
+#include <network/ethernet.h>
 
 
 __BEGIN_UTIL
@@ -21,11 +22,13 @@ __BEGIN_UTIL
 // Observador da camada do buffer da nic
 // Observado pela aplicação
 
-class Network_buffer :  public Data_Observer<CT_Buffer, void> // , Data_Observed<DT_Buffer, void>
+class 
+Network_buffer :  public Data_Observer<CT_Buffer, void> // , Data_Observed<DT_Buffer, void>
 {
     
     typedef CPU::Phy_Addr Phy_Addr;
     typedef CPU::Log_Addr Log_Addr;
+    // typedef Ethernet::Frame Frame;
 
 
 public:
@@ -44,7 +47,7 @@ public:
     
     static Network_buffer* net_buffer;
     // Thread * thread;
-    // Mutex mutex;
+    // Mutex * mutex;
     CT_Buffer * buf;
 
 };

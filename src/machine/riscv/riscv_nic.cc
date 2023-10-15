@@ -165,13 +165,13 @@ void SiFiveU_NIC::receive()
     // Network_buffer::net_buffer->alloc_frame(reinterpret_cast<char*>(desc->address));
     
     // Funcionando
-    CT_Buffer *buffer = new CT_Buffer(FRAME_SIZE);
+    // CT_Buffer *buffer = new CT_Buffer(FRAME_SIZE);
 
     // Colocando o valor de RX data (addr) para o CT_buffer alocado
-    buffer->set_dma_data(reinterpret_cast<char*>(desc->address), 1);
+    rx_data_buffer->save_data_frame(reinterpret_cast<char*>(desc->address));
 
     // Chamando notify (Observed)
-    notify(buffer);
+    notify(rx_data_buffer);
 }
 
 void SiFiveU_NIC::init_regs() 

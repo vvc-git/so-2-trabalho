@@ -11,31 +11,43 @@
 #include <architecture/mmu.h>
 #include <synchronizer.h>
 #include <architecture/cpu.h>
+#include <network/ethernet.h>
 
 __BEGIN_UTIL
 
 // OStream cout;
+
+
+// Buffer designed to control acess of frames  
 
 class CT_Buffer
 {
 public:
     typedef CPU::Phy_Addr Phy_Addr;
     typedef CPU::Log_Addr Log_Addr;
+    typedef Ethernet::Frame Frame;
+    typedef No_MMU::DMA_Buffer DMA;
 
-    CT_Buffer(unsigned long bytes) : dma(bytes), buffer_size(bytes) { dma_ptr = dma.log_address(); };
+    CT_Buffer(long unsigned bytes): size(bytes / FRAME_SIZE) { dma = new DMA(bytes); base = dma->log_address();};
     ~CT_Buffer(){};
-    void alloc_frame(char frame[]);
-    void get_dma_data(char *dma_data);
-    void set_dma_data(char *dma_data, int amnt_frames);
-    unsigned int allocated();
-    Phy_Addr phy_address() { return dma.phy_address(); };
-    Log_Addr log_address() { return dma.log_address(); };
+    void get_data_frame(char *data);
+    void save_data_frame(char *data);
+    Phy_Addr phy_address() { return dma->phy_address(); };
+    Log_Addr log_address() { return dma->log_address(); };
 
 public:
-    No_MMU::DMA_Buffer dma;
-    char *dma_ptr;
-    unsigned int count_frames = 0;
-    unsigned int buffer_size;
+
+    // Structures availables continous allocation
+    DMA* dma;
+
+    // First address 
+    char *base;
+
+    // index of next empty space
+    int next;
+
+    // number of slots 
+    int size;
 };
 
 __END_UTIL
