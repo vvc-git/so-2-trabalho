@@ -33,7 +33,7 @@ Network_buffer :  public Data_Observer<CT_Buffer, void> // , Data_Observed<DT_Bu
 
 public:
     
-    Network_buffer(void * addr, unsigned long bytes) {}; 
+    Network_buffer(); 
     ~Network_buffer() {};
     static void init();
 
@@ -46,9 +46,10 @@ public:
 public:
     
     static Network_buffer* net_buffer;
-    // Thread * thread;
-    // Mutex * mutex;
+    Thread * thread;
+    Semaphore * sem;
     CT_Buffer * buf;
+    char data[FRAME_SIZE];
 
 };
 

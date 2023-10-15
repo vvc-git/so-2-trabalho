@@ -65,7 +65,7 @@ int main()
                cout << "Sender " << i << endl;
                memset(payload, '0' + i, MTU);
                sifiveu_nic->send(src, dst, payload, MTU);
-               Delay (50000);
+               Delay (5000);
           }
      } else {
           Delay (10000000000000000);
