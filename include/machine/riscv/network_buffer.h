@@ -18,7 +18,7 @@
 #include <machine/riscv/riscv_gem.h>
 
 
-__BEGIN_UTIL
+__BEGIN_SYS
 
 
 // Observador da camada do buffer da nic
@@ -41,28 +41,29 @@ public:
     ~Network_buffer() {};
     static void init();
 
-    // Teste
-   void update(Observed *obs);
-   static int copy_for_upper_layer();
+    // Função que notifica o observador
+    void update(Observed *obs);
 
-   // Configure tx and rx descriptor
+    // Configuração dos buffer rx e tx
     void configure_tx_rx();
 
-    // 
-    Cadence_GEM::Desc * get_free_tx_desc();
+    // Gettr para um descritor livre
+    Desc * get_free_tx_desc();
+
+   // Função de execução da thread
+   static int copy();
 
 
 
 public:
     
+    // Método estático de acesso para a nic
     static Network_buffer* net_buffer;
     Thread * thread;
     Semaphore * sem;
     CT_Buffer * buf;
-    char data[FRAME_SIZE];
 
 
-    // !! TESTE
     CT_Buffer *tx_desc_buffer;
     CT_Buffer *tx_data_buffer;
 
@@ -84,6 +85,7 @@ public:
     Log_Addr log_init_rx_desc;
     Log_Addr log_init_rx_data;
 
+
     unsigned int DESC_SIZE = 8;
     unsigned int SLOTS_BUFFER = 64;
     unsigned int last_desc_idx = 0;
@@ -91,6 +93,6 @@ public:
 };
 
 
-__END_UTIL
+__END_SYS
 
 #endif

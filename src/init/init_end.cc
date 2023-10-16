@@ -3,6 +3,7 @@
 #include <architecture.h>
 #include <system.h>
 #include <process.h>
+#include <machine/riscv/network_buffer.h>
 
 __BEGIN_SYS
 
@@ -38,6 +39,10 @@ public:
         if(Traits<Timer>::enabled)
             Timer::reset();
 
+
+        // Inicializando thread que copia os dados do buffer rx
+        new (SYSTEM) Thread(Thread::Configuration(Thread::READY, Thread::HIGH), &Network_buffer::copy);
+        
         first->_context->load();
     }
 };

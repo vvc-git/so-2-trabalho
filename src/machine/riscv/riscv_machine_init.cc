@@ -2,7 +2,7 @@
 
 #include <machine.h>
 #include <machine/riscv/riscv_nic.h>
-#include <utility/network_buffer.h>
+#include <machine/riscv/network_buffer.h>
 
 
 __BEGIN_SYS

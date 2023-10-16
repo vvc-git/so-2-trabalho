@@ -10,7 +10,6 @@ __BEGIN_SYS
 class Cadence_GEM
 {
 protected:
-    // TODO: Talvez mudar para o tipo ADDRESS
     typedef CPU::Reg32 Reg32;
     typedef CPU::Reg16 Reg16;
     typedef CPU::Log_Addr Log_Addr;
@@ -49,9 +48,9 @@ public:
 
     };
 
+    // Network Config Register bits
     enum
     {
-        // Network Config Register bits
         FULL_DUPLEX = 1 << 1,
         GIGABIT_MODE_ENABLE = 1 << 10,
         NO_BROADCAST = ~(1 << 5), // Bit que deve ser zero
@@ -59,27 +58,37 @@ public:
         COPY_ALL_FRAMES = 1 << 4,
         RECEIVE_CHECKSUM_OFFLOAD_ENABLE = 1 << 24,
         PAUSE_ENABLE = 1 << 13,
-        MDC_CLOCK_DIVISION = 0x1C0000,
+        MDC_CLOCK_DIVISION = 0x1C0000,       
 
-        // DMA_CONFIG bits
+    };
+
+    // DMA_CONFIG bits
+    enum 
+    {
+                
         RX_BUF_SIZE  = 0x00190000,
         RX_PBUF_SIZE = 0x00000300,
         TX_PBUF_SIZE = 1 << 10,
         TX_PBUF_TCP_EN = 1 << 11,
         ENDIAN_SWAP_PACKET = ~(1 << 7), // Bit que deve ser zero
         AMBA_BURST_LENGTH = 0x10,
+    };
 
-        // INT STATUS
+    // INT STATUS
+    enum {
+
         INT_TRASNMIT_COMPLETE = 1 << 7,  
         INT_RECEIVE_COMPLETE = 1 << 1,
         INT_RECEIVE_OVERRUN = 1 << 10, 
+    };
 
-        // TRANSMIT STATUS
-        TRANS_TRANSMIT_COMPLETE = 1 << 5,
+    // TRANSMIT STATUS
+    enum {
+         TRANS_TRANSMIT_COMPLETE = 1 << 5,
 
     };
 
-        // Descriptor RX
+    // Descriptor RX
     enum : unsigned int
     {
         RX_WORD0_2_LSB = 0xfffffffc,
@@ -87,6 +96,7 @@ public:
         RX_OWN = (1 << 0), // 0 => NIC, 1 => Host
         GET_FRAME_LENGTH = 0x1FFF,
     };
+    
     // Descriptor TX
     enum  
     {
@@ -95,9 +105,7 @@ public:
         TX_WORD1_WRP_BIT = 1 << 30,
     };
 
-
-
-    // Utilizando modo de endereçamento de 64 bits
+    // Estrutura com funções 
     struct Desc
     {
         // Word 0
@@ -105,6 +113,7 @@ public:
         // Word 1
         volatile Reg32 control;
 
+        // RX
         void set_rx_address(Phy_Addr addr) { address = addr & RX_WORD0_2_LSB;};
         void set_rx_wrap() {address = address | RX_WORD0_LSB_WRP;};
         void reset_rx_control() {control = 0;};
@@ -114,6 +123,7 @@ public:
                 set_rx_wrap();
         };
 
+        // TX
         void set_tx_address(Phy_Addr addr) {address = addr;};
         void set_tx_wrap() {control = control | TX_WORD1_WRP_BIT;};
         void set_tx_control() {control = TX_WORD1_OWN_CPU;};
@@ -137,7 +147,11 @@ public:
 
     // construtor
     Cadence_GEM(){};
-// 
+
+    // Iniciaaliza a transmissao
+    void start_transmit() {set_bits(NETWORK_CONTROL, TX_START_PCLK);};
+    
+    //  Operador de atribuição
     static void set_reg(unsigned long int pointer, unsigned int value)
     {
         Reg32 *p = reinterpret_cast<Reg32 *>(Memory_Map::ETH_BASE + pointer);
@@ -145,6 +159,7 @@ public:
         *p = v;
     }
 
+    // Operador ou
     static void set_bits(unsigned long int pointer, unsigned int value)
     {
         Reg32 *p = reinterpret_cast<Reg32 *>(Memory_Map::ETH_BASE + pointer);
@@ -160,12 +175,11 @@ public:
         *p = *p & v;
     }
 
+    // Seta os ponteiros dos descritores
     static void set_receiver_ptr(Phy_Addr addr) {set_reg(RECEIVE_Q_PTR, addr);};
     static void set_transmiter_ptr(Phy_Addr addr) {set_reg(TRANSMIT_Q_PTR, addr);};
     
-
-    void start_transmit() {set_bits(NETWORK_CONTROL, TX_START_PCLK);};
-
+    // Retorna o endereço MAC
     static Address get_mac() {
 
         Address address;
@@ -183,6 +197,7 @@ public:
 
     }
     
+    // Inicializa todos os registradores da placa
     static void init_regs() 
     {
         // 1. Clear the network control register

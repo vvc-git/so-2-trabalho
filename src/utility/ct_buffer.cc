@@ -30,7 +30,6 @@ void CT_Buffer::get_data_frame(char * data)
 // Salva o dado do frame
 void CT_Buffer::save_data_frame(char *data)
 {
-    db<SiFiveU_NIC>(WRN) << "antes do if do save" <<  endl;
 
     if (next < size) {
         char * addr = base + next * FRAME_SIZE;

@@ -1,8 +1,13 @@
-#include <utility/network_buffer.h>
+#include <machine/riscv/network_buffer.h>
 
-__BEGIN_UTIL
+__BEGIN_SYS
 
 Network_buffer* Network_buffer::net_buffer;
+
+void Network_buffer::init() {
+    net_buffer = new (SYSTEM) Network_buffer();
+
+}
 
 Network_buffer::Network_buffer() {
     
@@ -59,13 +64,11 @@ void Network_buffer::configure_tx_rx() {
         // 5. Fill the addresses of the allocated buffers in the buffer descriptors (bits [31-2], Word [0])
         Desc * rx_desc = desc;
 
+        // Os 2 últimos bits da palavra 0 estao sendo zerados
         rx_desc->set_rx_address(data);
 
-        // rx_desc->address = addr_data & RX_WORD0_2_LSB; // Os 2 últimos bits da palavra 0 estao sendo zerados
-        // db<SiFiveU_NIC>(WRN) << "Endereço:  "<< i << " " << hex << rx_desc->address << endl;
-
         // Setando o bit WRP no último descritor
-        if (i == (SLOTS_BUFFER - 1))  rx_desc->set_rx_wrap(); // rx_desc->address = rx_desc->address | RX_WORD0_LSB_WRP;
+        if (i == (SLOTS_BUFFER - 1))  rx_desc->set_rx_wrap();
 
         rx_desc->reset_rx_control();
     }
@@ -81,31 +84,25 @@ void Network_buffer::configure_tx_rx() {
         // 3. Mark the last descriptor in the list with the wrap bit. Set bit [30] in word [1] to 1.
         // 4. Write the base address of transmit buffer descriptor list to Controller registers gem.transmit_q{ , 1}_ptr.
         Cadence_GEM::Desc *tx_desc = desc;
-        // tx_desc->address = addr_data;
-        // tx_desc->control = 0;
-        // tx_desc->control = TX_WORD1_OWN_CPU | tx_desc->control;
         tx_desc->set_tx_address(data);
         tx_desc->set_tx_control();
 
         // Setando o bit WRP no último descritor (item 3)
-        if (i == (SLOTS_BUFFER - 1)) tx_desc->set_tx_wrap();//tx_desc->control = TX_WORD1_WRP_BIT | tx_desc->control;
+        if (i == (SLOTS_BUFFER - 1)) tx_desc->set_tx_wrap();
 
     }
 
     // Configure Buffer Descriptor, p.1061
-    // 6. Write the base address of this buffer descriptor list to the gem.receive_q{ , 1}_ptr
-    // registers.
-    // set_reg(RECEIVE_Q_PTR, rx_desc_phy);
+    // 6. Write the base address of this buffer descriptor list to the gem.receive_q{ , 1}_ptr registers.
     Cadence_GEM::set_receiver_ptr(rx_desc_phy);
 
 
     // Configure Buffer Descriptor, p.1062
     //4. Write the base address of transmit buffer descriptor list to Controller registers gem.transmit_q{ , 1}_ptr..
-    // set_reg(TRANSMIT_Q_PTR, tx_desc_phy);
     Cadence_GEM::set_transmiter_ptr(tx_desc_phy);
 }
 
-int Network_buffer::copy_for_upper_layer() {
+int Network_buffer::copy() {
 
     Desc *desc = net_buffer->rx_desc_phy;
     unsigned int idx = 0;
@@ -118,41 +115,28 @@ int Network_buffer::copy_for_upper_layer() {
         for (int i = 0; !(desc->is_cpu_owned()); i=(i+1)%net_buffer->SLOTS_BUFFER) {
             
             desc = net_buffer->rx_desc_phy + i * net_buffer->DESC_SIZE;
-            db<SiFiveU_NIC>(WRN) << "for -> idx: " << idx <<  endl;
             idx = i;
         }
 
-        // Pegando payload_size da word[1] do descriptor
-        // unsigned int payload_size = (desc->control & GET_FRAME_LENGTH);
-        
+
+        // Setando novamente desc->address, para recebimento de novos frames para eventuais casos de sobreescrita
+        desc = net_buffer->rx_desc_phy + idx * net_buffer->DESC_SIZE;
+
         // Definindo endereço do buffer de dados a partir do índice salvo
         data = net_buffer->rx_data_phy + idx * FRAME_SIZE; 
-
-        // Tentando copiar os dados
-        // char data[payload_size];
-
-        // Network_buffer::net_buffer->alloc_frame(reinterpret_cast<char*>(desc->address));
         
-        // Funcionando
-        // CT_Buffer *buffer = new CT_Buffer(FRAME_SIZE);
-
-        // Setando novamente desc->address, para recebimento de novos frames
-        desc = net_buffer->rx_desc_phy + idx * net_buffer->DESC_SIZE;
+        // Setando o no rx de dados
         desc->address = data;
 
         // Colocando o valor de RX data (addr) para o CT_buffer alocado
         Network_buffer::net_buffer->buf->save_data_frame(reinterpret_cast<char*>(desc->address));
 
         
-       
         // Setando os 2 ultimos bits da word[0]
+        // (O wrap bit caso seja necessário)
         desc->set_rx_own_wrap(idx == ( net_buffer->SLOTS_BUFFER - 1));
 
-        // Setando o bit WRP no último descritor
-        // if (idx == (SLOTS_BUFFER - 1)) desc->set_rx_wrap();
-        // desc->address = desc->address & RX_WORD0_2_LSB; 
-
-                // Faz a copia do buffer rx para data
+        // Faz a copia do buffer rx para data
         char  payload[FRAME_SIZE];
         net_buffer->buf->get_data_frame(payload);
 
@@ -166,18 +150,9 @@ int Network_buffer::copy_for_upper_layer() {
     return 0;
 }
 
-void Network_buffer::init() {
-    // char buff[64*1600];
-    net_buffer = new (SYSTEM) Network_buffer();
-    // new (SYSTEM) Thread(Thread::Configuration(Thread::READY, Thread::LOW), &copy_for_upper_layer);
-
-}
-
 void Network_buffer::update(Observed *obs)
 {
-    // net_buffer->buf->get_data_frame(buffer->log_address());
 
-    // TODO: DADO buffer do rx P/ buffer do network buffer
     net_buffer->sem->v();
 
 }
@@ -191,6 +166,7 @@ Cadence_GEM::Desc * Network_buffer::get_free_tx_desc() {
         tx_desc = tx_desc_phy + (last_desc_idx * DESC_SIZE);
         last_desc_idx = (last_desc_idx + 1) % SLOTS_BUFFER;
         
+        // Encontrou um slot livre
         if (tx_desc->control >> 31) {
             break;
         }
@@ -200,4 +176,4 @@ Cadence_GEM::Desc * Network_buffer::get_free_tx_desc() {
 
 }
 
-__END_UTIL
+__END_SYS
