@@ -11,12 +11,9 @@ void Network_buffer::init() {
 
 Network_buffer::Network_buffer() {
     
-    // thread = new (SYSTEM) Thread(&copy_for_upper_layer);
     sem = new Semaphore(0);
     buf = new CT_Buffer(FRAME_SIZE*64);
-    // thread->join();
-    // 
-    // new (SYSTEM) Thread(Thread::Configuration(Thread::READY, Thread::HIGH), &Network_buffer::copy_for_upper_layer);
+    dt =  new DT_Buffer(FRAME_SIZE*64*10);
     
 
 }

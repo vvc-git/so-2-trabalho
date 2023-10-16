@@ -16,6 +16,7 @@
 #include <synchronizer.h>
 #include <network/ethernet.h>
 #include <machine/riscv/riscv_gem.h>
+#include <dt_buffer.h>
 
 
 __BEGIN_SYS
@@ -84,6 +85,8 @@ public:
 
     Log_Addr log_init_rx_desc;
     Log_Addr log_init_rx_data;
+
+    DT_Buffer * dt;
 
 
     unsigned int DESC_SIZE = 8;

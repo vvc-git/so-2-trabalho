@@ -21,21 +21,29 @@ class DT_Buffer
 
 public:
     
-    DT_Buffer(void * addr, unsigned long bytes): app(addr, bytes){}
+    DT_Buffer(unsigned long bytes);
     ~DT_Buffer() {};
     void * alloc(unsigned long int bytes);
-    void free(void * ptr, unsigned long bytes) {app.free(ptr, bytes);};
+    void free(void * ptr, unsigned long bytes) {buffer->free(ptr, bytes);};
 
 public:
-    Heap app;
+    Heap * buffer;
+    char * data;
+};
+
+DT_Buffer::DT_Buffer(unsigned long bytes) {
+
+    char data[bytes];
+    buffer = new Heap(data, bytes);
+
 };
 
 void * DT_Buffer::alloc(unsigned long int bytes) {
-    void * addr = app.alloc(bytes);
-
+    void * addr = buffer->alloc(bytes);
     return addr;
 
 };
+
 
 
 __END_UTIL
