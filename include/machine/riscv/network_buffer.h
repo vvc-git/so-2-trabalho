@@ -16,7 +16,7 @@
 #include <synchronizer.h>
 #include <network/ethernet.h>
 #include <machine/riscv/riscv_gem.h>
-#include <dt_buffer.h>
+#include <utility/dt_buffer.h>
 
 
 __BEGIN_SYS
@@ -33,6 +33,7 @@ Network_buffer :  public Observer// , Data_Observed<DT_Buffer, void>
     typedef CPU::Phy_Addr Phy_Addr;
     typedef CPU::Log_Addr Log_Addr;
     typedef Cadence_GEM::Desc Desc;
+    typedef Heap DT_Buffer;
     // typedef Ethernet::Frame Frame;
 
 

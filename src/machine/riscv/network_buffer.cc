@@ -13,7 +13,8 @@ Network_buffer::Network_buffer() {
     
     sem = new Semaphore(0);
     buf = new CT_Buffer(FRAME_SIZE*64);
-    dt =  new DT_Buffer(FRAME_SIZE*64*10);
+    char data[FRAME_SIZE*64*10];
+    dt =  new DT_Buffer(data, FRAME_SIZE*64*10);
     
 
 }
