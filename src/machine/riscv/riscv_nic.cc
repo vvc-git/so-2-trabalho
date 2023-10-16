@@ -99,7 +99,6 @@ SiFiveU_NIC::SiFiveU_NIC()
 void SiFiveU_NIC::send(Address dst, char* payload, unsigned int payload_size)
 {
 
-    db<SiFiveU_NIC>(WRN) << "TESTE NIC Send" << endl;
     if (payload_size <= FRAME_SIZE)
     {
         // Varrer descriptors de tx procurando buffer livre
@@ -112,20 +111,22 @@ void SiFiveU_NIC::send(Address dst, char* payload, unsigned int payload_size)
 
         Desc * tx_desc = Network_buffer::net_buffer->get_free_tx_desc();
 
-        db<SiFiveU_NIC>(WRN) << "Tx_desc NIC  " << hex << tx_desc->address << endl;
                 
         // Montando o Frame para ser enviado 
         Frame* frame = new (reinterpret_cast<void *>(tx_desc->address)) Frame(this->address, dst, 0x8888, payload, payload_size);
         //memcpy(reinterpret_cast<void *>(tx_desc->address), payload, payload_size);
 
-        // Seta o tamanho do buffer de dados a ser lido
-        tx_desc->control = tx_desc->control | (payload_size + sizeof(*(frame->header())));
+        // // Seta o tamanho do buffer de dados a ser lido
+        // tx_desc->control = tx_desc->control | (payload_size + sizeof(*(frame->header())));
 
-        // For single buffer ehternet frame, bit[15] of word [1] must also be set.
-        tx_desc->control = (1 << 15) | tx_desc->control;
+        // // For single buffer ehternet frame, bit[15] of word [1] must also be set.
+        // tx_desc->control = (1 << 15) | tx_desc->control;
 
-        // Coloca o bit 31 como 0 (Bit que indica que a NIC poder ler)
-        tx_desc->control = tx_desc->control & TX_WORD1_OWN_CONTROLLER;
+        // // Coloca o bit 31 como 0 (Bit que indica que a NIC poder ler)
+        // tx_desc->control = tx_desc->control & TX_WORD1_OWN_CONTROLLER;
+
+
+        tx_desc->set_ctrl_transmiting(payload_size + sizeof(*(frame->header())));
 
         // Habilita a NIC para a execução
         start_transmit();

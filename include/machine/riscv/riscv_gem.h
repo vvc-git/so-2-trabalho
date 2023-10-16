@@ -112,11 +112,25 @@ public:
         void set_tx_address(Phy_Addr addr) {address = addr;};
         void set_tx_wrap() {control = control | TX_WORD1_WRP_BIT;};
         void set_tx_control() {control = TX_WORD1_OWN_CPU;};
+
+        void set_ctrl_transmiting(unsigned int size) {
+
+            // Seta o tamanho do buffer de dados a ser lido
+            control = control | size;
+
+            // For single buffer ehternet frame, bit[15] of word [1] must also be set.
+            control = (1 << 15) | control;
+
+            // Coloca o bit 31 como 0 (Bit que indica que a NIC poder ler)
+            control = control & TX_WORD1_OWN_CONTROLLER;
+
+        }
+
     };
 
     // construtor
     Cadence_GEM(){};
-
+// 
     static void set_reg(unsigned long int pointer, unsigned int value)
     {
         Reg32 *p = reinterpret_cast<Reg32 *>(Memory_Map::ETH_BASE + pointer);
@@ -139,8 +153,9 @@ public:
         *p = *p & v;
     }
 
-    static void set_transmiter_ptr(Phy_Addr addr) {set_reg(RECEIVE_Q_PTR, addr);};
-    static void set_receiver_ptr(Phy_Addr addr) {set_reg(TRANSMIT_Q_PTR, addr);};
+    static void set_receiver_ptr(Phy_Addr addr) {set_reg(RECEIVE_Q_PTR, addr);};
+    static void set_transmiter_ptr(Phy_Addr addr) {set_reg(TRANSMIT_Q_PTR, addr);};
+    
 
     void start_transmit() {set_bits(NETWORK_CONTROL, TX_START_PCLK);};
 

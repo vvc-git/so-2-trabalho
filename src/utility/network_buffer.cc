@@ -44,24 +44,22 @@ void Network_buffer::configure_tx_rx() {
     log_init_rx_desc = rx_desc_buffer->log_address();
     log_init_rx_data = rx_data_buffer->log_address();
 
-    Phy_Addr addr_desc;
-    Phy_Addr addr_data;
+    Phy_Addr desc;
+    Phy_Addr data;
 
-
-    db<SiFiveU_NIC>(WRN) << "Endereços utilizados para o rx de dados (Construtor)"<< endl;
     // setting RX buffers
     for (unsigned int i = 0; i < SLOTS_BUFFER; i++)
     {
-        addr_desc = rx_desc_phy + (i * DESC_SIZE);
-        addr_data = rx_data_phy + (i * FRAME_SIZE);
+        desc = rx_desc_phy + (i * DESC_SIZE);
+        data = rx_data_phy + (i * FRAME_SIZE);
 
         // Configure Buffer Descriptors, p. 1061
         // 3. Mark all entries in this list as owned by controller. Set bit [0] of word [0] of each buffer descriptor to 0.
         // 4. Mark the last descriptor in the buffer descriptor list with the wrap bit, (bit [1] in word [0]) set.
         // 5. Fill the addresses of the allocated buffers in the buffer descriptors (bits [31-2], Word [0])
-        Cadence_GEM::Desc * rx_desc = addr_desc;
+        Desc * rx_desc = desc;
 
-        rx_desc->set_rx_address(addr_data);
+        rx_desc->set_rx_address(data);
 
         // rx_desc->address = addr_data & RX_WORD0_2_LSB; // Os 2 últimos bits da palavra 0 estao sendo zerados
         // db<SiFiveU_NIC>(WRN) << "Endereço:  "<< i << " " << hex << rx_desc->address << endl;
@@ -75,18 +73,18 @@ void Network_buffer::configure_tx_rx() {
     // setting TX buffers
     for (unsigned int i = 0; i < SLOTS_BUFFER; i++)
     {
-        addr_desc = tx_desc_phy + (i * DESC_SIZE);
-        addr_data = tx_data_phy + (i * FRAME_SIZE);
+        desc = tx_desc_phy + (i * DESC_SIZE);
+        data = tx_data_phy + (i * FRAME_SIZE);
 
         // Configure BUffer Descriptors, p. 1062
         // 2. Mark all entries in this list as owned by the controller. Set bit [31] of word [1] to 0.  (TX_WORD1_OWN_CONTROLLER)
         // 3. Mark the last descriptor in the list with the wrap bit. Set bit [30] in word [1] to 1.
         // 4. Write the base address of transmit buffer descriptor list to Controller registers gem.transmit_q{ , 1}_ptr.
-        Cadence_GEM::Desc *tx_desc = addr_desc;
+        Cadence_GEM::Desc *tx_desc = desc;
         // tx_desc->address = addr_data;
         // tx_desc->control = 0;
         // tx_desc->control = TX_WORD1_OWN_CPU | tx_desc->control;
-        tx_desc->set_tx_address(addr_desc);
+        tx_desc->set_tx_address(data);
         tx_desc->set_tx_control();
 
         // Setando o bit WRP no último descritor (item 3)
@@ -148,8 +146,6 @@ void Network_buffer::update(Observed *obs)
 
 Cadence_GEM::Desc * Network_buffer::get_free_tx_desc() {
 
-    db<Network_buffer>(WRN) << "antes do get  "  << endl;
-
     Cadence_GEM::Desc *tx_desc = nullptr;
     // Varrer descriptors de tx procurando buffer livre
     for (; last_desc_idx < SLOTS_BUFFER; )
@@ -157,10 +153,7 @@ Cadence_GEM::Desc * Network_buffer::get_free_tx_desc() {
         tx_desc = tx_desc_phy + (last_desc_idx * DESC_SIZE);
         last_desc_idx = (last_desc_idx + 1) % SLOTS_BUFFER;
         
-        db<Network_buffer>(WRN) << "control " << hex << tx_desc->control << endl;
         if (tx_desc->control >> 31) {
-           
-            db<Network_buffer>(WRN) << "Tx_desc no Network  " << hex << tx_desc->address << endl;
             break;
         }
     }

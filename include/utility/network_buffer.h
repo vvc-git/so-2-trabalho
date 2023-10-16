@@ -30,7 +30,7 @@ Network_buffer :  public Observer// , Data_Observed<DT_Buffer, void>
     friend class Cadence_GEM;
     typedef CPU::Phy_Addr Phy_Addr;
     typedef CPU::Log_Addr Log_Addr;
-    //  typedef Cadence_GEM::Desc Desc;
+    typedef Cadence_GEM::Desc Desc;
     // typedef Ethernet::Frame Frame;
 
 
