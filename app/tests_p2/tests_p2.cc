@@ -65,15 +65,7 @@ int main()
 
      // sifiveu_nic->attach(&nic_receiver);
 
-     NIC<Ethernet>::Address src, dst;
-
-     
-     src[0] = 0x01;
-     src[1] = 0x00;
-     src[2] = 0x00;
-     src[3] = 0x00;
-     src[4] = 0x00;
-     src[5] = 0x00;
+     NIC<Ethernet>::Address dst;
 
      dst[0] = 0x00;
      dst[1] = 0x00;
@@ -92,15 +84,16 @@ int main()
           for(int i = 0; i < 10; i++) {
                cout << "Sender " << i << endl;
                memset(payload, '0' + i, MTU);
-               sifiveu_nic->send(src, dst, payload, MTU);
+               sifiveu_nic->send(dst, payload, MTU);
                Delay (50000);
           }
      } else {
+          sifiveu_nic->send(dst, payload, MTU);
           
-          new (SYSTEM) Thread(Thread::Configuration(Thread::READY, Thread::HIGH), &Network_buffer::copy_for_upper_layer);
-          Delay (10000000000000000);
-          cout << "Receiver" << endl;
-          Network_buffer::net_buffer->thread->join();
+          // new (SYSTEM) Thread(Thread::Configuration(Thread::READY, Thread::HIGH), &Network_buffer::copy_for_upper_layer);
+          // Delay (10000000000000000);
+          // cout << "Receiver" << endl;
+          // Network_buffer::net_buffer->thread->join();
      }
 
      
