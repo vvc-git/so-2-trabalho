@@ -8,7 +8,7 @@ Network_buffer::Network_buffer() {
     
     // thread = new (SYSTEM) Thread(&copy_for_upper_layer);
     sem = new Semaphore(0);
-    buf = new CT_Buffer(FRAME_SIZE*2);
+    buf = new CT_Buffer(FRAME_SIZE*64);
     // thread->join();
     // 
     // new (SYSTEM) Thread(Thread::Configuration(Thread::READY, Thread::HIGH), &Network_buffer::copy_for_upper_layer);
@@ -107,24 +107,62 @@ void Network_buffer::configure_tx_rx() {
 
 int Network_buffer::copy_for_upper_layer() {
 
-    while (true) {
-
-        // Bloqueia a execução da thread até que um paconte chegue
-        // TODO: Não consegui usar o mutex
+    Desc *desc = net_buffer->rx_desc_phy;
+    unsigned int idx = 0;
+    Reg32 data = 0;
+    
+    while (true)
+    {
         net_buffer->sem->p();
+        
+        for (int i = 0; !(desc->is_cpu_owned()); i=(i+1)%net_buffer->SLOTS_BUFFER) {
+            
+            desc = net_buffer->rx_desc_phy + i * net_buffer->DESC_SIZE;
+            db<SiFiveU_NIC>(WRN) << "for -> idx: " << idx <<  endl;
+            idx = i;
+        }
 
-        // Faz a copia do buffer rx para data
-        char  data[FRAME_SIZE];
-        net_buffer->buf->get_data_frame(data);
+        // Pegando payload_size da word[1] do descriptor
+        // unsigned int payload_size = (desc->control & GET_FRAME_LENGTH);
+        
+        // Definindo endereço do buffer de dados a partir do índice salvo
+        data = net_buffer->rx_data_phy + idx * FRAME_SIZE; 
+
+        // Tentando copiar os dados
+        // char data[payload_size];
+
+        // Network_buffer::net_buffer->alloc_frame(reinterpret_cast<char*>(desc->address));
+        
+        // Funcionando
+        // CT_Buffer *buffer = new CT_Buffer(FRAME_SIZE);
+
+        // Setando novamente desc->address, para recebimento de novos frames
+        desc = net_buffer->rx_desc_phy + idx * net_buffer->DESC_SIZE;
+        desc->address = data;
+
+        // Colocando o valor de RX data (addr) para o CT_buffer alocado
+        Network_buffer::net_buffer->buf->save_data_frame(reinterpret_cast<char*>(desc->address));
+
+        
+       
+        // Setando os 2 ultimos bits da word[0]
+        desc->set_rx_own_wrap(idx == ( net_buffer->SLOTS_BUFFER - 1));
+
+        // Setando o bit WRP no último descritor
+        // if (idx == (SLOTS_BUFFER - 1)) desc->set_rx_wrap();
+        // desc->address = desc->address & RX_WORD0_2_LSB; 
+
+                // Faz a copia do buffer rx para data
+        char  payload[FRAME_SIZE];
+        net_buffer->buf->get_data_frame(payload);
 
         db<SiFiveU_NIC>(WRN) << "Network buffer update: "<< endl;
         for (int i = 0; i < 1500; i++) {
-            db<SiFiveU_NIC>(WRN) << data[i];
+            db<SiFiveU_NIC>(WRN) << payload[i];
         }
         db<SiFiveU_NIC>(WRN) << endl;
-
-
     }
+    
     return 0;
 }
 

@@ -146,52 +146,15 @@ void SiFiveU_NIC::send(Address dst, char* payload, unsigned int payload_size)
 
 void SiFiveU_NIC::receive()
 {
-    // Desc *desc = rx_desc_phy;
-
-    // unsigned int indx = 0;
-    // for (unsigned int i = 0; !(desc->address & RX_OWN); i=(i+1)%SLOTS_BUFFER) {
-    //     desc = rx_desc_phy + i * DESC_SIZE;
-    //     indx = i;
-    //     // db<SiFiveU_NIC>(WRN) << "for -> addr: " << hex << desc->address << endl;
-    // }
-
-    // // Pegando payload_size da word[1] do descriptor
-    // // unsigned int payload_size = (desc->control & GET_FRAME_LENGTH);
-    
-    // // Definindo endereço do buffer de dados a partir do índice salvo
-    // Reg32 addr = rx_data_phy + indx * FRAME_SIZE; 
-
-    // // Setando o bit WRP no último descritor
-    // if (indx == (SLOTS_BUFFER - 1)) desc->address = desc->address | RX_WORD0_LSB_WRP;
-
-    // // Tentando copiar os dados
-    // // char data[payload_size];
-
-    // // Network_buffer::net_buffer->alloc_frame(reinterpret_cast<char*>(desc->address));
-    
-    // // Funcionando
-    // // CT_Buffer *buffer = new CT_Buffer(FRAME_SIZE);
-
-    // // Colocando o valor de RX data (addr) para o CT_buffer alocado
-    // Network_buffer::net_buffer->buf->save_data_frame(reinterpret_cast<char*>(desc->address));
-
-
-    // // Setando novamente desc->address, para recebimento de novos frames
-    // desc = rx_desc_phy + indx * DESC_SIZE;
-    // desc->address = addr;
-    
-    // // Setando os 2 ultimos bits da word[0]
-    // desc->address = desc->address & RX_WORD0_2_LSB; 
-
-    // // Chamando notify (Observed)
-    // notify();
+    // Chamando notify (Observed)
+    notify();
 }
 
 
 
 void SiFiveU_NIC::handle_interrupt() {
     // Setup interrupt for receiving frames
-    db<SiFiveU_NIC>(TRC) << "riscv::handle_interrupt "<< endl;
+    db<SiFiveU_NIC>(WRN) << "riscv::handle_interrupt "<< endl;
 
     // Se INT_STATUS[receive_complete] estiver setado, chama receive()
     Reg32 *int_status = reinterpret_cast<Reg32*>(Memory_Map::ETH_BASE + INT_STATUS);

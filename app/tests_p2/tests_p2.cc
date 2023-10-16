@@ -4,6 +4,7 @@
 #include <machine/riscv/riscv_nic.h>
 #include <network/ethernet.h>
 #include <time.h>
+#include <process.h>
 
 // Para o delay
 #include <time.h>
@@ -88,12 +89,10 @@ int main()
                Delay (50000);
           }
      } else {
-          sifiveu_nic->send(dst, payload, MTU);
-          
-          // new (SYSTEM) Thread(Thread::Configuration(Thread::READY, Thread::HIGH), &Network_buffer::copy_for_upper_layer);
-          // Delay (10000000000000000);
-          // cout << "Receiver" << endl;
-          // Network_buffer::net_buffer->thread->join();
+          new (SYSTEM) Thread(Thread::Configuration(Thread::READY, Thread::HIGH), &Network_buffer::copy_for_upper_layer);
+          Delay (10000000000000000);
+          cout << "Receiver" << endl;
+          Network_buffer::net_buffer->thread->join();
      }
 
      

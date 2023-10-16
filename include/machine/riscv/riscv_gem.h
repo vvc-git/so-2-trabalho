@@ -108,10 +108,17 @@ public:
         void set_rx_address(Phy_Addr addr) { address = addr & RX_WORD0_2_LSB;};
         void set_rx_wrap() {address = address | RX_WORD0_LSB_WRP;};
         void reset_rx_control() {control = 0;};
+        void set_rx_own_wrap(bool wrap) {
+            address = address & RX_WORD0_2_LSB;
+            if (wrap)
+                set_rx_wrap();
+        };
 
         void set_tx_address(Phy_Addr addr) {address = addr;};
         void set_tx_wrap() {control = control | TX_WORD1_WRP_BIT;};
         void set_tx_control() {control = TX_WORD1_OWN_CPU;};
+
+        bool is_cpu_owned() {return (address & RX_OWN);}
 
         void set_ctrl_transmiting(unsigned int size) {
 
