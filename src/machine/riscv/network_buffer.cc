@@ -19,6 +19,15 @@ Network_buffer::Network_buffer() {
 
 }
 
+void Network_buffer::IP_send(char* data) {
+    db<Network_buffer>(WRN) << "Network_buffer::IP_send inicio"<< endl;
+    Datagram_Header header = Datagram_Header();
+    header.Total_Length = 3200;
+    db<Network_buffer>(WRN) << "header->protocol: " << header.Protocol << endl;
+    db<Network_buffer>(WRN) << "header->Total_Length: " << header.Total_Length << endl;
+    db<Network_buffer>(WRN) << "Network_buffer::IP_send fim"<< endl;
+}
+
 void Network_buffer::configure_tx_rx() {
 
 

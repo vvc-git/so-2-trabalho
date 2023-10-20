@@ -28,13 +28,41 @@ class
 Network_buffer :  public Observer// , Data_Observed<DT_Buffer, void>
 {
     friend class Cadence_GEM;
+    typedef CPU::Reg8 Reg8;
+    typedef CPU::Reg16 Reg16;
     typedef CPU::Reg32 Reg32;
     typedef CPU::Phy_Addr Phy_Addr;
     typedef CPU::Log_Addr Log_Addr;
     typedef Cadence_GEM::Desc Desc;
     typedef Heap DT_Buffer;
     // typedef Ethernet::Frame Frame;
+public:
+    // https://www.rfc-editor.org/rfc/rfc791#page-11
+    struct Datagram_Header {
+        Reg8 Version_IHL; // Version and Internet Header Length
+        Reg8 Type_Service;
+        Reg16 Total_Length;
+        Reg16 Identification;
+        Reg16 Flags_Offset;
+        Reg8 TTL; // Time to live
+        Reg8 Protocol; // This field indicates the next level protocol used in the data portion of the internet datagram.
+        Reg16 Header_Checksum;
+        Reg32 SRC_ADDR;
+        Reg32 DST_ADDR;
+        Reg32 Option_Padding;
 
+        // setting some values in the constructor
+        Datagram_Header(): 
+            Version_IHL(0x46),
+            Type_Service(0x0),
+            TTL(60),
+            Protocol(0x88), // Conferir
+            Header_Checksum(0x0),
+            SRC_ADDR(0x0), // Conferir
+            DST_ADDR(0x0), // Conferir
+            Option_Padding(0x0) // Conferir
+        {}
+    };
 
 public:
     
@@ -53,6 +81,8 @@ public:
 
    // Função de execução da thread
    static int copy();
+
+   void IP_send(char* data);
 
 
 
