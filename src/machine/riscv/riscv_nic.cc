@@ -17,9 +17,8 @@ SiFiveU_NIC::SiFiveU_NIC()
     this->attach(Network_buffer::net_buffer);
 }
 
-void SiFiveU_NIC::send(Address dst, char* payload, unsigned int payload_size)
+void SiFiveU_NIC::send(Address dst, void* payload, unsigned int payload_size)
 {
-
     if (payload_size <= FRAME_SIZE)
     {
 

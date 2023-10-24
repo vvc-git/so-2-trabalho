@@ -24,6 +24,15 @@ void Network_buffer::IP_send(char* data, unsigned int data_size) {
     // Fragmentar pacotes de 1500 bytes
     // 48 bytes - Header
     // 1452 - Dados
+
+    // Setando MAC de destino
+    NIC<Ethernet>::Address dst;
+    dst[0] = 0x00;
+    dst[1] = 0x00;
+    dst[2] = 0x00;
+    dst[3] = 0x00;
+    dst[4] = 0x00;
+    dst[5] = 0x02;
     
     // Irá avançar sobre data para fazer o memcpy
     char* data_pointer;
@@ -51,11 +60,14 @@ void Network_buffer::IP_send(char* data, unsigned int data_size) {
         // Copiando os dados para o fragment que sera enviado
         memcpy(fragment.data, data_pointer, frag_size);
 
+        // TODO: Desacoplar o send do IP e o send da NIC (ethernet)
+        SiFiveU_NIC::_device->send(dst, (void*) &fragment, 1500);
+
         // print para testar se o dado foi copiado
-        for (unsigned int i=0; i<frag_size; i++) {
-             db<Network_buffer>(WRN) << fragment.data[i];
-        }
-        db<Network_buffer>(WRN) << endl;
+        // for (unsigned int i=0; i<frag_size; i++) {
+        //      db<Network_buffer>(WRN) << fragment.data[i];
+        // }
+        // db<Network_buffer>(WRN) << endl;
 
         // Print para verificar o header
         db<Network_buffer>(WRN) << "Total_Length: " << fragment.header.Total_Length << endl;
@@ -85,11 +97,12 @@ void Network_buffer::IP_send(char* data, unsigned int data_size) {
     data_pointer = fragment.data + last_size;   
     memset(data_pointer, '9', frag_size - last_size);
 
+    SiFiveU_NIC::_device->send(dst, (void*) &fragment, 1500);
     // print para testar se o dado foi copiado
-    for (unsigned int i=0; i<frag_size; i++) {
-            db<Network_buffer>(WRN) << fragment.data[i];
-    }
-    db<Network_buffer>(WRN) << endl;
+    // for (unsigned int i=0; i<frag_size; i++) {
+    //         db<Network_buffer>(WRN) << fragment.data[i];
+    // }
+    // db<Network_buffer>(WRN) << endl;
 
     // Print para verificar o header
     db<Network_buffer>(WRN) << "Total_Length: " << fragment.header.Total_Length << endl;

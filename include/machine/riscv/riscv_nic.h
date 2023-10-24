@@ -33,7 +33,7 @@ public:
     void attach(Observer *o) { Observed::attach(o); };
 
     void receive();
-    void send(Address dst, char* payload, unsigned int payload_size);
+    void send(Address dst, void* payload, unsigned int payload_size);
     void handle_interrupt();
 
     // Métodos estáticos

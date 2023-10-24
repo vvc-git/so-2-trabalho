@@ -16,6 +16,7 @@
 #include <synchronizer.h>
 #include <network/ethernet.h>
 #include <machine/riscv/riscv_gem.h>
+#include <machine/riscv/riscv_nic.h>
 
 
 __BEGIN_SYS
