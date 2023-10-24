@@ -51,6 +51,9 @@ public:
         Reg32 DST_ADDR;
         Reg32 Option_Padding;
 
+        // Const for logical operations. Deixar aqui?
+        unsigned int MORE_FRAGS = 0X2000;
+
         // setting some values in the constructor
         Datagram_Header(): 
             Version_IHL(0x46),
@@ -63,6 +66,12 @@ public:
             Option_Padding(0x0) // Conferir
         {}
     };
+
+    struct Datagram_Fragment {
+        Datagram_Header header;
+        char data[1452]; // tamanho fixo?
+    };
+
 
 public:
     
@@ -82,7 +91,7 @@ public:
    // Função de execução da thread
    static int copy();
 
-   void IP_send(char* data);
+   void IP_send(char* data, unsigned int data_size);
 
 
 

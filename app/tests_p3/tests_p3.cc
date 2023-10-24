@@ -28,13 +28,28 @@ int main()
      dst[5] = 0x02;
      
 
-     // unsigned int MTU = 1500;
-     // char payload[MTU];
+     cout << "IP sending" << endl;
      cout << "  MAC: " << sifiveu_nic->address << endl;
 
-     char data[2];
-     data[0] = 'a';
-     Network_buffer::net_buffer->IP_send(data);
+     unsigned int frag_size = 1452;
+     unsigned int data_size = 3000;
+     //unsigned int iter = data_size/frag_size;
+     //unsigned int last = data_size%frag_size;
+
+     char data[data_size];
+     for(unsigned int i = 0; i < data_size; i++) {
+          if (i < frag_size) data[i] = '0';
+          else if (i < frag_size*2) data[i] = '1';
+          else data[i] = '2';
+     }
+
+     Network_buffer::net_buffer->IP_send(data, data_size);
+
+     // print pra conferir o data
+     // for (unsigned int i=0; i<data_size; i++) {
+     //      cout << data[i];
+     // }
+     // cout << endl;
 
      // if((sifiveu_nic->address[5] % 2 )) { // sender
      //      cout << "Sender" << endl;
