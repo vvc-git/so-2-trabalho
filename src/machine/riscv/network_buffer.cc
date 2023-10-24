@@ -37,9 +37,11 @@ void Network_buffer::IP_send(char* data, unsigned int data_size) {
     // Irá avançar sobre data para fazer o memcpy
     char* data_pointer;
 
-    unsigned int frag_size = 1452;
-    unsigned int iter = data_size/frag_size;
-    unsigned int last_size = data_size%frag_size;
+    unsigned int header_size = 48;
+    unsigned int frag_size = 1500;
+    unsigned int frag_data_size = 1452;
+    unsigned int iter = data_size/frag_data_size;
+    unsigned int last_size = data_size%frag_data_size;
 
     for (unsigned int i = 0; i < iter; i++) {
         // Construindo Fragmento
@@ -49,22 +51,22 @@ void Network_buffer::IP_send(char* data, unsigned int data_size) {
         fragment.header = Datagram_Header();
 
         // Setar Total_Length, Identification, Flags e Offset
-        fragment.header.Total_Length = data_size;
+        fragment.header.Total_Length = data_size + header_size;
         fragment.header.Identification = 0x1234; // É aleatório?
         unsigned int offset = i*frag_size;
         fragment.header.Flags_Offset = offset | fragment.header.MORE_FRAGS;
 
         // Setando o ponteiro para o endereco especifico em data
-        data_pointer = data + i*frag_size;
+        data_pointer = data + i*frag_data_size;
 
         // Copiando os dados para o fragment que sera enviado
-        memcpy(fragment.data, data_pointer, frag_size);
+        memcpy(fragment.data, data_pointer, frag_data_size);
 
         // TODO: Desacoplar o send do IP e o send da NIC (ethernet)
-        SiFiveU_NIC::_device->send(dst, (void*) &fragment, 1500);
+        SiFiveU_NIC::_device->send(dst, (void*) &fragment, frag_size);
 
         // print para testar se o dado foi copiado
-        // for (unsigned int i=0; i<frag_size; i++) {
+        // for (unsigned int i=0; i<frag_data_size; i++) {
         //      db<Network_buffer>(WRN) << fragment.data[i];
         // }
         // db<Network_buffer>(WRN) << endl;
@@ -82,24 +84,24 @@ void Network_buffer::IP_send(char* data, unsigned int data_size) {
     fragment.header = Datagram_Header();
 
     // Setar Total_Length, Identification, Flags e Offset
-    fragment.header.Total_Length = data_size;
+    fragment.header.Total_Length = data_size + header_size;
     fragment.header.Identification = 0x1234; // É aleatório?
     unsigned int offset = iter*frag_size;
     fragment.header.Flags_Offset = offset & fragment.header.LAST_FRAG;
 
     // Setando o ponteiro para o endereco especifico em data
-    data_pointer = data + iter*frag_size;
+    data_pointer = data + iter*frag_data_size;
 
     // Copiando os dados para o fragment que sera enviado
     memcpy(fragment.data, data_pointer, last_size);
 
     // Preenchimento dummy
     data_pointer = fragment.data + last_size;   
-    memset(data_pointer, '9', frag_size - last_size);
+    memset(data_pointer, '9', frag_data_size - last_size);
 
     SiFiveU_NIC::_device->send(dst, (void*) &fragment, 1500);
     // print para testar se o dado foi copiado
-    // for (unsigned int i=0; i<frag_size; i++) {
+    // for (unsigned int i=0; i<frag_data_size; i++) {
     //         db<Network_buffer>(WRN) << fragment.data[i];
     // }
     // db<Network_buffer>(WRN) << endl;
