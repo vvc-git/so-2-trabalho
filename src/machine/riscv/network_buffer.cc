@@ -30,40 +30,72 @@ void Network_buffer::IP_send(char* data, unsigned int data_size) {
 
     unsigned int frag_size = 1452;
     unsigned int iter = data_size/frag_size;
-    // unsigned int last = data_size%frag_size;
+    unsigned int last_size = data_size%frag_size;
 
     for (unsigned int i = 0; i < iter; i++) {
         // Construindo Fragmento
-        Datagram_Fragment payload;
+        Datagram_Fragment fragment;
 
         // Construindo Header
-        payload.header = Datagram_Header();
+        fragment.header = Datagram_Header();
 
         // Setar Total_Length, Identification, Flags e Offset
-        payload.header.Total_Length = data_size;
-        payload.header.Identification = 0x1234; // É aleatório?
+        fragment.header.Total_Length = data_size;
+        fragment.header.Identification = 0x1234; // É aleatório?
         unsigned int offset = i*frag_size;
-        payload.header.Flags_Offset = offset | payload.header.MORE_FRAGS;
+        fragment.header.Flags_Offset = offset | fragment.header.MORE_FRAGS;
 
         // Setando o ponteiro para o endereco especifico em data
         data_pointer = data + i*frag_size;
 
-        // Copiando os dados para o payload que sera enviado
-        memcpy(payload.data, data_pointer, frag_size);
+        // Copiando os dados para o fragment que sera enviado
+        memcpy(fragment.data, data_pointer, frag_size);
 
         // print para testar se o dado foi copiado
         for (unsigned int i=0; i<frag_size; i++) {
-             db<Network_buffer>(WRN) << payload.data[i];
+             db<Network_buffer>(WRN) << fragment.data[i];
         }
         db<Network_buffer>(WRN) << endl;
 
         // Print para verificar o header
-        db<Network_buffer>(WRN) << "Total_Length: " << payload.header.Total_Length << endl;
-        db<Network_buffer>(WRN) << "Identification: " << hex << payload.header.Identification << endl;
-        db<Network_buffer>(WRN) << "Flags_Offset: " << hex << payload.header.Flags_Offset << endl;
+        db<Network_buffer>(WRN) << "Total_Length: " << fragment.header.Total_Length << endl;
+        db<Network_buffer>(WRN) << "Identification: " << hex << fragment.header.Identification << endl;
+        db<Network_buffer>(WRN) << "Flags_Offset: " << hex << fragment.header.Flags_Offset << endl;
     }
-    
 
+    // Último Fragmento
+    Datagram_Fragment fragment;
+
+    // Construindo Header
+    fragment.header = Datagram_Header();
+
+    // Setar Total_Length, Identification, Flags e Offset
+    fragment.header.Total_Length = data_size;
+    fragment.header.Identification = 0x1234; // É aleatório?
+    unsigned int offset = iter*frag_size;
+    fragment.header.Flags_Offset = offset & fragment.header.LAST_FRAG;
+
+    // Setando o ponteiro para o endereco especifico em data
+    data_pointer = data + iter*frag_size;
+
+    // Copiando os dados para o fragment que sera enviado
+    memcpy(fragment.data, data_pointer, last_size);
+
+    // Preenchimento dummy
+    data_pointer = fragment.data + last_size;   
+    memset(data_pointer, '9', frag_size - last_size);
+
+    // print para testar se o dado foi copiado
+    for (unsigned int i=0; i<frag_size; i++) {
+            db<Network_buffer>(WRN) << fragment.data[i];
+    }
+    db<Network_buffer>(WRN) << endl;
+
+    // Print para verificar o header
+    db<Network_buffer>(WRN) << "Total_Length: " << fragment.header.Total_Length << endl;
+    db<Network_buffer>(WRN) << "Identification: " << hex << fragment.header.Identification << endl;
+    db<Network_buffer>(WRN) << "Flags_Offset: " << hex << fragment.header.Flags_Offset << endl;
+    
     
     db<Network_buffer>(WRN) << "Network_buffer::IP_send fim"<< endl;
 }
