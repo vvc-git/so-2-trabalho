@@ -55,6 +55,7 @@ public:
         // Const for logical operations. Deixar aqui?
         unsigned int MORE_FRAGS = 0X2000;
         unsigned int LAST_FRAG = 0X1FFF;
+        unsigned int OFFSET = 0x1fff;
 
         // setting some values in the constructor
         Datagram_Header(): 
@@ -73,7 +74,6 @@ public:
         Datagram_Header header;
         char data[1452]; // tamanho fixo?
     };
-
 
 public:
     
@@ -94,7 +94,7 @@ public:
    static int copy();
 
    void IP_send(char* data, unsigned int data_size);
-
+   void IP_receive(void* data);
 
 
 public:
@@ -133,6 +133,12 @@ public:
     unsigned int DESC_SIZE = 8;
     unsigned int SLOTS_BUFFER = 64;
     unsigned int last_desc_idx = 0;
+
+    // Datgrama counter
+    unsigned int identification = nullptr;
+    unsigned int counter = 0;
+    void * teste;
+
 
 };
 

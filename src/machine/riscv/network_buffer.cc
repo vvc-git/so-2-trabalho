@@ -113,6 +113,151 @@ void Network_buffer::IP_send(char* data, unsigned int data_size) {
     db<Network_buffer>(WRN) << "Network_buffer::IP_send fim"<< endl;
 }
 
+
+void Network_buffer::IP_receive(void* data) {
+    db<Network_buffer>(WRN) << "Network_buffer::IP_send inicio"<< endl;
+    // Fragmentar pacotes de 1500 bytes
+    // 48 bytes - Header
+    // 1452 - Dados
+
+    // Setando MAC de destino
+    // NIC<Ethernet>::Address dst;
+    // dst[0] = 0x00;
+    // dst[1] = 0x00;
+    // dst[2] = 0x00;
+    // dst[3] = 0x00;
+    // dst[4] = 0x00;
+    // dst[5] = 0x02;
+
+    Datagram_Fragment * fragment = reinterpret_cast<Datagram_Fragment*>(data);
+    db<Network_buffer>(WRN) << "Teste receive " << endl;
+    db<Network_buffer>(WRN) << "Total_Length: " << fragment->header.Total_Length << endl;
+    db<Network_buffer>(WRN) << "Identification: " << hex << fragment->header.Identification << endl;
+    db<Network_buffer>(WRN) << "Flags_Offset: " << hex << fragment->header.Flags_Offset << endl;
+    db<Network_buffer>(WRN) << "Passou " << endl;
+
+    // Offset   / Flag 
+    unsigned int offset = fragment->header.Flags_Offset & fragment->header.OFFSET;
+    unsigned int length = fragment->header.Total_Length;
+    // unsigned int identification = fragment->header.Identification;
+
+    if (!identification) {
+        teste = dt->alloc(length);
+        identification = fragment->header.Identification;
+        counter = length;
+    
+    } else {
+
+        char * payload = ((char*) teste + offset);
+        payload = fragment->data;
+
+
+        if (fragment->header.Flags_Offset | fragment->header.MORE_FRAGS) {
+            counter -= fragment->header.Total_Length - fragment->header.Flags_Offset;
+        } else {
+            counter -= FRAME_SIZE;
+        }
+
+        if (counter) {
+            db<SiFiveU_NIC>(WRN) << "Funcionou a desfragmentação "<< endl;
+            char * payload = (char*) teste;
+            db<SiFiveU_NIC>(WRN) << "Funcionou a conversão "<< endl;
+            for (int i = 0; i < 1500; i++) {
+                db<SiFiveU_NIC>(WRN) << payload[i];
+            }
+            db<SiFiveU_NIC>(WRN) << endl;
+
+            dt->free(teste, length);
+
+        }
+
+    }
+
+
+
+    // identification
+    // lengt
+
+    // Irá avançar sobre data para fazer o memcpy
+    // char* data_pointer;
+
+    // unsigned int frag_size = 1452;
+    // unsigned int iter = data_size/frag_size;
+    // unsigned int last_size = data_size%frag_size;
+
+    // for (unsigned int i = 0; i < iter; i++) {
+    //     // Construindo Fragmento
+    //     Datagram_Fragment fragment;
+
+    //     // Construindo Header
+    //     fragment.header = Datagram_Header();
+
+    //     // Setar Total_Length, Identification, Flags e Offset
+    //     fragment.header.Total_Length = data_size;
+    //     fragment.header.Identification = 0x1234; // É aleatório?
+    //     unsigned int offset = i*frag_size;
+    //     fragment.header.Flags_Offset = offset | fragment.header.MORE_FRAGS;
+
+    //     // Setando o ponteiro para o endereco especifico em data
+    //     data_pointer = data + i*frag_size;
+
+    //     // Copiando os dados para o fragment que sera enviado
+    //     memcpy(fragment.data, data_pointer, frag_size);
+
+    //     // TODO: Desacoplar o send do IP e o send da NIC (ethernet)
+    //     SiFiveU_NIC::_device->send(dst, (void*) &fragment, 1500);
+
+    //     // print para testar se o dado foi copiado
+    //     // for (unsigned int i=0; i<frag_size; i++) {
+    //     //      db<Network_buffer>(WRN) << fragment.data[i];
+    //     // }
+    //     // db<Network_buffer>(WRN) << endl;
+
+    //     // Print para verificar o header
+    //     db<Network_buffer>(WRN) << "Total_Length: " << fragment.header.Total_Length << endl;
+    //     db<Network_buffer>(WRN) << "Identification: " << hex << fragment.header.Identification << endl;
+    //     db<Network_buffer>(WRN) << "Flags_Offset: " << hex << fragment.header.Flags_Offset << endl;
+    // }
+
+    // // Último Fragmento
+    // Datagram_Fragment fragment;
+
+    // // Construindo Header
+    // fragment.header = Datagram_Header();
+
+    // // Setar Total_Length, Identification, Flags e Offset
+    // fragment.header.Total_Length = data_size;
+    // fragment.header.Identification = 0x1234; // É aleatório?
+    // unsigned int offset = iter*frag_size;
+    // fragment.header.Flags_Offset = offset & fragment.header.LAST_FRAG;
+
+    // // Setando o ponteiro para o endereco especifico em data
+    // data_pointer = data + iter*frag_size;
+
+    // // Copiando os dados para o fragment que sera enviado
+    // memcpy(fragment.data, data_pointer, last_size);
+
+    // // Preenchimento dummy
+    // data_pointer = fragment.data + last_size;   
+    // memset(data_pointer, '9', frag_size - last_size);
+
+    // SiFiveU_NIC::_device->send(dst, (void*) &fragment, 1500);
+    // // print para testar se o dado foi copiado
+    // // for (unsigned int i=0; i<frag_size; i++) {
+    // //         db<Network_buffer>(WRN) << fragment.data[i];
+    // // }
+    // // db<Network_buffer>(WRN) << endl;
+
+    // // Print para verificar o header
+    // db<Network_buffer>(WRN) << "Total_Length: " << fragment.header.Total_Length << endl;
+    // db<Network_buffer>(WRN) << "Identification: " << hex << fragment.header.Identification << endl;
+    // db<Network_buffer>(WRN) << "Flags_Offset: " << hex << fragment.header.Flags_Offset << endl;
+    
+    
+    // db<Network_buffer>(WRN) << "Network_buffer::IP_send fim"<< endl;
+}
+
+
 void Network_buffer::configure_tx_rx() {
 
 
@@ -232,11 +377,13 @@ int Network_buffer::copy() {
         char  payload[FRAME_SIZE];
         net_buffer->buf->get_data_frame(payload);
 
-        db<SiFiveU_NIC>(WRN) << "Network buffer update: "<< endl;
-        for (int i = 0; i < 1500; i++) {
-            db<SiFiveU_NIC>(WRN) << payload[i];
-        }
-        db<SiFiveU_NIC>(WRN) << endl;
+        net_buffer->IP_receive((void *)(payload+14));
+
+        // db<SiFiveU_NIC>(WRN) << "Network buffer update: "<< endl;
+        // for (int i = 0; i < 1500; i++) {
+        //     db<SiFiveU_NIC>(WRN) << payload[i];
+        // }
+        // db<SiFiveU_NIC>(WRN) << endl;
     }
     
     return 0;
