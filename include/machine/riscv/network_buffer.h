@@ -53,6 +53,7 @@ public:
 
         // Const for logical operations. Deixar aqui?
         unsigned int MORE_FRAGS = 0X2000;
+        unsigned int LAST_FRAG = 0X1FFF;
 
         // setting some values in the constructor
         Datagram_Header(): 

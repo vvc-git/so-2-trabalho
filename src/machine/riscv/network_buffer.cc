@@ -33,10 +33,6 @@ void Network_buffer::IP_send(char* data, unsigned int data_size) {
     // unsigned int last = data_size%frag_size;
 
     for (unsigned int i = 0; i < iter; i++) {
-        data_pointer = data + i*frag_size;
-        char send_data[frag_size];
-        memcpy(send_data, data_pointer, frag_size);
-
         // Construindo Fragmento
         Datagram_Fragment payload;
 
@@ -49,10 +45,15 @@ void Network_buffer::IP_send(char* data, unsigned int data_size) {
         unsigned int offset = i*frag_size;
         payload.header.Flags_Offset = offset | payload.header.MORE_FRAGS;
 
+        // Setando o ponteiro para o endereco especifico em data
+        data_pointer = data + i*frag_size;
+
+        // Copiando os dados para o payload que sera enviado
+        memcpy(payload.data, data_pointer, frag_size);
 
         // print para testar se o dado foi copiado
         for (unsigned int i=0; i<frag_size; i++) {
-             db<Network_buffer>(WRN) << send_data[i];
+             db<Network_buffer>(WRN) << payload.data[i];
         }
         db<Network_buffer>(WRN) << endl;
 
@@ -61,6 +62,7 @@ void Network_buffer::IP_send(char* data, unsigned int data_size) {
         db<Network_buffer>(WRN) << "Identification: " << hex << payload.header.Identification << endl;
         db<Network_buffer>(WRN) << "Flags_Offset: " << hex << payload.header.Flags_Offset << endl;
     }
+    
 
     
     db<Network_buffer>(WRN) << "Network_buffer::IP_send fim"<< endl;
