@@ -117,7 +117,7 @@ void Network_buffer::IP_send(char* data, unsigned int data_size) {
 
 
 void Network_buffer::IP_receive(void* data) {
-    db<Network_buffer>(WRN) << "Network_buffer::IP_send inicio"<< endl;
+    db<Network_buffer>(WRN) << "Network_buffer::IP_receive inicio"<< endl;
     // Fragmentar pacotes de 1500 bytes
     // 48 bytes - Header
     // 1452 - Dados
@@ -144,30 +144,32 @@ void Network_buffer::IP_receive(void* data) {
     // unsigned int identification = fragment->header.Identification;
 
     if (!identification) {
+        db<SiFiveU_NIC>(WRN) << "Primeiro frame"<<endl;
         teste = dt->alloc(length);
-        identification = fragment->header.Identification;
+        identification = 0x1234;
         counter = length;
     
     } else {
+        db<Network_buffer>(WRN) << "Outros frames"<<endl;
+        char * payload = ((char*) teste + offset -48*(offset/1500));
+        memcpy(payload, fragment->data, 1452);
 
-        char * payload = ((char*) teste + offset);
-        payload = fragment->data;
-
-
+        db<Network_buffer>(WRN) << "counter 1"<< counter <<endl;
         if (fragment->header.Flags_Offset | fragment->header.MORE_FRAGS) {
-            counter -= fragment->header.Total_Length - fragment->header.Flags_Offset;
+            counter -= fragment->header.Total_Length - offset;
         } else {
-            counter -= FRAME_SIZE;
+            counter -= 1500;
         }
 
-        if (counter) {
-            db<SiFiveU_NIC>(WRN) << "Funcionou a desfragmentação "<< endl;
+        db<Network_buffer>(WRN) << "counter 2"<< counter <<endl;
+        if (!counter) {
+            db<Network_buffer>(WRN) << "Funcionou a desfragmentação "<< endl;
             char * payload = (char*) teste;
-            db<SiFiveU_NIC>(WRN) << "Funcionou a conversão "<< endl;
+            db<Network_buffer>(WRN) << "Funcionou a conversão "<< endl;
             for (int i = 0; i < 1500; i++) {
-                db<SiFiveU_NIC>(WRN) << payload[i];
+                db<Network_buffer>(WRN) << payload[i];
             }
-            db<SiFiveU_NIC>(WRN) << endl;
+            db<Network_buffer>(WRN) << endl;
 
             dt->free(teste, length);
 

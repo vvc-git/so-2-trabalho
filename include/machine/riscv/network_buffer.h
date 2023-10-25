@@ -135,7 +135,7 @@ public:
     unsigned int last_desc_idx = 0;
 
     // Datgrama counter
-    unsigned int identification = nullptr;
+    unsigned int identification = 0;
     unsigned int counter = 0;
     void * teste;
 

@@ -32,7 +32,7 @@ int main()
      cout << "  MAC: " << sifiveu_nic->address << endl;
 
      unsigned int frag_data_size = 1452;
-     unsigned int data_size = 3000;
+     unsigned int data_size = 4356;
      //unsigned int iter = data_size/frag_data_size;
      //unsigned int last = data_size%frag_data_size;
      if(sifiveu_nic->address[5] % 2 ) {
