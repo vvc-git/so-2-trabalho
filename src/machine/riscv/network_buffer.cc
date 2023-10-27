@@ -66,7 +66,12 @@ void Network_buffer::IP_send(char* data, unsigned int data_size) {
         
         // Flags e Offset
         unsigned int offset = i*mtu;
-        Reg16 flag_off = (i == iter - 1) ? (offset & LAST_FRAG) : (offset | MORE_FRAGS);
+        Reg16 flag_off = 0;
+        if ((i == iter - 1) || (i == iter - 2 && last_size == 0)) {
+            flag_off = (offset & LAST_FRAG);
+        } else {
+            flag_off = (offset | MORE_FRAGS);
+        }
         fragment.header.Flags_Offset = CPU_Common::htons(flag_off);
 
         // Setando o ponteiro para o endereco especifico em data
@@ -127,7 +132,7 @@ void Network_buffer::IP_receive(void* data) {
     db<Network_buffer>(WRN) << "Passou " << endl;
 
     // Offset   / Flag 
-    unsigned int offset = fragment->header.Flags_Offset & OFFSET;
+    unsigned int offset = fragment->header.Flags_Offset & GET_OFFSET;
     unsigned int length = fragment->header.Total_Length;
     // unsigned int identification = fragment->header.Identification;
     db<Network_buffer>(WRN) << "Offset: " << offset << endl;

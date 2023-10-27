@@ -69,7 +69,7 @@ public:
         // Const for logical operations. Deixar aqui?
         MORE_FRAGS = 0X2000,
         LAST_FRAG = 0X1FFF,
-        OFFSET = 0x1fff
+        GET_OFFSET = 0x1fff
     };
 
     struct Datagram_Fragment {

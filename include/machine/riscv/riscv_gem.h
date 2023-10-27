@@ -236,7 +236,7 @@ public:
 
         // 1. Enable full duplex.
         // a. Write a 1 to the gem.network_config[full_duplex] bit.
-        set_bits(NETWORK_CONFIG, FULL_DUPLEX);
+        // set_bits(NETWORK_CONFIG, FULL_DUPLEX);
 
         // b. Enable gigabit mode.
         // Write a 1 to the gem.network_config[gigabit_mode_enable] bit.
@@ -323,7 +323,8 @@ public:
         }
         
         //set_reg(INT_ENABLE, 0x2fffffff); // habilitando todas as interrupcoes
-        set_reg(INT_ENABLE, INT_TRASNMIT_COMPLETE | INT_RECEIVE_OVERRUN | INT_RECEIVE_COMPLETE);
+        // set_reg(INT_ENABLE, INT_TRASNMIT_COMPLETE | INT_RECEIVE_OVERRUN | INT_RECEIVE_COMPLETE);
+        set_reg(INT_ENABLE, INT_RECEIVE_COMPLETE);
 
     }
 
