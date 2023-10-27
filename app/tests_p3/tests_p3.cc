@@ -27,7 +27,7 @@ int main()
      dst[4] = 0x00;
      dst[5] = 0x02;
 
-     cout << "IP sending" << endl;
+ 
      cout << "  MAC: " << sifiveu_nic->address << endl;
 
      unsigned int frag_data_size = 1480;
@@ -35,7 +35,7 @@ int main()
      //unsigned int iter = data_size/frag_data_size;
      //unsigned int last = data_size%frag_data_size;
      if(sifiveu_nic->address[5] % 2 ) {
-
+          
           char data[data_size];
           for(unsigned int i = 0; i < data_size; i++) {
                if (i < frag_data_size) data[i] = '3';
@@ -45,32 +45,9 @@ int main()
 
           Network_buffer::net_buffer->IP_send(data, data_size);
      } else {
+          
           Delay (100000000000000);
      }
-
-
-
-     // print pra conferir o data
-     // for (unsigned int i=0; i<data_size; i++) {
-     //      cout << data[i];
-     // }
-     // cout << endl;
-
-     // if((sifiveu_nic->address[5] % 2 )) { // sender
-     //      cout << "Sender" << endl;
-     //      for(int i = 0; i < 10; i++) {
-     //           cout << "Sender " << i << endl;
-     //           memset(payload, '0' + i, MTU);
-     //           sifiveu_nic->send(dst, payload, MTU);
-     //           Delay (50000);
-     //      }
-     // } else {
-     //      cout << "Receiver" << endl;
-     //      Delay (10000000000000000);
-     //      cout << "Receiver" << endl;
-     // }
-
-     
 
      return 0;
 }
