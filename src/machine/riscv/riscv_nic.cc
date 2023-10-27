@@ -25,7 +25,7 @@ void SiFiveU_NIC::send(Address dst, void* payload, unsigned int payload_size)
         Desc * tx_desc = Network_buffer::net_buffer->get_free_tx_desc();
 
         // Montando o Frame para ser enviado 
-        Frame* frame = new (reinterpret_cast<void *>(tx_desc->address)) Frame(this->address, dst, 0x8888, payload, payload_size);
+        Frame* frame = new (reinterpret_cast<void *>(tx_desc->address)) Frame(this->address, dst, 0x0800, payload, payload_size);
 
         tx_desc->set_ctrl_transmiting(payload_size + sizeof(*(frame->header())));
 

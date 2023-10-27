@@ -26,22 +26,21 @@ int main()
      dst[3] = 0x00;
      dst[4] = 0x00;
      dst[5] = 0x02;
-     
 
      cout << "IP sending" << endl;
      cout << "  MAC: " << sifiveu_nic->address << endl;
 
-     unsigned int frag_data_size = 1452;
-     unsigned int data_size = 4356;
+     unsigned int frag_data_size = 1480;
+     unsigned int data_size = 1800;
      //unsigned int iter = data_size/frag_data_size;
      //unsigned int last = data_size%frag_data_size;
      if(sifiveu_nic->address[5] % 2 ) {
 
           char data[data_size];
           for(unsigned int i = 0; i < data_size; i++) {
-               if (i < frag_data_size) data[i] = '0';
-               else if (i < frag_data_size*2) data[i] = '1';
-               else data[i] = '2';
+               if (i < frag_data_size) data[i] = '3';
+               else if (i < frag_data_size*2) data[i] = 'D';
+               else data[i] = 'U';
           }
 
           Network_buffer::net_buffer->IP_send(data, data_size);

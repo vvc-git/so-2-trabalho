@@ -50,29 +50,31 @@ public:
         Reg16 Header_Checksum;
         Reg32 SRC_ADDR;
         Reg32 DST_ADDR;
-        Reg32 Option_Padding;
-
-        // Const for logical operations. Deixar aqui?
-        unsigned int MORE_FRAGS = 0X2000;
-        unsigned int LAST_FRAG = 0X1FFF;
-        unsigned int OFFSET = 0x1fff;
+        // Reg32 Option_Padding;
 
         // setting some values in the constructor
-        Datagram_Header(): 
-            Version_IHL(0x46),
+        Datagram_Header():
+            Version_IHL(0x45),
             Type_Service(0x0),
             TTL(60),
-            Protocol(0x88), // Conferir
+            Protocol(253), // Testing - Conferir
             Header_Checksum(0x0),
-            SRC_ADDR(0x0), // Conferir
-            DST_ADDR(0x0), // Conferir
-            Option_Padding(0x0) // Conferir
+            SRC_ADDR(0x0100007F), // 127.0.0.1
+            DST_ADDR(0x0200007F) // 127.0.0.2
+            // Option_Padding(0x0) // Conferir
         {}
+    };
+
+    enum {
+        // Const for logical operations. Deixar aqui?
+        MORE_FRAGS = 0X2000,
+        LAST_FRAG = 0X1FFF,
+        OFFSET = 0x1fff
     };
 
     struct Datagram_Fragment {
         Datagram_Header header;
-        char data[1452]; // tamanho fixo?
+        char data[1480]; // tamanho fixo?
     };
 
 public:
@@ -134,7 +136,8 @@ public:
     unsigned int SLOTS_BUFFER = 64;
     unsigned int last_desc_idx = 0;
 
-    // Datgrama counter
+    // Datagrama counter
+    unsigned int id_send = 1;
     unsigned int identification = 0;
     unsigned int counter = 0;
     void * teste;
