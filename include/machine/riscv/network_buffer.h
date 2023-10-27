@@ -53,16 +53,16 @@ public:
         // Reg32 Option_Padding;
 
         // setting some values in the constructor
-        Datagram_Header():
-            Version_IHL(0x45),
-            Type_Service(0x0),
-            TTL(60),
-            Protocol(253), // Testing - Conferir
-            Header_Checksum(0x0),
-            SRC_ADDR(0x0100007F), // 127.0.0.1
-            DST_ADDR(0x0200007F) // 127.0.0.2
-            // Option_Padding(0x0) // Conferir
-        {}
+        // Datagram_Header():
+        //     Version_IHL(0x45),
+        //     Type_Service(0x0),
+        //     TTL(60),
+        //     Protocol(253), // Testing - Conferir
+        //     Header_Checksum(0x0),
+        //     SRC_ADDR(0x0100007F), // 127.0.0.1
+        //     DST_ADDR(0x0200007F) // 127.0.0.2
+        //     // Option_Padding(0x0) // Conferir
+        // {}
     };
 
     enum {

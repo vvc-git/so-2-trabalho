@@ -46,6 +46,19 @@ void Network_buffer::IP_send(char* data, unsigned int data_size) {
     unsigned int id = 0x1230 + id_send;
     id_send++;
 
+    Datagram_Header dt_header = Datagram_Header();
+    Reg8 version = 4 << 4;
+    Reg8 IHL = (header_size/4);
+    dt_header.Version_IHL = (version | IHL);
+    dt_header.Type_Service = 0;
+    dt_header.Total_Length = CPU_Common::htons(data_size + header_size);
+    dt_header.Identification = CPU_Common::htons(id);
+    dt_header.TTL = 60;
+    dt_header.Protocol = 253;
+    dt_header.Header_Checksum = 0;
+    dt_header.SRC_ADDR = 0x0100007F; // 127.0.0.1
+    dt_header.DST_ADDR = 0x0200007F; // 127.0.0.2
+
     db<Network_buffer>(WRN) << "Iter " << iter << endl;
     for (unsigned int i = 0; i < iter; i++) {
         if (i == iter - 1 && !last_size) break; // fragmentação já realizada
@@ -56,13 +69,7 @@ void Network_buffer::IP_send(char* data, unsigned int data_size) {
         Datagram_Fragment fragment;
 
         // Construindo Header
-        fragment.header = Datagram_Header();
-
-        // Total_Length
-        fragment.header.Total_Length = CPU_Common::htons(data_size + header_size);
-        
-        // Identification
-        fragment.header.Identification = CPU_Common::htons(id);
+        fragment.header = dt_header;
         
         // Flags e Offset
         unsigned int offset = i*mtu;
