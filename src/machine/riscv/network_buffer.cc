@@ -51,10 +51,11 @@ void Network_buffer::IP_send(char* data, unsigned int data_size) {
     Reg8 IHL = (header_size/4);
     dt_header.Version_IHL = (version | IHL);
     dt_header.Type_Service = 0;
+    // dt_header.Total_Length = CPU_Common::htons((((data_size > mtu) ? (mtu) : (last_size))));
     dt_header.Total_Length = CPU_Common::htons(data_size + header_size);
     dt_header.Identification = CPU_Common::htons(id);
-    dt_header.TTL = 60;
-    dt_header.Protocol = 253;
+    dt_header.TTL = 64;
+    dt_header.Protocol = 4;
     dt_header.Header_Checksum = 0;
     dt_header.SRC_ADDR = 0x0100007F; // 127.0.0.1
     dt_header.DST_ADDR = 0x0200007F; // 127.0.0.2
@@ -72,11 +73,13 @@ void Network_buffer::IP_send(char* data, unsigned int data_size) {
         fragment.header = dt_header;
         
         // Flags e Offset
-        unsigned int offset = i*mtu;
+        unsigned int offset = (i*frag_data_size)/8;
         Reg16 flag_off = 0;
         if ((i == iter - 1) || (i == iter - 2 && last_size == 0)) {
+            // Último fragmento
             flag_off = (offset & LAST_FRAG);
         } else {
+            // Existem mais fragmentos
             flag_off = (offset | MORE_FRAGS);
         }
         fragment.header.Flags_Offset = CPU_Common::htons(flag_off);
@@ -85,6 +88,9 @@ void Network_buffer::IP_send(char* data, unsigned int data_size) {
         data_pointer = data + i*frag_data_size;
 
         // Copiando os dados para o fragment que sera enviado
+        // if (i == iter - 1) {
+        //     dt_header.Total_Length = CPU_Common::htons(last_size);
+        // }
         unsigned int size = (i == iter - 1) ? last_size : frag_data_size;
         memcpy(fragment.data, data_pointer, size);
 

@@ -52,6 +52,11 @@ public:
         Reg32 DST_ADDR;
         // Reg32 Option_Padding;
 
+        // Reg16 UDP1 = 1;
+        // Reg16 UDP2 = 2;
+        // Reg16 UDP3 = 3;
+        // Reg16 UDP4 = 4;
+
         // setting some values in the constructor
         // Datagram_Header():
         //     Version_IHL(0x45),
