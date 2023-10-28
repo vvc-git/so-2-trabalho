@@ -55,7 +55,7 @@ void SiFiveU_NIC::handle_interrupt() {
     if (*int_status & INT_RECEIVE_COMPLETE) {
         db<SiFiveU_NIC>(TRC) << "Interrupt Received" << endl;
 
-        IC::disable(IC::INT_ETH0);
+        // IC::disable(IC::INT_ETH0);
 
         // Read and clear the gem.int_status[receive_complete] register bit
         // by writing a 1 to the bit in the interrupt handler. Also, read and clear the
@@ -65,7 +65,7 @@ void SiFiveU_NIC::handle_interrupt() {
 
         receive();
 
-        IC::enable(IC::INT_ETH0);
+        // IC::enable(IC::INT_ETH0);
     }
 }
 

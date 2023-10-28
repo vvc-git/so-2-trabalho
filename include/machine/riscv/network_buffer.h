@@ -17,6 +17,8 @@
 #include <network/ethernet.h>
 #include <machine/riscv/riscv_gem.h>
 #include <machine/riscv/riscv_nic.h>
+#include <time.h>
+
 
 
 __BEGIN_SYS
@@ -145,7 +147,11 @@ public:
     unsigned int id_send = 1;
     unsigned int identification = 0;
     unsigned int counter = 0;
-    void * teste;
+    
+    // APAGAR!
+    void * teste; // usado para alocar um espaco da heap
+    bool dummy = true;
+    char data_teste[2960];
 
 
 };
