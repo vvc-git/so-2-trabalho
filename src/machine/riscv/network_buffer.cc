@@ -138,18 +138,18 @@ void Network_buffer::IP_receive(void* data) {
     // fragment->header.Total_Length = CPU_Common::ntohs(fragment->header.Total_Length) * 8;
     unsigned int length = (CPU_Common::ntohs(fragment->header.Total_Length) * 8) - 20;
     short unsigned int identification = CPU_Common::ntohs(fragment->header.Identification);
-    unsigned int offset = (CPU_Common::ntohs(fragment->header.Flags_Offset) & GET_OFFSET) * 8;
+    short unsigned int offset = (CPU_Common::ntohs(fragment->header.Flags_Offset) & GET_OFFSET) * 8;
+    short unsigned int flags = (CPU_Common::ntohs(fragment->header.Flags_Offset) & GET_FLAGS) >> 13;
     
     // Valores estão setados certos
-    db<Network_buffer>(WRN) << "Total_Length: " << hex << length << endl;
-    db<Network_buffer>(WRN) << "Identification: " << hex << identification << endl;
-    db<Network_buffer>(WRN) << "Offset: " << offset << endl;
+    db<Network_buffer>(WRN) << "length: " << hex << length << endl;
+    db<Network_buffer>(WRN) << "identification: " << hex << identification << endl;
+    db<Network_buffer>(WRN) << "offset: " << hex << offset << endl;
+    db<Network_buffer>(WRN) << "flags: " << hex << flags << endl;
 
 
     // !! APAGAR: Primeiro frame descartados
     if (dummy) {dummy = false; return;}
-
-  
 
     List::Element * e;
     for (e = dt_list->head(); e && e->object()->id != identification; e = e->next()) {}   
