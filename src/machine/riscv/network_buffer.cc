@@ -52,7 +52,7 @@ void Network_buffer::IP_send(char* data, unsigned int data_size) {
     dt_header.Version_IHL = (version | IHL);
     dt_header.Type_Service = 0;
     // dt_header.Total_Length = CPU_Common::htons((((data_size > mtu) ? (mtu) : (last_size))));
-    dt_header.Total_Length = CPU_Common::htons((data_size + header_size)/8);
+    dt_header.Total_Length = CPU_Common::htons((data_size / 8));
     dt_header.Identification = CPU_Common::htons(id);
     dt_header.TTL = 64;
     dt_header.Protocol = 4;
@@ -117,7 +117,7 @@ void Network_buffer::IP_send(char* data, unsigned int data_size) {
         db<Network_buffer>(WRN) << endl;
 
         // Print para verificar o header
-        db<Network_buffer>(WRN) << "Total_Length: " << CPU_Common::htons(fragment.header.Total_Length) << endl;
+        db<Network_buffer>(WRN) << "Total_Length: " << CPU_Common::ntohs(fragment.header.Total_Length) * 8 << endl;
         db<Network_buffer>(WRN) << "Identification: " << hex << CPU_Common::htons(fragment.header.Identification) << endl;
         db<Network_buffer>(WRN) << "Flags_Offset: " << hex << CPU_Common::htons(fragment.header.Flags_Offset) << endl;
     }
@@ -133,8 +133,11 @@ void Network_buffer::IP_receive(void* data) {
 
     Datagram_Fragment * fragment = reinterpret_cast<Datagram_Fragment*>(data);
 
+    // db<Network_buffer>(WRN) << "Total_Length sem multiplicar " << CPU_Common::htons(fragment->header.Total_Length) << endl;
+
     // Voltando para little endian
-    fragment->header.Total_Length = CPU_Common::ntohs(fragment->header.Total_Length)*8;
+    // fragment->header.Total_Length = CPU_Common::ntohs(fragment->header.Total_Length) * 8;
+    unsigned int length = CPU_Common::ntohs(fragment->header.Total_Length) * 8;
     fragment->header.Identification = CPU_Common::ntohs(fragment->header.Identification);
     fragment->header.Flags_Offset = CPU_Common::ntohs(fragment->header.Flags_Offset);
     
@@ -143,11 +146,11 @@ void Network_buffer::IP_receive(void* data) {
     // !! APAGAR: Primeiro frame descartados
     if (dummy) {dummy = false; return;}
 
-    unsigned int offset = (fragment->header.Flags_Offset & GET_OFFSET)*8;
+    unsigned int offset = (fragment->header.Flags_Offset & GET_OFFSET) * 8;
 
     // Valores estão setados certos
     db<Network_buffer>(WRN) << "Teste receive " << endl;
-    db<Network_buffer>(WRN) << "Total_Length: " << fragment->header.Total_Length << endl;
+    db<Network_buffer>(WRN) << "Total_Length: " << hex << length << endl;
     db<Network_buffer>(WRN) << "Identification: " << hex << fragment->header.Identification << endl;
     db<Network_buffer>(WRN) << "Offset: " << offset << endl;
 
@@ -156,13 +159,13 @@ void Network_buffer::IP_receive(void* data) {
         db<SiFiveU_NIC>(WRN) << "Primeiro frame"<<endl;
         
         // Salvando o ponteiro base para os próximos frames
-        base = dt->alloc(fragment->header.Total_Length);
+        base = dt->alloc(length);
 
         // Salvando o identificador para frames de um mesmo datagrama
         identification = fragment->header.Identification;
         
         // Configurando a quantidade de frames que possuem em datagrama
-        counter = fragment->header.Total_Length / 1500;
+        counter = length / 1500;
         if (fragment->header.Total_Length % 1500) {counter += 1;}
 
                
