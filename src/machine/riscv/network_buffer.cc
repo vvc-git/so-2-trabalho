@@ -92,15 +92,14 @@ void Network_buffer::IP_send(char* data, unsigned int data_size) {
             memset(data_pointer, '9', frag_data_size - last_size);
         }
 
-        // TODO: Desacoplar o send do IP e o send da NIC (ethernet)
         SiFiveU_NIC::_device->send(dst, (void*) &fragment, mtu);
         Delay (1000000);
         
 
         // Print para verificar o header
-        // db<Network_buffer>(WRN) << "Total_Length original " << CPU_Common::ntohs(fragment.header.Total_Length) * 8 << endl;
-        // db<Network_buffer>(WRN) << "Total_Length sem o size: " << (CPU_Common::ntohs(fragment.header.Total_Length) * 8) - header_size << endl;
-        // db<Network_buffer>(WRN) << "Identification: " << hex << CPU_Common::htons(fragment.header.Identification) << endl;
+        db<Network_buffer>(TRC) << "Total_Length original " << CPU_Common::ntohs(fragment.header.Total_Length) * 8 << endl;
+        db<Network_buffer>(TRC) << "Total_Length sem o size: " << (CPU_Common::ntohs(fragment.header.Total_Length) * 8) - header_size << endl;
+        db<Network_buffer>(TRC) << "Identification: " << hex << CPU_Common::htons(fragment.header.Identification) << endl;
         db<Network_buffer>(WRN) << "Offset: " << (CPU_Common::htons(fragment.header.Flags_Offset) & GET_OFFSET)*8 << endl;
     }
     
@@ -122,15 +121,15 @@ void Network_buffer::IP_receive(void* data) {
     unsigned int length = (CPU_Common::ntohs(fragment->header.Total_Length) * 8) - 20;
     short unsigned int identification = CPU_Common::ntohs(fragment->header.Identification);
     short unsigned int offset = (CPU_Common::ntohs(fragment->header.Flags_Offset) & GET_OFFSET) * 8;
-    short unsigned int more_frags = (CPU_Common::ntohs(fragment->header.Flags_Offset) & MORE_FRAGS);
-    short unsigned int flags = ((CPU_Common::ntohs(fragment->header.Flags_Offset) & GET_FLAGS) / (0x2000));
+     short unsigned int more_frags = (CPU_Common::ntohs(fragment->header.Flags_Offset) & MORE_FRAGS);
+    short unsigned int flags = ((CPU_Common::ntohs(fragment->header.Flags_Offset) & GET_FLAGS));
     
     
     // Verificação se os valores estão certos
-    // db<Network_buffer>(WRN) << "length: " << hex << length << endl;
+    db<Network_buffer>(TRC) << "length: " << hex << length << endl;
     db<Network_buffer>(WRN) << "identification: " << hex << identification << endl;
     db<Network_buffer>(WRN) << "offset: " << offset << endl;
-    db<Network_buffer>(WRN) << "flags: " << flags << endl;
+    db<Network_buffer>(TRC) << "flags: " << flags << endl;
 
 
     List::Element * e;
@@ -177,12 +176,9 @@ void Network_buffer::IP_receive(void* data) {
 
 
     // Quando counter for zero, todos os frames já chegaram
-    // TODO: Repassar para outra parte do código quando necessário
-    // TODO: Liberar memória da heap
     if (!e->object()->num_frames) {
         char * datagrama = reinterpret_cast<char*>(e->object()->base);  
         db<Network_buffer>(WRN) << "conteudo final\n" << datagrama <<endl;
-        // TODO: dt->free(e->object()->base, length);
         dt_list->remove(e->object());
 
     }

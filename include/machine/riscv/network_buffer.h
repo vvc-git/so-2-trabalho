@@ -56,8 +56,6 @@ public:
     };
 
     enum {
-        // Const for logical operations. Deixar aqui?
-        // TODO: MAY FRAGMENTS NAO DEVERIA SER SETADO?
         MORE_FRAGS = 0X2000,
         LAST_FRAG = 0X1FFF,
         GET_OFFSET = 0x1fff,
@@ -66,7 +64,7 @@ public:
 
     struct Datagram_Fragment {
         Datagram_Header header;
-        char data[1480]; // tamanho fixo?
+        char data[1480];
     };
 
 public:
