@@ -52,7 +52,7 @@ void Network_buffer::IP_send(char* data, unsigned int data_size) {
     dt_header.Version_IHL = (version | IHL);
     dt_header.Type_Service = 0;
     // dt_header.Total_Length = CPU_Common::htons((((data_size > mtu) ? (mtu) : (last_size))));
-    dt_header.Total_Length = CPU_Common::htons((data_size / 8));
+    dt_header.Total_Length = CPU_Common::htons((data_size + header_size) / 8);
     dt_header.Identification = CPU_Common::htons(id);
     dt_header.TTL = 64;
     dt_header.Protocol = 4;
@@ -66,7 +66,7 @@ void Network_buffer::IP_send(char* data, unsigned int data_size) {
 
         db<Network_buffer>(WRN) << i << "° fragmento " << endl;
 
-        // Construindo Fragmento
+        // Construindo Fragmento    
         Datagram_Fragment fragment;
 
         // Construindo Header
@@ -117,7 +117,8 @@ void Network_buffer::IP_send(char* data, unsigned int data_size) {
         db<Network_buffer>(WRN) << endl;
 
         // Print para verificar o header
-        db<Network_buffer>(WRN) << "Total_Length: " << CPU_Common::ntohs(fragment.header.Total_Length) * 8 << endl;
+        db<Network_buffer>(WRN) << "Total_Length original " << CPU_Common::ntohs(fragment.header.Total_Length) * 8 << endl;
+        db<Network_buffer>(WRN) << "Total_Length sem o size: " << (CPU_Common::ntohs(fragment.header.Total_Length) * 8) - header_size << endl;
         db<Network_buffer>(WRN) << "Identification: " << hex << CPU_Common::htons(fragment.header.Identification) << endl;
         db<Network_buffer>(WRN) << "Flags_Offset: " << hex << CPU_Common::htons(fragment.header.Flags_Offset) << endl;
     }
@@ -137,7 +138,7 @@ void Network_buffer::IP_receive(void* data) {
 
     // Voltando para little endian
     // fragment->header.Total_Length = CPU_Common::ntohs(fragment->header.Total_Length) * 8;
-    unsigned int length = CPU_Common::ntohs(fragment->header.Total_Length) * 8;
+    unsigned int length = (CPU_Common::ntohs(fragment->header.Total_Length) * 8) - 20;
     fragment->header.Identification = CPU_Common::ntohs(fragment->header.Identification);
     fragment->header.Flags_Offset = CPU_Common::ntohs(fragment->header.Flags_Offset);
     
