@@ -85,9 +85,7 @@ void Network_buffer::IP_send(char* data, unsigned int data_size) {
         fragment.header.Flags_Offset = CPU_Common::htons(flag_off);
 
         // Setando o ponteiro para o endereco especifico em data
-        db<Network_buffer>(WRN) << "data " << hex << data << endl;
         data_pointer = data + i*frag_data_size;
-        db<Network_buffer>(WRN) << "data_pointer " << hex << data_pointer <<endl;
 
         // Copiando os dados para o fragment que sera enviado
         // if (i == iter - 1) {
@@ -105,10 +103,10 @@ void Network_buffer::IP_send(char* data, unsigned int data_size) {
         // TODO: Desacoplar o send do IP e o send da NIC (ethernet)
         SiFiveU_NIC::_device->send(dst, (void*) &fragment, mtu);
         Delay (1000000);
-        if (!i) {
-            SiFiveU_NIC::_device->send(dst, (void*) &fragment, mtu);
-            Delay (1000000);
-        }
+        // if (!i) {
+        //     SiFiveU_NIC::_device->send(dst, (void*) &fragment, mtu);
+        //     Delay (1000000);
+        // }
 
         // print para testar se o dado foi copiado
         for (unsigned int i=0; i<frag_data_size; i++) {
@@ -156,7 +154,7 @@ void Network_buffer::IP_receive(void* data) {
     db<Network_buffer>(WRN) << "Offset: " << offset << endl;
 
     List::Element * e;
-    for (e = dt_list->head(); e && e->object()->id != fragment->header.Identification; e->next()) {}   
+    for (e = dt_list->head(); e && e->object()->id != fragment->header.Identification; e = e->next()) {}   
 
     if (!e) {
         db<SiFiveU_NIC>(WRN) << "Primeiro frame"<<endl;
@@ -177,7 +175,7 @@ void Network_buffer::IP_receive(void* data) {
         new_datagrama->base = base;
         List::Element * link = new List::Element(new_datagrama);
         dt_list->insert(link);
-        e = dt_list->head();
+        e = link;
         db<Network_buffer>(WRN) << "Fim do if " << link->object()->id <<endl; 
         
     }
@@ -185,7 +183,7 @@ void Network_buffer::IP_receive(void* data) {
     // Decrementa o contador de frames
     
     e->object()->counter--;
-    db<Network_buffer>(WRN) << "counter " << counter <<endl;  
+    db<Network_buffer>(WRN) << "counter " << e->object()->counter <<endl;  
 
     // Para todos os frames
     // Pega o próximo endereço onde sera colocado do frame
