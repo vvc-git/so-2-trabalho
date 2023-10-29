@@ -136,13 +136,13 @@ void Network_buffer::IP_receive(void* data) {
     unsigned int length = (CPU_Common::ntohs(fragment->header.Total_Length) * 8) - 20;
     short unsigned int identification = CPU_Common::ntohs(fragment->header.Identification);
     short unsigned int offset = (CPU_Common::ntohs(fragment->header.Flags_Offset) & GET_OFFSET) * 8;
-    // short unsigned int flags = ((CPU_Common::ntohs(fragment->header.Flags_Offset) & GET_FLAGS) >> 13) & (0xFFFF);
+    // TODO: short unsigned int flags = ((CPU_Common::ntohs(fragment->header.Flags_Offset) & GET_FLAGS) >> 13) & (0xFFFF);
     
     // Verificação se os valores estão certos
     db<Network_buffer>(WRN) << "length: " << hex << length << endl;
     db<Network_buffer>(WRN) << "identification: " << hex << identification << endl;
     db<Network_buffer>(WRN) << "offset: " << hex << offset << endl;
-    // db<Network_buffer>(WRN) << "flags: " << hex << flags << endl;
+    // TODO: db<Network_buffer>(WRN) << "flags: " << hex << flags << endl;
 
 
     // !! APAGAR: Primeiro frame descartados
@@ -161,37 +161,45 @@ void Network_buffer::IP_receive(void* data) {
         unsigned int num_frames = length / 1480;
         if (length % 1480) {num_frames += 1;}
 
+        // Criando uma nova estrutura para frames do mesmo datagrama
         INFO * datagram_info = new INFO{identification, base, num_frames};
         Element * link = new Element(datagram_info);
         
+        // Adicionana na lista de datagramas
         dt_list->insert(link);
         e = link; 
         
     }
 
     // Decrementa o contador de frames
-    
     e->object()->num_frames--;
     db<Network_buffer>(WRN) << "counter " << e->object()->num_frames <<endl;  
 
-    // Para todos os frames
     // Pega o próximo endereço onde sera colocado do frame
     char* next = reinterpret_cast<char*>(e->object()->base) + offset;   
     db<Network_buffer>(WRN) << "Datagrama " << reinterpret_cast<void*>(next) << endl; 
     
+    // Verificação de ultimo frame,
+    // Caso positivo, seta para o tamanho adequando
     unsigned int size = 1480;
     if (!(fragment->header.Flags_Offset & MORE_FRAGS)) {   
         size = length - offset; 
         db<Network_buffer>(WRN) << "size " << size <<endl;
     }
 
-    // Realiza a copia
+    // Realiza a copia para heap 
     memcpy(next, fragment->data, size);
 
+
     // Quando counter for zero, todos os frames já chegaram
+    // TODO: Repassar para outra parte do código quando necessário
+    // TODO: Liberar memória da heap
     if (!e->object()->num_frames) {
         char * datagrama = reinterpret_cast<char*>(e->object()->base);  
         db<Network_buffer>(WRN) << "conteudo final\n" << datagrama <<endl;
+        // TODO: dt->free(e->object()->base, length);
+        dt_list->remove(e->object());
+
     }
     
 }
