@@ -166,22 +166,27 @@ void Network_buffer::IP_receive(void* data) {
         identification = fragment->header.Identification;
         
         // Configurando a quantidade de frames que possuem em datagrama
-        counter = length / 1500;
+        counter = length / 1480;
         if (fragment->header.Total_Length % 1500) {counter += 1;}
+
+        INFO new_datagrama = INFO();
+        new_datagrama.id = identification;
+        new_datagrama.counter = counter;
+        new_datagrama.base = base;
+        List::Element t = List::Element(&new_datagrama);
+        dt_list->insert(t);
 
                
     }
-
+    // Decrementa o contador de frames
+    counter--;
+    db<Network_buffer>(WRN) << "counter " << counter <<endl;  
 
     // Para todos os frames
     // Pega o próximo endereço onde sera colocado do frame
     char* next = reinterpret_cast<char*>(base) + offset;   
     db<Network_buffer>(WRN) << "Datagrama " << reinterpret_cast<void*>(next) << endl; 
     
-    // Decrementa o contador de frames
-    db<Network_buffer>(WRN) << "counter " << counter <<endl;  
-    counter--;
-
     unsigned int size = 1480;
     if (!(fragment->header.Flags_Offset & MORE_FRAGS)) {   
         size = length - offset; 
@@ -197,11 +202,6 @@ void Network_buffer::IP_receive(void* data) {
         db<Network_buffer>(WRN) << "conteudo final\n" << datagrama <<endl;
     }
     
-
-
-
-
-
 }
 
 

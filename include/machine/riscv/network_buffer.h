@@ -38,8 +38,11 @@ Network_buffer :  public Observer// , Data_Observed<DT_Buffer, void>
     typedef CPU::Log_Addr Log_Addr;
     typedef Cadence_GEM::Desc Desc;
     typedef Heap DT_Buffer;
+
     // typedef Ethernet::Frame Frame;
 public:
+    
+
     // https://www.rfc-editor.org/rfc/rfc791#page-11
     struct Datagram_Header {
         Reg8 Version_IHL; // Version and Internet Header Length
@@ -147,6 +150,19 @@ public:
     unsigned int id_send = 1;
     unsigned int identification = 0;
     unsigned int counter = 0;
+
+    struct INFO 
+    {
+        void * base;
+        Reg16 id;
+        unsigned int counter;
+    };
+
+    typedef Simple_List<INFO> List;
+    typedef typename List::Element Element;
+
+    List * dt_list = new List;
+    Element * t;
     
     // APAGAR!
     void * base; // usado para alocar um espaco da heap
