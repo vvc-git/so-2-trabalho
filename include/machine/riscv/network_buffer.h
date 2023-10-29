@@ -57,9 +57,11 @@ public:
 
     enum {
         // Const for logical operations. Deixar aqui?
+        // TODO: MAY FRAGMENTS NAO DEVERIA SER SETADO?
         MORE_FRAGS = 0X2000,
         LAST_FRAG = 0X1FFF,
         GET_OFFSET = 0x1fff, 
+        GET_FLAGS = ~GET_OFFSET & 0xFFFF, 
     };
 
     struct Datagram_Fragment {
@@ -125,15 +127,16 @@ public:
     unsigned int SLOTS_BUFFER = 64;
     unsigned int last_desc_idx = 0;
 
-    unsigned int id_send = 1; // Definindo id no envio
-    bool err = true;
+    // Datagrama counter
+    unsigned int id_send = 1;
+
 
     // Informações de cada datagrama sendo montado
     struct INFO 
     {
+        unsigned int id;
         void * base;
-        Reg16 id;
-        unsigned int counter;
+        unsigned int num_frames;
     };
 
     typedef Simple_List<INFO> List;
@@ -141,6 +144,7 @@ public:
 
     // Lista de infos dos datagramas em construção
     List * dt_list = new List;
+
 
 };
 
