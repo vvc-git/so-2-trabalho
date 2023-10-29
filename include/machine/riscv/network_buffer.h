@@ -156,7 +156,7 @@ public:
     {
         unsigned int id;
         void * base;
-        unsigned int counter;
+        unsigned int num_frames;
     };
 
     typedef Simple_List<INFO> List;

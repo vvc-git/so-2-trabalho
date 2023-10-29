@@ -127,20 +127,18 @@ void Network_buffer::IP_send(char* data, unsigned int data_size) {
 
 void Network_buffer::IP_receive(void* data) {
     db<Network_buffer>(WRN) << "---------------------"<< endl;
-    db<Network_buffer>(WRN) << "Network_buffer::IP_receive inicio"<< endl;
+    db<Network_buffer>(WRN) << "Network_buffer::IP_receive\n"<< endl;
 
 
     Datagram_Fragment * fragment = reinterpret_cast<Datagram_Fragment*>(data);
 
-    // db<Network_buffer>(WRN) << "Total_Length sem multiplicar " << CPU_Common::htons(fragment->header.Total_Length) << endl;
-
-    // Voltando para little endian
+    // Capturando os valores do fragmento
     unsigned int length = (CPU_Common::ntohs(fragment->header.Total_Length) * 8) - 20;
     short unsigned int identification = CPU_Common::ntohs(fragment->header.Identification);
     short unsigned int offset = (CPU_Common::ntohs(fragment->header.Flags_Offset) & GET_OFFSET) * 8;
     // short unsigned int flags = ((CPU_Common::ntohs(fragment->header.Flags_Offset) & GET_FLAGS) >> 13) & (0xFFFF);
     
-    // Valores estão setados certos
+    // Verificação se os valores estão certos
     db<Network_buffer>(WRN) << "length: " << hex << length << endl;
     db<Network_buffer>(WRN) << "identification: " << hex << identification << endl;
     db<Network_buffer>(WRN) << "offset: " << hex << offset << endl;
@@ -156,14 +154,14 @@ void Network_buffer::IP_receive(void* data) {
     if (!e) {
         db<SiFiveU_NIC>(WRN) << "Primeiro frame"<<endl;
         
-        // Salvando o ponteiro base para os próximos frames
+        // Alocando espaço para o datagrama
         void * base = dt->alloc(length);
         
         // Configurando a quantidade de frames que possuem em datagrama
-        unsigned int counter = length / 1480;
-        if (length % 1480) {counter += 1;}
+        unsigned int num_frames = length / 1480;
+        if (length % 1480) {num_frames += 1;}
 
-        INFO * datagram_info = new INFO{identification, base, counter};
+        INFO * datagram_info = new INFO{identification, base, num_frames};
         Element * link = new Element(datagram_info);
         
         dt_list->insert(link);
@@ -173,8 +171,8 @@ void Network_buffer::IP_receive(void* data) {
 
     // Decrementa o contador de frames
     
-    e->object()->counter--;
-    db<Network_buffer>(WRN) << "counter " << e->object()->counter <<endl;  
+    e->object()->num_frames--;
+    db<Network_buffer>(WRN) << "counter " << e->object()->num_frames <<endl;  
 
     // Para todos os frames
     // Pega o próximo endereço onde sera colocado do frame
@@ -191,7 +189,7 @@ void Network_buffer::IP_receive(void* data) {
     memcpy(next, fragment->data, size);
 
     // Quando counter for zero, todos os frames já chegaram
-    if (!e->object()->counter) {
+    if (!e->object()->num_frames) {
         char * datagrama = reinterpret_cast<char*>(e->object()->base);  
         db<Network_buffer>(WRN) << "conteudo final\n" << datagrama <<endl;
     }
