@@ -25,7 +25,6 @@ __BEGIN_SYS
 
 
 // Observador da camada do buffer da nic
-// Observado pela aplicação
 
 class 
 Network_buffer :  public Observer// , Data_Observed<DT_Buffer, void>
@@ -39,7 +38,6 @@ Network_buffer :  public Observer// , Data_Observed<DT_Buffer, void>
     typedef Cadence_GEM::Desc Desc;
     typedef Heap DT_Buffer;
 
-    // typedef Ethernet::Frame Frame;
 public:
     
 
@@ -55,24 +53,6 @@ public:
         Reg16 Header_Checksum;
         Reg32 SRC_ADDR;
         Reg32 DST_ADDR;
-        // Reg32 Option_Padding;
-
-        // Reg16 UDP1 = 1;
-        // Reg16 UDP2 = 2;
-        // Reg16 UDP3 = 3;
-        // Reg16 UDP4 = 4;
-
-        // setting some values in the constructor
-        // Datagram_Header():
-        //     Version_IHL(0x45),
-        //     Type_Service(0x0),
-        //     TTL(60),
-        //     Protocol(253), // Testing - Conferir
-        //     Header_Checksum(0x0),
-        //     SRC_ADDR(0x0100007F), // 127.0.0.1
-        //     DST_ADDR(0x0200007F) // 127.0.0.2
-        //     // Option_Padding(0x0) // Conferir
-        // {}
     };
 
     enum {
@@ -141,16 +121,14 @@ public:
 
     DT_Buffer * dt;
 
-
     unsigned int DESC_SIZE = 8;
     unsigned int SLOTS_BUFFER = 64;
     unsigned int last_desc_idx = 0;
 
-    // Datagrama counter
-    unsigned int id_send = 1;
-    unsigned int identification = 0;
-    unsigned int counter = 0;
+    unsigned int id_send = 1; // Definindo id no envio
+    bool err = true;
 
+    // Informações de cada datagrama sendo montado
     struct INFO 
     {
         void * base;
@@ -161,14 +139,8 @@ public:
     typedef Simple_List<INFO> List;
     typedef typename List::Element Element;
 
+    // Lista de infos dos datagramas em construção
     List * dt_list = new List;
-    Element * t;
-    
-    // APAGAR!
-    void * base; // usado para alocar um espaco da heap
-    bool dummy = true;
-    char data_teste[2960];
-
 
 };
 

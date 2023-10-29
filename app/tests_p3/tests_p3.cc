@@ -27,19 +27,10 @@ int main()
      dst[4] = 0x00;
      dst[5] = 0x02;
 
-     // Primeiro frame estragado
-     char data_nic[1500];
-     for(unsigned int i = 0; i < 1500; i++) {
-          data_nic[i] = '0';
-     }
-     SiFiveU_NIC::_device->send(dst, data_nic, 1500);
-     Delay (1000000);
      cout << "  MAC: " << sifiveu_nic->address << endl;
 
      unsigned int frag_data_size = 1480;
      unsigned int data_size = 3000;
-     //unsigned int iter = data_size/frag_data_size;
-     //unsigned int last = data_size%frag_data_size;
      if(sifiveu_nic->address[5] % 2 ) {
           
           char data[data_size];
