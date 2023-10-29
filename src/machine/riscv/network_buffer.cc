@@ -158,7 +158,7 @@ void Network_buffer::IP_receive(void* data) {
         db<SiFiveU_NIC>(WRN) << "Primeiro frame"<<endl;
         
         // Salvando o ponteiro base para os próximos frames
-        base = dt->alloc(length);
+        void * base = dt->alloc(length);
         
         // Configurando a quantidade de frames que possuem em datagrama
         counter = length / 1480;
@@ -196,7 +196,7 @@ void Network_buffer::IP_receive(void* data) {
 
     // Quando counter for zero, todos os frames já chegaram
     if (!e->object()->counter) {
-        char * datagrama = reinterpret_cast<char*>(base);  
+        char * datagrama = reinterpret_cast<char*>(e->object()->base);  
         db<Network_buffer>(WRN) << "conteudo final\n" << datagrama <<endl;
     }
     

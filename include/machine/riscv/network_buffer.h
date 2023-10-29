@@ -167,7 +167,7 @@ public:
     Element * t;
     
     // APAGAR!
-    void * base; // usado para alocar um espaco da heap
+    // void * base; // usado para alocar um espaco da heap
     bool dummy = true;
     char data_teste[2960];
 
