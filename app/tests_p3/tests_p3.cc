@@ -27,30 +27,31 @@ int main()
      dst[4] = 0x00;
      dst[5] = 0x02;
 
-     // Primeiro frame estragado
-     char data_nic[1500];
-     for(unsigned int i = 0; i < 1500; i++) {
-          data_nic[i] = '0';
-     }
-     SiFiveU_NIC::_device->send(dst, data_nic, 1500);
-     Delay (1000000);
      cout << "  MAC: " << sifiveu_nic->address << endl;
 
      unsigned int frag_data_size = 1480;
      unsigned int data_size = 3000;
-     //unsigned int iter = data_size/frag_data_size;
-     //unsigned int last = data_size%frag_data_size;
+
+     char data1[1480];
+     char data2[data_size];
+
      if(sifiveu_nic->address[5] % 2 ) {
           
-          char data[data_size];
-          for(unsigned int i = 0; i < data_size; i++) {
-               if (i < frag_data_size) data[i] = '3';
-               else if (i < frag_data_size*2) data[i] = 'D';
-               else data[i] = 'U';
+          // Datagrama 1
+          for(unsigned int i = 0; i < 1480; i++) {
+               data1[i] = 'A';
           }
 
-          Network_buffer::net_buffer->IP_send(data, data_size);
-          Network_buffer::net_buffer->IP_send(data, data_size);
+          // Datagrama 2
+          for(unsigned int i = 0; i < data_size; i++) {
+               if (i < frag_data_size) data2[i] = 'B';
+               else if (i < frag_data_size*2) data2[i] = 'C';
+               else data2[i] = 'D';
+          }
+
+          Network_buffer::net_buffer->IP_send(data1, 1480);
+          Network_buffer::net_buffer->IP_send(data2, data_size);
+
      } else {
           
           Delay (100000000000000);
