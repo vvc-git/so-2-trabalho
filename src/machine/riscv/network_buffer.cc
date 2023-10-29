@@ -162,7 +162,7 @@ void Network_buffer::IP_receive(void* data) {
         
         // Configurando a quantidade de frames que possuem em datagrama
         unsigned int counter = length / 1480;
-        if (fragment->header.Total_Length % 1500) {counter += 1;}
+        if (length % 1480) {counter += 1;}
 
         INFO * new_datagrama =  new INFO();
         new_datagrama->id = identification;
