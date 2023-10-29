@@ -178,19 +178,27 @@ void Network_buffer::IP_receive(void* data) {
     char* next = reinterpret_cast<char*>(base) + offset;   
     db<Network_buffer>(WRN) << "Datagrama " << reinterpret_cast<void*>(next) << endl; 
     
-    
-    // Realiza a copia
-    memcpy(next, fragment->data, 1480);
-    
     // Decrementa o contador de frames
     db<Network_buffer>(WRN) << "counter " << counter <<endl;  
     counter--;
+
+    unsigned int size = 1480;
+    if (!(fragment->header.Flags_Offset & MORE_FRAGS)) {   
+        size = length - offset; 
+        db<Network_buffer>(WRN) << "size " << size <<endl;
+    }
+
+    // Realiza a copia
+    memcpy(next, fragment->data, size);
 
     // Quando counter for zero, todos os frames já chegaram
     if (!counter) {
         char * datagrama = reinterpret_cast<char*>(base);  
         db<Network_buffer>(WRN) << "conteudo final\n" << datagrama <<endl;
     }
+    
+
+
 
 
 
