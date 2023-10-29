@@ -155,8 +155,10 @@ void Network_buffer::IP_receive(void* data) {
     db<Network_buffer>(WRN) << "Identification: " << hex << fragment->header.Identification << endl;
     db<Network_buffer>(WRN) << "Offset: " << offset << endl;
 
-    // Primeiro frame aloca memória na heap para os outros
-    if (!identification) {
+    List::Element * e;
+    for (e = dt_list->head(); e && e->object()->id != fragment->header.Identification; e->next()) {}   
+
+    if (!e) {
         db<SiFiveU_NIC>(WRN) << "Primeiro frame"<<endl;
         
         // Salvando o ponteiro base para os próximos frames
@@ -169,22 +171,25 @@ void Network_buffer::IP_receive(void* data) {
         counter = length / 1480;
         if (fragment->header.Total_Length % 1500) {counter += 1;}
 
-        INFO new_datagrama = INFO();
-        new_datagrama.id = identification;
-        new_datagrama.counter = counter;
-        new_datagrama.base = base;
-        List::Element t = List::Element(&new_datagrama);
-        dt_list->insert(t);
-
-               
+        INFO * new_datagrama =  new INFO();
+        new_datagrama->id = identification;
+        new_datagrama->counter = counter;
+        new_datagrama->base = base;
+        List::Element * link = new List::Element(new_datagrama);
+        dt_list->insert(link);
+        e = dt_list->head();
+        db<Network_buffer>(WRN) << "Fim do if " << link->object()->id <<endl; 
+        
     }
+
     // Decrementa o contador de frames
-    counter--;
+    
+    e->object()->counter--;
     db<Network_buffer>(WRN) << "counter " << counter <<endl;  
 
     // Para todos os frames
     // Pega o próximo endereço onde sera colocado do frame
-    char* next = reinterpret_cast<char*>(base) + offset;   
+    char* next = reinterpret_cast<char*>(e->object()->base) + offset;   
     db<Network_buffer>(WRN) << "Datagrama " << reinterpret_cast<void*>(next) << endl; 
     
     unsigned int size = 1480;
@@ -197,7 +202,7 @@ void Network_buffer::IP_receive(void* data) {
     memcpy(next, fragment->data, size);
 
     // Quando counter for zero, todos os frames já chegaram
-    if (!counter) {
+    if (!e->object()->counter) {
         char * datagrama = reinterpret_cast<char*>(base);  
         db<Network_buffer>(WRN) << "conteudo final\n" << datagrama <<endl;
     }
