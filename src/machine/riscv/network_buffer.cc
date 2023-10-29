@@ -127,10 +127,9 @@ void Network_buffer::IP_send(char* data, unsigned int data_size) {
 
 
 void Network_buffer::IP_receive(void* data) {
+    db<Network_buffer>(WRN) << "---------------------"<< endl;
     db<Network_buffer>(WRN) << "Network_buffer::IP_receive inicio"<< endl;
-    // Fragmentar pacotes de 1500 bytes
-    // 20 bytes - Header
-    // 1480 - Dados
+
 
     Datagram_Fragment * fragment = reinterpret_cast<Datagram_Fragment*>(data);
 
@@ -139,47 +138,54 @@ void Network_buffer::IP_receive(void* data) {
     fragment->header.Identification = CPU_Common::ntohs(fragment->header.Identification);
     fragment->header.Flags_Offset = CPU_Common::ntohs(fragment->header.Flags_Offset);
     
+
+
+    // !! APAGAR: Primeiro frame descartados
+    if (dummy) {dummy = false; return;}
+
+    unsigned int offset = (fragment->header.Flags_Offset & GET_OFFSET)*8;
+
+    // Valores estão setados certos
     db<Network_buffer>(WRN) << "Teste receive " << endl;
     db<Network_buffer>(WRN) << "Total_Length: " << fragment->header.Total_Length << endl;
     db<Network_buffer>(WRN) << "Identification: " << hex << fragment->header.Identification << endl;
-
-    if (dummy) {
-        dummy = false;
-        return;
-    }
-
-    unsigned int offset = (fragment->header.Flags_Offset & GET_OFFSET)*8;
     db<Network_buffer>(WRN) << "Offset: " << offset << endl;
 
-
+    // Primeiro frame aloca memória na heap para os outros
     if (!identification) {
         db<SiFiveU_NIC>(WRN) << "Primeiro frame"<<endl;
-        teste = dt->alloc(fragment->header.Total_Length);
+        
+        // Salvando o ponteiro base para os próximos frames
+        base = dt->alloc(fragment->header.Total_Length);
+
+        // Salvando o identificador para frames de um mesmo datagrama
         identification = fragment->header.Identification;
+        
+        // Configurando a quantidade de frames que possuem em datagrama
         counter = fragment->header.Total_Length / 1500;
-        if (fragment->header.Total_Length % 1500) {
-            counter = + 1;
-        }
-        db<SiFiveU_NIC>(WRN) << "counter: " << counter <<endl;
-        // 300 / 1500 = 0 + 1 = 2
-        // 1500 / 1500 = 1 ok
-        // 1800 / 1500 = 1 + 1 = 2
-        // 3000 / 1500 = 2 ok
-    
-    } else {
-        db<Network_buffer>(WRN) << "Outros frames"<<endl;
+        if (fragment->header.Total_Length % 1500) {counter += 1;}
+
+               
     }
 
-    db<Network_buffer>(WRN) << "teste " << hex << teste <<endl;
-    char* data_pointer = reinterpret_cast<char*>(teste);
-    //db<Network_buffer>(WRN) << "data_pointer " << hex << *(&data_pointer) <<endl;
-    data_pointer += offset;
-    //db<Network_buffer>(WRN) << "data_pointer " << hex << data_pointer <<endl;
-    memcpy(data_pointer, fragment->data, 1480);
-    db<Network_buffer>(WRN) << "data_pointer " << data_pointer <<endl;
-    if (offset == 1480) {
-        data_pointer = reinterpret_cast<char*>(teste);
-        db<Network_buffer>(WRN) << "conteudo teste " << data_pointer <<endl;
+
+    // Para todos os frames
+    // Pega o próximo endereço onde sera colocado do frame
+    char* next = reinterpret_cast<char*>(base) + offset;   
+    db<Network_buffer>(WRN) << "Datagrama " << reinterpret_cast<void*>(next) << endl; 
+    
+    
+    // Realiza a copia
+    memcpy(next, fragment->data, 1480);
+    
+    // Decrementa o contador de frames
+    db<Network_buffer>(WRN) << "counter " << counter <<endl;  
+    counter--;
+
+    // Quando counter for zero, todos os frames já chegaram
+    if (!counter) {
+        char * datagrama = reinterpret_cast<char*>(base);  
+        db<Network_buffer>(WRN) << "conteudo final\n" << datagrama <<endl;
     }
 
 
@@ -320,7 +326,6 @@ int Network_buffer::copy() {
 
 void Network_buffer::update(Observed *obs)
 {
-    db<Network_buffer>(WRN) << "Network_buffer::Update"<< endl;
     net_buffer->sem->v();
 
 }
