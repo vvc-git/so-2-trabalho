@@ -123,12 +123,14 @@ void Network_buffer::IP_receive(void* data) {
     short unsigned int identification = CPU_Common::ntohs(fragment->header.Identification);
     short unsigned int offset = (CPU_Common::ntohs(fragment->header.Flags_Offset) & GET_OFFSET) * 8;
     short unsigned int more_frags = (CPU_Common::ntohs(fragment->header.Flags_Offset) & MORE_FRAGS);
-    // short unsigned int flags = ((CPU_Common::ntohs(fragment->header.Flags_Offset) & GET_FLAGS) >> 13) & (0xFFFF);
+    short unsigned int flags = ((CPU_Common::ntohs(fragment->header.Flags_Offset) & GET_FLAGS) / (0x2000));
+    
     
     // Verificação se os valores estão certos
     // db<Network_buffer>(WRN) << "length: " << hex << length << endl;
     db<Network_buffer>(WRN) << "identification: " << hex << identification << endl;
     db<Network_buffer>(WRN) << "offset: " << offset << endl;
+    db<Network_buffer>(WRN) << "flags: " << flags << endl;
 
 
     List::Element * e;

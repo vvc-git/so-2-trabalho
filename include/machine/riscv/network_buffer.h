@@ -60,8 +60,8 @@ public:
         // TODO: MAY FRAGMENTS NAO DEVERIA SER SETADO?
         MORE_FRAGS = 0X2000,
         LAST_FRAG = 0X1FFF,
-        GET_OFFSET = 0x1fff, 
-        GET_FLAGS = ~GET_OFFSET & 0xFFFF, 
+        GET_OFFSET = 0x1fff,
+        GET_FLAGS = 0xe000, 
     };
 
     struct Datagram_Fragment {

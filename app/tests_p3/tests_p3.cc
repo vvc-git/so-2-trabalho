@@ -39,7 +39,7 @@ int main()
           }
           Network_buffer::net_buffer->IP_send(data_first, data_size);
 
-          data_size = 3000;
+          data_size = 3140;
           char data_second[data_size];
           for(unsigned int i = 0; i < data_size; i++) {
                if (i < frag_data_size) data_second[i] = '3';
