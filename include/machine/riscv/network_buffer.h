@@ -151,7 +151,7 @@ public:
     // Datagrama counter
     unsigned int id_send = 1;
     // unsigned int identification = 0;
-    unsigned int counter = 0;
+
 
     struct INFO 
     {

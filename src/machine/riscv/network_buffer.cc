@@ -161,7 +161,7 @@ void Network_buffer::IP_receive(void* data) {
         void * base = dt->alloc(length);
         
         // Configurando a quantidade de frames que possuem em datagrama
-        counter = length / 1480;
+        unsigned int counter = length / 1480;
         if (fragment->header.Total_Length % 1500) {counter += 1;}
 
         INFO * new_datagrama =  new INFO();
