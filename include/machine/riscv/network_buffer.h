@@ -150,13 +150,12 @@ public:
 
     // Datagrama counter
     unsigned int id_send = 1;
-    // unsigned int identification = 0;
 
 
     struct INFO 
     {
+        unsigned int id;
         void * base;
-        Reg16 id;
         unsigned int counter;
     };
 
@@ -164,12 +163,9 @@ public:
     typedef typename List::Element Element;
 
     List * dt_list = new List;
-    Element * t;
     
     // APAGAR!
-    // void * base; // usado para alocar um espaco da heap
     bool dummy = true;
-    char data_teste[2960];
 
 
 };

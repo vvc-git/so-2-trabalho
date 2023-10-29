@@ -135,7 +135,6 @@ void Network_buffer::IP_receive(void* data) {
     // db<Network_buffer>(WRN) << "Total_Length sem multiplicar " << CPU_Common::htons(fragment->header.Total_Length) << endl;
 
     // Voltando para little endian
-    // fragment->header.Total_Length = CPU_Common::ntohs(fragment->header.Total_Length) * 8;
     unsigned int length = (CPU_Common::ntohs(fragment->header.Total_Length) * 8) - 20;
     short unsigned int identification = CPU_Common::ntohs(fragment->header.Identification);
     short unsigned int offset = (CPU_Common::ntohs(fragment->header.Flags_Offset) & GET_OFFSET) * 8;
@@ -164,14 +163,11 @@ void Network_buffer::IP_receive(void* data) {
         unsigned int counter = length / 1480;
         if (length % 1480) {counter += 1;}
 
-        INFO * new_datagrama =  new INFO();
-        new_datagrama->id = identification;
-        new_datagrama->counter = counter;
-        new_datagrama->base = base;
-        List::Element * link = new List::Element(new_datagrama);
+        INFO * datagram_info = new INFO{identification, base, counter};
+        Element * link = new Element(datagram_info);
+        
         dt_list->insert(link);
-        e = link;
-        db<Network_buffer>(WRN) << "Fim do if " << link->object()->id <<endl; 
+        e = link; 
         
     }
 
