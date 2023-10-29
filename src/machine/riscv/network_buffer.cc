@@ -137,7 +137,7 @@ void Network_buffer::IP_receive(void* data) {
     // Voltando para little endian
     // fragment->header.Total_Length = CPU_Common::ntohs(fragment->header.Total_Length) * 8;
     unsigned int length = (CPU_Common::ntohs(fragment->header.Total_Length) * 8) - 20;
-    fragment->header.Identification = CPU_Common::ntohs(fragment->header.Identification);
+    short unsigned int identification = CPU_Common::ntohs(fragment->header.Identification);
     fragment->header.Flags_Offset = CPU_Common::ntohs(fragment->header.Flags_Offset);
     
 
@@ -150,20 +150,17 @@ void Network_buffer::IP_receive(void* data) {
     // Valores estão setados certos
     db<Network_buffer>(WRN) << "Teste receive " << endl;
     db<Network_buffer>(WRN) << "Total_Length: " << hex << length << endl;
-    db<Network_buffer>(WRN) << "Identification: " << hex << fragment->header.Identification << endl;
+    db<Network_buffer>(WRN) << "Identification: " << hex << identification << endl;
     db<Network_buffer>(WRN) << "Offset: " << offset << endl;
 
     List::Element * e;
-    for (e = dt_list->head(); e && e->object()->id != fragment->header.Identification; e = e->next()) {}   
+    for (e = dt_list->head(); e && e->object()->id != identification; e = e->next()) {}   
 
     if (!e) {
         db<SiFiveU_NIC>(WRN) << "Primeiro frame"<<endl;
         
         // Salvando o ponteiro base para os próximos frames
         base = dt->alloc(length);
-
-        // Salvando o identificador para frames de um mesmo datagrama
-        identification = fragment->header.Identification;
         
         // Configurando a quantidade de frames que possuem em datagrama
         counter = length / 1480;
