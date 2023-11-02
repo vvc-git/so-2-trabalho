@@ -133,9 +133,9 @@ public:
     struct INFO 
     {
         unsigned int id;
-        unsigned int num_frames = 0;
+        unsigned int num_fragments = 0;
         unsigned int total_length;
-        Simple_List<Datagram_Fragment>  * frame_list;
+        Simple_List<Datagram_Fragment>  * fragments;
 
     };
 

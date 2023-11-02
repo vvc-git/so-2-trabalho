@@ -100,8 +100,6 @@ void Network_buffer::IP_send(char* data, unsigned int data_size) {
             data_pointer = fragment.data + last_size;   
             memset(data_pointer, '9', frag_data_size - last_size);
         }
-
-        db<Network_buffer>(WRN) << "data" << reinterpret_cast<char*>(data) << endl;
         SiFiveU_NIC::_device->send(dst, (void*) &fragment, nic_mtu);
         Delay (1000000);
         
@@ -119,18 +117,17 @@ void Network_buffer::IP_send(char* data, unsigned int data_size) {
 
 
 void Network_buffer::IP_receive(void* data) {
-    db<Network_buffer>(WRN) << "---------------------"<< endl;
-    db<Network_buffer>(WRN) << "Network_buffer::IP_receive\n"<< endl;
-
+ 
+    // Crita um novo ponteiro para adicionar na lista de fragmentos que estão chegando
     char * content = new char[1500];
     memcpy(content, data, 1500);
 
     Datagram_Fragment * fragment = reinterpret_cast<Datagram_Fragment*>(content);
-    db<Network_buffer>(TRC) << "Pointer fragment: " << hex << fragment << endl;
-
-
 
     if (fragment->header.Total_Length == 0) return;
+
+    db<Network_buffer>(WRN) << "---------------------"<< endl;
+    db<Network_buffer>(WRN) << "Network_buffer::IP_receive\n"<< endl;
     
     // Capturando os valores do fragmento
     unsigned int length = CPU_Common::ntohs(fragment->header.Total_Length) - 20;
@@ -150,13 +147,15 @@ void Network_buffer::IP_receive(void* data) {
     List::Element * e;
     for (e = dt_list->head(); e && e->object()->id != identification; e = e->next()) {}   
 
+    // Verifica se já temos informações do fragmento que chegou
+    // Se não tiver, inicia um datagrama novo
     if (!e) {
         db<SiFiveU_NIC>(TRC) << "Primeiro frame"<<endl;
         
         // Criando uma nova estrutura para frames do mesmo datagrama
-        Simple_List<Datagram_Fragment>  * frame_list = new Simple_List<Datagram_Fragment>();
+        Simple_List<Datagram_Fragment>*  fragments = new Simple_List<Datagram_Fragment>();
         
-        INFO * datagram_info = new INFO{identification, 0, 0, frame_list};
+        INFO * datagram_info = new INFO{identification, 0, 0, fragments};
         Element * link2 = new Element(datagram_info);
         
         // Adicionana na lista de datagramas
@@ -165,22 +164,22 @@ void Network_buffer::IP_receive(void* data) {
         
     }
 
-    INFO * dt_info = e->object();
-    Simple_List<Datagram_Fragment> * dt_list = e->object()->frame_list; 
 
+    // Informações do datagrama em que o frgamentos que chegou se encontra
+    INFO * dt_info = e->object();
+
+    // Lista de fragmentos  de um mesmo datagram
+    Simple_List<Datagram_Fragment> * dt_list = e->object()->fragments; 
+
+    // Inserindo na lista de fragmentos
     Simple_List<Datagram_Fragment>::Element * link1 = new  Simple_List<Datagram_Fragment>::Element(fragment);
     dt_list->insert(link1);
     
+    // Incrementa o contador de fragmentos
+    dt_info->num_fragments++;
+    db<Network_buffer>(TRC) << "Numero de frames " << dt_info->num_fragments << endl;  
     
-    // db<Network_buffer>(WRN) << "Size frame list " << e->object()->frame_list->size() <<endl; 
-    db<Network_buffer>(TRC) << "head " << dt_list->head()->object()->data << endl; 
-    db<Network_buffer>(TRC) << "tail " << dt_list->tail()->object()->data << endl;  
-    
-    // Incrementa o contador de frames
-    dt_info->num_frames++;
-    db<Network_buffer>(TRC) << "Number of frames: " << dt_info->num_frames << endl;  
-    
-    // Verificação de ultimo frame,
+    // Verificação se é o ultimo fragmento,
     // Caso positivo, seta para o tamanho adequando
     unsigned int total_frame = 0;
     if (!more_frags) {
@@ -192,53 +191,47 @@ void Network_buffer::IP_receive(void* data) {
         total_frame = dt_info->total_length / 1480;
         if (length < 1480) total_frame++;
         
-        
-        db<Network_buffer>(WRN) << "Ultimo frame" << endl;
         db<Network_buffer>(TRC) << "Total length: " << dt_info->total_length << endl;
         db<Network_buffer>(TRC) << "Total frame:  " << total_frame << endl;
 
     }
 
-    // Quando todos os frames chegaram, remonta.
-    if (total_frame == dt_info->num_frames) {
+    // Quando todos os framentos chegaram, remonta.
+    if (total_frame == dt_info->num_fragments) {
         
         db<Network_buffer>(WRN) << "Remontagem" << endl;
         
-        // Capturando o 1° e ultimo frame 
-        Simple_List<Datagram_Fragment>::Element * h = e->object()->frame_list->head();
-        // Simple_List<Datagram_Fragment>::Element * t = e->object()->frame_list->tail();
-
+        // Capturando o 1° fragmento 
+        Simple_List<Datagram_Fragment>::Element * h = e->object()->fragments->head();
         db<Network_buffer>(TRC) << "head " << dt_list->head()->object()->data <<endl;
-        db<Network_buffer>(TRC) << "tail " << dt_list->tail()->object()->data <<endl;
-
-        db<Network_buffer>(TRC) << "Pointer head " << dt_list->head()->object() <<endl;
-        db<Network_buffer>(TRC) << "Pointer tail " << dt_list->tail()->object() <<endl;
         
         // Aloca um espaço na heap para o datagrama
         void * base = dt->alloc(dt_info->total_length);
         
-        
+        // Percorre a lista de fragmentos para a remontagem
         for (; h; h = h->next()) {
 
-            // Fragment to be reasemble
+            // Fragmento que será colocado no datagrama
             Datagram_Fragment * f = h->object();
 
-            // Captura o offset do fragmento
+            // Offset do fragmento
             short unsigned int offset = (CPU_Common::ntohs(f->header.Flags_Offset) & GET_OFFSET) * 8;
             
-            // O tamnaho daquele frame (sem o header)
+            // Tamanho do fragmento
             unsigned int size = CPU_Common::ntohs(f->header.Total_Length) - 20;
 
-            // Remonta o frame na heap
+            
             db<Network_buffer>(TRC) << "Data " << f->data <<endl;
             db<Network_buffer>(TRC) << "Size " << size << endl;
             db<Network_buffer>(TRC) << "Offset do frame " << offset <<endl;
+
+            // Remontagem do fragmento na heap
             char * next = reinterpret_cast<char*>(base) + offset;
             memcpy(next, f->data,  size);
 
         }  
 
-        db<Network_buffer>(WRN) << "Datagrama final " <<reinterpret_cast<char*>(base) << endl;
+        db<Network_buffer>(WRN) << "Datagrama: " <<reinterpret_cast<char*>(base) << endl;
 
     }
 
