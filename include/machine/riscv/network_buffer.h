@@ -133,9 +133,12 @@ public:
     struct INFO 
     {
         unsigned int id;
-        void * base;
-        unsigned int num_frames;
+        unsigned int num_frames = 0;
+        unsigned int total_length;
+        Simple_List<Datagram_Fragment>  * frame_list;
+
     };
+
 
     typedef Simple_List<INFO> List;
     typedef typename List::Element Element;

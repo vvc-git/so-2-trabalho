@@ -35,10 +35,10 @@ void Network_buffer::IP_send(char* data, unsigned int data_size) {
     char* data_pointer;
 
     unsigned int header_size = 20;
-    unsigned int mtu = 1500;
-    unsigned int frag_data_size = mtu - header_size;
+    unsigned int nic_mtu = 1500;
+    unsigned int frag_data_size = nic_mtu - header_size;
     unsigned int iter = (data_size/frag_data_size) + 1;
-    unsigned int last_size = data_size%frag_data_size;
+    unsigned int last_size = data_size  % frag_data_size;
 
     unsigned int id = 0x1230 + id_send;
     id_send++;
@@ -48,7 +48,7 @@ void Network_buffer::IP_send(char* data, unsigned int data_size) {
     Reg8 IHL = (header_size/4);
     dt_header.Version_IHL = (version | IHL);
     dt_header.Type_Service = 0;
-    dt_header.Total_Length = CPU_Common::htons((data_size + header_size) / 8);
+    dt_header.Total_Length = CPU_Common::htons(nic_mtu);
     dt_header.Identification = CPU_Common::htons(id);
     dt_header.TTL = 64;
     dt_header.Protocol = 4;
@@ -93,18 +93,20 @@ void Network_buffer::IP_send(char* data, unsigned int data_size) {
         unsigned int size = (i == iter - 1) ? last_size : frag_data_size;
         memcpy(fragment.data, data_pointer, size);
 
-        // Preenchimento do último fragmento
+        // Preenchimento do último fragmento e Seta total length
         if (i == iter - 1) {
+            db<Network_buffer>(WRN) << "Last_siz " << last_size << endl;
+            fragment.header.Total_Length = CPU_Common::htons(last_size + header_size);
             data_pointer = fragment.data + last_size;   
             memset(data_pointer, '9', frag_data_size - last_size);
         }
 
-        SiFiveU_NIC::_device->send(dst, (void*) &fragment, mtu);
+        SiFiveU_NIC::_device->send(dst, (void*) &fragment, nic_mtu);
         Delay (1000000);
         
 
         // Print para verificar o header
-        db<Network_buffer>(TRC) << "Total_Length original " << CPU_Common::ntohs(fragment.header.Total_Length) * 8 << endl;
+        db<Network_buffer>(TRC) << "Total_Length original " << CPU_Common::ntohs(fragment.header.Total_Length)<< endl;
         db<Network_buffer>(TRC) << "Total_Length sem o size: " << (CPU_Common::ntohs(fragment.header.Total_Length) * 8) - header_size << endl;
         db<Network_buffer>(TRC) << "Identification: " << hex << CPU_Common::htons(fragment.header.Identification) << endl;
         db<Network_buffer>(WRN) << "Offset: " << (CPU_Common::htons(fragment.header.Flags_Offset) & GET_OFFSET)*8 << endl;
@@ -119,16 +121,23 @@ void Network_buffer::IP_receive(void* data) {
     db<Network_buffer>(WRN) << "---------------------"<< endl;
     db<Network_buffer>(WRN) << "Network_buffer::IP_receive\n"<< endl;
 
+    char * content = new char[1480];
+    memcpy(content, data, 1480);
+    db<Network_buffer>(WRN) << "Content: " << hex << (void *) content << endl;
 
-    Datagram_Fragment * fragment = reinterpret_cast<Datagram_Fragment*>(data);
+
+    Datagram_Fragment * fragment = reinterpret_cast<Datagram_Fragment*>(content);
+    db<Network_buffer>(WRN) << "Pointer fragment: " << hex << fragment << endl;
+
+
 
     if (fragment->header.Total_Length == 0) return;
     
     // Capturando os valores do fragmento
-    unsigned int length = (CPU_Common::ntohs(fragment->header.Total_Length) * 8) - 20;
+    unsigned int length = CPU_Common::ntohs(fragment->header.Total_Length) - 20;
     short unsigned int identification = CPU_Common::ntohs(fragment->header.Identification);
     short unsigned int offset = (CPU_Common::ntohs(fragment->header.Flags_Offset) & GET_OFFSET) * 8;
-     short unsigned int more_frags = (CPU_Common::ntohs(fragment->header.Flags_Offset) & MORE_FRAGS);
+    short unsigned int more_frags = (CPU_Common::ntohs(fragment->header.Flags_Offset) & MORE_FRAGS);
     short unsigned int flags = ((CPU_Common::ntohs(fragment->header.Flags_Offset) & GET_FLAGS));
     
     
@@ -145,51 +154,100 @@ void Network_buffer::IP_receive(void* data) {
     if (!e) {
         db<SiFiveU_NIC>(TRC) << "Primeiro frame"<<endl;
         
-        // Alocando espaço para o datagrama
-        void * base = dt->alloc(length);
-        
-        // Configurando a quantidade de frames que possuem em datagrama
-        unsigned int num_frames = length / 1480;
-        if (length % 1480) {num_frames += 1;}
-
         // Criando uma nova estrutura para frames do mesmo datagrama
-        INFO * datagram_info = new INFO{identification, base, num_frames};
-        Element * link = new Element(datagram_info);
+        Simple_List<Datagram_Fragment>  * frame_list = new Simple_List<Datagram_Fragment>();
+        
+        INFO * datagram_info = new INFO{identification, 0, 0, frame_list};
+        Element * link2 = new Element(datagram_info);
         
         // Adicionana na lista de datagramas
-        dt_list->insert(link);
-        e = link; 
+        dt_list->insert(link2);
+        e = link2; 
         
     }
 
-    // Decrementa o contador de frames
-    e->object()->num_frames--;
-    db<Network_buffer>(TRC) << "counter " << e->object()->num_frames <<endl;  
+    INFO * dt_info = e->object();
+    Simple_List<Datagram_Fragment> * dt_list = e->object()->frame_list; 
 
-    // Pega o próximo endereço onde sera colocado do frame
-    char* next = reinterpret_cast<char*>(e->object()->base) + offset;   
-    db<Network_buffer>(TRC) << "Datagrama " << reinterpret_cast<void*>(next) << endl; 
+    Simple_List<Datagram_Fragment>::Element * link1 = new  Simple_List<Datagram_Fragment>::Element(fragment);
+    dt_list->insert(link1);
+    
+    
+    // db<Network_buffer>(WRN) << "Size frame list " << e->object()->frame_list->size() <<endl; 
+    db<Network_buffer>(TRC) << "head " << dt_list->head()->object()->data << endl; 
+    db<Network_buffer>(TRC) << "tail " << dt_list->tail()->object()->data << endl;  
+    
+    // Incrementa o contador de frames
+    dt_info->num_frames++;
+    db<Network_buffer>(TRC) << "Number of frames: " << dt_info->num_frames << endl;  
     
     // Verificação de ultimo frame,
     // Caso positivo, seta para o tamanho adequando
-    unsigned int size = 1480;
+    unsigned int total_frame = 0;
     if (!more_frags) {
-        size = length - offset; 
+        
+        // Salva o tamanho total do datagrama
+        dt_info->total_length = offset + length;
+        
+        // Salva quantos frames vão ter no datagrama
+        total_frame = dt_info->total_length / 1480;
+        if (length < 1480) total_frame++;
+        
+        
+        db<Network_buffer>(WRN) << "Ultimo frame" << endl;
+        db<Network_buffer>(TRC) << "Total length: " << dt_info->total_length << endl;
+        db<Network_buffer>(TRC) << "Total frame:  " << total_frame << endl;
+
     }
-    db<Network_buffer>(WRN) << "size " << size <<endl;
 
-    // Realiza a copia para heap 
-    memcpy(next, fragment->data, size);
+    // Quando todos os frames chegaram, remonta.
+    if (total_frame == dt_info->num_frames) {
+        
+        db<Network_buffer>(WRN) << "Remontagem" << endl;
+        
+        // Capturando o 1° e ultimo frame 
+        Simple_List<Datagram_Fragment>::Element * h = e->object()->frame_list->head();
+        // Simple_List<Datagram_Fragment>::Element * t = e->object()->frame_list->tail();
+
+        db<Network_buffer>(TRC) << "head " << dt_list->head()->object()->data <<endl;
+        db<Network_buffer>(TRC) << "tail " << dt_list->tail()->object()->data <<endl;
+
+        db<Network_buffer>(WRN) << "Pointer head " << dt_list->head()->object() <<endl;
+        db<Network_buffer>(WRN) << "Pointer tail " << dt_list->tail()->object() <<endl;
+        
+        // Aloca um espaço na heap para o datagrama
+        char * base = reinterpret_cast<char*>(dt->alloc(dt_info->total_length));
+        
+        
+        for (; h; h = h->next()) {
+
+            // Fragment to be reasemble
+            Datagram_Fragment * f = h->object();
+
+            // Captura o offset do fragmento
+            short unsigned int offset = (CPU_Common::ntohs(f->header.Flags_Offset) & GET_OFFSET) * 8;
+            
+            // O tamnaho daquele frame (sem o header)
+            unsigned int size = CPU_Common::ntohs(f->header.Total_Length) - 20;
+
+            // Remonta o frame na heap
+            db<Network_buffer>(WRN) << "Data " << f->data <<endl;
+            memcpy(base + offset, f->data,  size);
+
+        }  
+
+        db<Network_buffer>(TRC) << "Datagrama final " << base <<endl;
 
 
-    // Quando counter for zero, todos os frames já chegaram
-    if (!e->object()->num_frames) {
-        char * datagrama = reinterpret_cast<char*>(e->object()->base);  
-        db<Network_buffer>(WRN) << "conteudo final\n" << datagrama <<endl;
-        dt_list->remove(e->object());
 
     }
-    
+    // db<Network_buffer>(WRN) << "size " << size <<endl;
+
+    // // Realiza a copia para heap 
+    // memcpy(next, fragment->data, size);
+
+
+    // // Quando counter for zero, todos os frames já chegaram
 }
 
 
@@ -312,7 +370,9 @@ int Network_buffer::copy() {
         char  payload[FRAME_SIZE];
         net_buffer->buf->get_data_frame(payload);
 
+        db<Network_buffer>(WRN) << "payload: " << hex << (void *)payload << endl;
         net_buffer->IP_receive((void *)(payload+14));
+
 
         // db<SiFiveU_NIC>(WRN) << "Network buffer update: "<< endl;
         // for (int i = 0; i < 1500; i++) {
