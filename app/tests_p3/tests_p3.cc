@@ -39,14 +39,14 @@ int main()
           }
           Network_buffer::net_buffer->IP_send(data_first, data_size);
 
-          data_size = 1480;
-          char data_second[data_size];
-          for(unsigned int i = 0; i < data_size; i++) {
-               if (i < frag_data_size) data_second[i] = '3';
-               else if (i < frag_data_size*2) data_second[i] = 'D';
-               else data_second[i] = 'U';
-          }
-          Network_buffer::net_buffer->IP_send(data_second, data_size);
+          // data_size = 1480;
+          // char data_second[data_size];
+          // for(unsigned int i = 0; i < data_size; i++) {
+          //      if (i < frag_data_size) data_second[i] = '3';
+          //      else if (i < frag_data_size*2) data_second[i] = 'D';
+          //      else data_second[i] = 'U';
+          // }
+          // Network_buffer::net_buffer->IP_send(data_second, data_size);
 
           data_size = 4020;
           char data_third[data_size];

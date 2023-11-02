@@ -101,6 +101,7 @@ void Network_buffer::IP_send(char* data, unsigned int data_size) {
             memset(data_pointer, '9', frag_data_size - last_size);
         }
 
+        db<Network_buffer>(WRN) << "data" << reinterpret_cast<char*>(data) << endl;
         SiFiveU_NIC::_device->send(dst, (void*) &fragment, nic_mtu);
         Delay (1000000);
         
@@ -121,13 +122,11 @@ void Network_buffer::IP_receive(void* data) {
     db<Network_buffer>(WRN) << "---------------------"<< endl;
     db<Network_buffer>(WRN) << "Network_buffer::IP_receive\n"<< endl;
 
-    char * content = new char[1480];
-    memcpy(content, data, 1480);
-    db<Network_buffer>(WRN) << "Content: " << hex << (void *) content << endl;
-
+    char * content = new char[1500];
+    memcpy(content, data, 1500);
 
     Datagram_Fragment * fragment = reinterpret_cast<Datagram_Fragment*>(content);
-    db<Network_buffer>(WRN) << "Pointer fragment: " << hex << fragment << endl;
+    db<Network_buffer>(TRC) << "Pointer fragment: " << hex << fragment << endl;
 
 
 
@@ -212,11 +211,11 @@ void Network_buffer::IP_receive(void* data) {
         db<Network_buffer>(TRC) << "head " << dt_list->head()->object()->data <<endl;
         db<Network_buffer>(TRC) << "tail " << dt_list->tail()->object()->data <<endl;
 
-        db<Network_buffer>(WRN) << "Pointer head " << dt_list->head()->object() <<endl;
-        db<Network_buffer>(WRN) << "Pointer tail " << dt_list->tail()->object() <<endl;
+        db<Network_buffer>(TRC) << "Pointer head " << dt_list->head()->object() <<endl;
+        db<Network_buffer>(TRC) << "Pointer tail " << dt_list->tail()->object() <<endl;
         
         // Aloca um espaço na heap para o datagrama
-        char * base = reinterpret_cast<char*>(dt->alloc(dt_info->total_length));
+        void * base = dt->alloc(dt_info->total_length);
         
         
         for (; h; h = h->next()) {
@@ -231,23 +230,18 @@ void Network_buffer::IP_receive(void* data) {
             unsigned int size = CPU_Common::ntohs(f->header.Total_Length) - 20;
 
             // Remonta o frame na heap
-            db<Network_buffer>(WRN) << "Data " << f->data <<endl;
-            memcpy(base + offset, f->data,  size);
+            db<Network_buffer>(TRC) << "Data " << f->data <<endl;
+            db<Network_buffer>(TRC) << "Size " << size << endl;
+            db<Network_buffer>(TRC) << "Offset do frame " << offset <<endl;
+            char * next = reinterpret_cast<char*>(base) + offset;
+            memcpy(next, f->data,  size);
 
         }  
 
-        db<Network_buffer>(TRC) << "Datagrama final " << base <<endl;
-
-
+        db<Network_buffer>(WRN) << "Datagrama final " <<reinterpret_cast<char*>(base) << endl;
 
     }
-    // db<Network_buffer>(WRN) << "size " << size <<endl;
 
-    // // Realiza a copia para heap 
-    // memcpy(next, fragment->data, size);
-
-
-    // // Quando counter for zero, todos os frames já chegaram
 }
 
 
@@ -370,7 +364,7 @@ int Network_buffer::copy() {
         char  payload[FRAME_SIZE];
         net_buffer->buf->get_data_frame(payload);
 
-        db<Network_buffer>(WRN) << "payload: " << hex << (void *)payload << endl;
+        db<Network_buffer>(TRC) << "payload: " << hex << (void *)payload << endl;
         net_buffer->IP_receive((void *)(payload+14));
 
 
