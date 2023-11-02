@@ -51,8 +51,8 @@ public:
         Reg8 TTL; // Time to live
         Reg8 Protocol; // This field indicates the next level protocol used in the data portion of the internet datagram.
         Reg16 Header_Checksum;
-        Reg32 SRC_ADDR;
-        Reg32 DST_ADDR;
+        char SRC_ADDR[4];
+        char DST_ADDR[4];
     };
 
     enum {

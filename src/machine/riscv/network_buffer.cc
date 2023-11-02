@@ -53,8 +53,15 @@ void Network_buffer::IP_send(char* data, unsigned int data_size) {
     dt_header.TTL = 64;
     dt_header.Protocol = 4;
     dt_header.Header_Checksum = 0;
-    dt_header.SRC_ADDR = 0x0100007F; // 127.0.0.1
-    dt_header.DST_ADDR = 0x0200007F; // 127.0.0.2
+    dt_header.SRC_ADDR[0] = 127; // 127.0.0.1
+    dt_header.SRC_ADDR[1] = 0;
+    dt_header.SRC_ADDR[2] = 0;
+    dt_header.SRC_ADDR[3] = 1;
+    dt_header.DST_ADDR[0] = 127; // 127.0.0.2       
+    dt_header.DST_ADDR[1] = 0;
+    dt_header.DST_ADDR[2] = 0;
+    dt_header.DST_ADDR[3] = 2;
+    
 
     db<Network_buffer>(WRN) << "Identification: " << hex << CPU_Common::htons(dt_header.Identification) << endl;
     for (unsigned int i = 0; i < iter; i++) {
