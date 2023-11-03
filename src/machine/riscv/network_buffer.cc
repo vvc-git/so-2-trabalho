@@ -100,7 +100,7 @@ void Network_buffer::IP_send(char* data, unsigned int data_size) {
             data_pointer = fragment.data + last_size;   
             memset(data_pointer, '9', frag_data_size - last_size);
         }
-        SiFiveU_NIC::_device->send(dst, (void*) &fragment, nic_mtu);
+        SiFiveU_NIC::_device->send(dst, (void*) &fragment, nic_mtu, 0x0800);
         Delay (1000000);
         
 

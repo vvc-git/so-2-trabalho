@@ -17,16 +17,31 @@ SiFiveU_NIC::SiFiveU_NIC()
     this->attach(Network_buffer::net_buffer);
 }
 
-void SiFiveU_NIC::send(Address dst, void* payload, unsigned int payload_size)
-{
+void SiFiveU_NIC::send(Address dst, void* payload, unsigned int payload_size, int proto)
+{   
+    db<SiFiveU_NIC>(TRC) << "SiFiveU_NIC::send() " << endl;
     if (payload_size <= FRAME_SIZE)
     {
 
         Desc * tx_desc = Network_buffer::net_buffer->get_free_tx_desc();
 
         // Montando o Frame para ser enviado 
-        Frame* frame = new (reinterpret_cast<void *>(tx_desc->address)) Frame(this->address, dst, 0x0800, payload, payload_size);
+        Frame* frame; 
 
+        switch (proto)
+        {
+        case (0x0806):
+            db<SiFiveU_NIC>(TRC) << "SiFiveU_NIC::send()::ARP()"<< endl;
+            frame = new (reinterpret_cast<void *>(tx_desc->address)) Frame(this->address, dst, proto);
+            break;
+        
+        default:
+            db<SiFiveU_NIC>(TRC) << "SiFiveU_NIC::send()::IP()"<< endl;
+            frame = new (reinterpret_cast<void *>(tx_desc->address)) Frame(this->address, dst, proto, payload, payload_size);
+            break;
+        }
+        
+       
         tx_desc->set_ctrl_transmiting(payload_size + sizeof(*(frame->header())));
 
         // Habilita a NIC para a execução

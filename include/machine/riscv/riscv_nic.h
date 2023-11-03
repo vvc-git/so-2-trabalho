@@ -24,8 +24,10 @@ private:
     typedef CPU::Phy_Addr Phy_Addr;
     typedef CPU::Log_Addr Log_Addr;
     typedef Ethernet::Frame Frame;
+    typedef Ethernet::Protocol Protocol;
     typedef NIC<Ethernet>::Address Address;
     typedef IC::Interrupt_Id Interrupt_Id;
+    
 
 public:
     SiFiveU_NIC();
@@ -33,7 +35,7 @@ public:
     void attach(Observer *o) { Observed::attach(o); };
 
     void receive();
-    void send(Address dst, void* payload, unsigned int payload_size);
+    void send(Address dst, void* payload, unsigned int payload_size, int proto);
     void handle_interrupt();
 
     // Métodos estáticos

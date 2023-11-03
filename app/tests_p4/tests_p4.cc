@@ -19,7 +19,7 @@ int main()
 {
      SiFiveU_NIC * sifiveu_nic = SiFiveU_NIC::_device;
 
-     ARP_Manager * arp_mng = ARP_Manager::arp_mng;
+     ARP_Manager * arp_mng = ARP_Manager::_arp_mng;
      arp_mng->arp_send();
 
      NIC<Ethernet>::Address dst;
@@ -31,6 +31,7 @@ int main()
      dst[4] = 0x00;
      dst[5] = 0x02;
 
+          
      cout << "  MAC: " << sifiveu_nic->address << "\n" << endl;
 
      unsigned int frag_data_size = 1480;

@@ -17,8 +17,8 @@ Arp
     typedef CPU::Reg32 Reg32;
 
 
-// public:
-// The Ethernet Header (RFC 894)
+public:
+
     class Header
     {
     public:
@@ -30,7 +30,7 @@ Arp
 
         // Protocol prot() const { return ntohs(_prot); }
 
-    protected:
+    public:
         Reg16 _hw_type;
         Reg16 _prot_type;
         Reg8 _hw_length;
@@ -41,16 +41,28 @@ Arp
         Reg32 _target_hw;
         Reg32 _target_prot;
 
-    }
+    };
+    
+    class Packet: public Header
+    {
+    public:
+        Packet() {}
+        // Packet(const Address & src, const Address & dst, const Protocol & prot): Header(src, dst, prot) {}
+        Packet(Reg32 sender_hw, Reg32 sender_prot, Reg32 target_hw, Reg32 target_prot, const void * data, unsigned int size): Header(sender_hw, sender_prot, target_hw, target_prot) { memcpy(_data, data, size); }
 
+        Header * header() { return this; }
 
-protected:
-    Arp() {}
+        // template<typename T>
+        // T * data() { return reinterpret_cast<T *>(&_data); }
 
-public:
+        // friend Debug & operator<<(Debug & db, const Packet & f) {
+        //     db << "{h=" << reinterpret_cast<const Header &>(f) << ",d=" << f._data << "}";
+        //     return db;
+        // }
 
-    // static const Address broadcast() { return Address::BROADCAST; }
-
+    protected:
+        char _data[1500];
+    };
 
 };
 

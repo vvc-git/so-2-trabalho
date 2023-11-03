@@ -37,6 +37,7 @@ Network_buffer :  public Observer// , Data_Observed<DT_Buffer, void>
     typedef CPU::Log_Addr Log_Addr;
     typedef Cadence_GEM::Desc Desc;
     typedef Heap DT_Buffer;
+    typedef Ethernet::Protocol Protocol;
 
 public:
     
