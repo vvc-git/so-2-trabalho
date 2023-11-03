@@ -5,6 +5,7 @@
 #include <network/ethernet.h>
 #include <time.h>
 #include <process.h>
+#include <machine/riscv/arp_manager.h>
 
 // Para o delay
 #include <time.h>
@@ -17,6 +18,9 @@ OStream cout;
 int main()
 {
      SiFiveU_NIC * sifiveu_nic = SiFiveU_NIC::_device;
+
+     ARP_Manager * arp_mng = ARP_Manager::arp_mng;
+     arp_mng->arp_send();
 
      NIC<Ethernet>::Address dst;
 
