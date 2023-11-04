@@ -36,6 +36,7 @@ int main()
      if(sifiveu_nic->address[5] % 2 ) {
           ARP_Manager * arp_mng = ARP_Manager::_arp_mng;
           arp_mng->arp_send();
+          arp_mng->arp_send();
 
           
      //      char data_first[data_size];
@@ -63,7 +64,7 @@ int main()
      //      Network_buffer::net_buffer->IP_send(data_third, data_size);
      } else {
           
-     //      Delay (100000000000000);
+          Delay (100000000000000);
      }
 
      return 0;

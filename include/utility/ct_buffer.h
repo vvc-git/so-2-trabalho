@@ -30,8 +30,9 @@ public:
 
     CT_Buffer(long unsigned bytes): size(bytes / FRAME_SIZE) { dma = new DMA(bytes); base = dma->log_address();};
     ~CT_Buffer(){};
-    void get_data_frame(char *data);
-    void save_data_frame(char *data);
+
+    void get_data_frame(char *data, unsigned int size = FRAME_SIZE);
+    void save_data_frame(char *data, unsigned int size = FRAME_SIZE);
     Phy_Addr phy_address() { return dma->phy_address(); };
     Log_Addr log_address() { return dma->log_address(); };
 
@@ -44,7 +45,7 @@ public:
     char *base;
 
     // index of next empty space
-    int next = 0;
+    unsigned int next = 0;
 
     // number of slots 
     int size;

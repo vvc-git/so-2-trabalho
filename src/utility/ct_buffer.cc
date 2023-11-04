@@ -14,12 +14,12 @@ __BEGIN_UTIL
 //     }
 // };
 
-void CT_Buffer::get_data_frame(char * data)
+void CT_Buffer::get_data_frame(char * data, unsigned int size)
 {
     if (next <= 0) {return;};
     --next;
-    char * addr = base + next * FRAME_SIZE;
-    memcpy(data, addr, FRAME_SIZE);
+    char * addr = base + next * size;
+    memcpy(data, addr, size);
    
     return;
     
@@ -28,12 +28,12 @@ void CT_Buffer::get_data_frame(char * data)
 };
 
 // Salva o dado do frame
-void CT_Buffer::save_data_frame(char *data)
+void CT_Buffer::save_data_frame(char *data, unsigned int size)
 {
 
     if (next < size) {
-        char * addr = base + next * FRAME_SIZE;
-        memcpy(addr, data, FRAME_SIZE);
+        char * addr = base + next * size;
+        memcpy(addr, data, size);
         ++next; 
     }
 };

@@ -53,7 +53,6 @@ void ARP_Manager::arp_send() {
     packet->_target_hw = dst;
     packet->_target_prot = 0;
 
-    // char t[28] = "AAAAAAAAAAAAAAAAAAAAAAAAAAA";
     SiFiveU_NIC::_device->send(dst, (void*) packet, 28, 0x0806);
 
 
@@ -61,6 +60,12 @@ void ARP_Manager::arp_send() {
 
 void ARP_Manager::arp_receive() {
     db<ARP_Manager>(WRN) << "ARP_Manager::receive()"<< endl;
+    
+    
+
+
+
+
 
 }
 
