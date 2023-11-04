@@ -32,7 +32,7 @@ void SiFiveU_NIC::send(Address dst, void* payload, unsigned int payload_size, in
         {
         case (0x0806):
             db<SiFiveU_NIC>(TRC) << "SiFiveU_NIC::send()::ARP()"<< endl;
-            frame = new (reinterpret_cast<void *>(tx_desc->address)) Frame(this->address, dst, proto);
+            frame = new (reinterpret_cast<void *>(tx_desc->address)) Frame(this->address, dst, proto, payload, payload_size);
             break;
         
         default:

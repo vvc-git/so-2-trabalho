@@ -11,6 +11,7 @@ class ARP_Manager {
 
     typedef Arp::Packet ARP_Packet;
     typedef Ethernet::Protocol Protocol;
+    typedef NIC_Common::Address<6> Address;
 
     public:
         void arp_send();

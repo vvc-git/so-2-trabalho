@@ -79,6 +79,7 @@ class C905;
 class E100;
 class M95;
 class SiFiveU_NIC;
+class Arp;
 class ARP_Manager;
 // class Network_buffer;
 class IEEE802_15_4_NIC;
