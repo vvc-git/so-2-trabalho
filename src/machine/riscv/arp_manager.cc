@@ -53,7 +53,7 @@ void ARP_Manager::arp_send() {
     packet->_target_hw = dst;
     packet->_target_prot = 0;
 
-    SiFiveU_NIC::_device->send(dst, (void*) packet, 28, 0x0806);
+    SiFiveU_NIC::_device->send(dst, (void*) packet, 100, 0x0806);
 
 
 }

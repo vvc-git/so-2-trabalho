@@ -345,28 +345,30 @@ int Network_buffer::copy() {
         // Setando o no rx de dados
         desc->address = data;
 
-        // Colocando o valor de RX data (addr) para o CT_buffer alocado
-        Network_buffer::net_buffer->buf->save_data_frame(reinterpret_cast<char*>(desc->address), 14+28);
+        // T
+        short int protocol = ntohs(*(reinterpret_cast<short int *>(data) + 6));
+        unsigned int frame_size = (desc->control & Cadence_GEM::GET_FRAME_LENGTH); //- sizeof(Ethernet::CRC32) - sizeof(Ethernet::Header);
+        db<Network_buffer>(WRN) << "Header: " <<  sizeof(Ethernet::Header)  << endl;
+        db<Network_buffer>(WRN) << "CRC: " <<  sizeof(Ethernet::CRC)  << endl;
+        db<Network_buffer>(WRN) << "Frame size: " << frame_size << endl;
 
+        if  (protocol == 0x0806) {
+            ARP_Packet* packet = new ARP_Packet();
+            memcpy(packet, reinterpret_cast<ARP_Packet*>(desc->address + 14), frame_size);
+            return 0;
+        } 
         
+
+
         // Setando os 2 ultimos bits da word[0]
         // (O wrap bit caso seja necessário)
         desc->set_rx_own_wrap(idx == ( net_buffer->SLOTS_BUFFER - 1));
 
         // Faz a copia do buffer rx para data
-        char  payload[14+28];
-        net_buffer->buf->get_data_frame(payload, 14+28);
+        char  payload[1600];
+        net_buffer->buf->get_data_frame(payload);
 
-        for (int i = 0; i < 14+28; i++)
-            db<Network_buffer>(WRN) << "payload: [" << i << "] " << reinterpret_cast<char>(payload[i]) << endl;
         // net_buffer->IP_receive((void *)(payload+14));
-
-
-        // db<SiFiveU_NIC>(WRN) << "Network buffer update: "<< endl;
-        // for (int i = 0; i < 1500; i++) {
-        //     db<SiFiveU_NIC>(WRN) << payload[i];
-        // }
-        // db<SiFiveU_NIC>(WRN) << endl;
     }
     
     return 0;

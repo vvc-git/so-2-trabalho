@@ -15,6 +15,7 @@
 #include <utility/ct_buffer.h>
 #include <synchronizer.h>
 #include <network/ethernet.h>
+#include <network/arp.h>
 #include <machine/riscv/riscv_gem.h>
 #include <machine/riscv/riscv_nic.h>
 #include <time.h>
@@ -30,6 +31,7 @@ class
 Network_buffer :  public Observer// , Data_Observed<DT_Buffer, void>
 {
     friend class Cadence_GEM;
+
     typedef CPU::Reg8 Reg8;
     typedef CPU::Reg16 Reg16;
     typedef CPU::Reg32 Reg32;
@@ -38,6 +40,8 @@ Network_buffer :  public Observer// , Data_Observed<DT_Buffer, void>
     typedef Cadence_GEM::Desc Desc;
     typedef Heap DT_Buffer;
     typedef Ethernet::Protocol Protocol;
+    typedef Arp::Packet ARP_Packet;
+
 
 public:
     
