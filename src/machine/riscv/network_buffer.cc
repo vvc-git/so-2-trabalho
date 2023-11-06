@@ -328,7 +328,8 @@ int Network_buffer::copy() {
     while (true)
     {
         net_buffer->sem->p();
-        
+        db<Network_buffer>(TRC) << "Thread: " << endl;
+
         for (int i = 0; !(desc->is_cpu_owned()); i=(i+1)%net_buffer->SLOTS_BUFFER) {
             
             desc = net_buffer->rx_desc_phy + i * net_buffer->DESC_SIZE;
@@ -371,7 +372,6 @@ int Network_buffer::copy() {
             // ARP_Manager trata o pacote
             ARP_Manager::_arp_mng->arp_receive(packet);
 
-            return 0;
         } 
         
 
@@ -392,6 +392,7 @@ int Network_buffer::copy() {
 
 void Network_buffer::update(Observed *obs)
 {
+    db<Network_buffer>(TRC) << "Network_buffer::update()" << endl;
     net_buffer->sem->v();
 
 }

@@ -236,7 +236,7 @@ public:
 
         // 1. Enable full duplex.
         // a. Write a 1 to the gem.network_config[full_duplex] bit.
-        // set_bits(NETWORK_CONFIG, FULL_DUPLEX);
+        set_bits(NETWORK_CONFIG, FULL_DUPLEX);
 
         // b. Enable gigabit mode.
         // Write a 1 to the gem.network_config[gigabit_mode_enable] bit.

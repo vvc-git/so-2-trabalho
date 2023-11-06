@@ -86,12 +86,12 @@ void ARP_Manager::arp_send_reply(ARP_Packet* requester_packet) {
     packet->_sender_prot[2] = IP_ADDR[2];
     packet->_sender_prot[3] = IP_ADDR[3];
 
-    // IP destino
-    packet->_target_prot[0] = requester_packet->_sender_prot[0]; // 127.0.0.1       
-    packet->_target_prot[1] = requester_packet->_sender_prot[1];
-    packet->_target_prot[2] = requester_packet->_sender_prot[2];
-    packet->_target_prot[3] = requester_packet->_sender_prot[3];
-    
+    // IP destino (hardcoded por enquanto)
+    packet->_target_prot[0] = 127; // requester_packet->_sender_prot[0]; // 127.0.0.1       
+    packet->_target_prot[1] = 0; // requester_packet->_sender_prot[1];
+    packet->_target_prot[2] = 0; // requester_packet->_sender_prot[2];
+    packet->_target_prot[3] = 1; // requester_packet->_sender_prot[3];
+
     // Setando os pacotes
     packet->_hw_type = CPU::htons(0x01);
     packet->_prot_type = CPU::htons(0x0800);
@@ -101,33 +101,56 @@ void ARP_Manager::arp_send_reply(ARP_Packet* requester_packet) {
     packet->_sender_hw = src;
     packet->_target_hw = dst;
 
+    db<ARP_Manager>(WRN) << "Sending reply to mac: " << hex << dst << endl;
     SiFiveU_NIC::_device->send(dst, (void*) packet, 28, 0x0806);
-
-
+    // db<ARP_Manager>(WRN) << "Delay..."  << endl;
+    // Delay(500000);
+    // db<ARP_Manager>(WRN) << "Sending reply to mac: " << hex << dst << endl;
+    // SiFiveU_NIC::_device->send(dst, (void*) packet, 28, 0x0806);
+    // SiFiveU_NIC::_device->send(dst, (void*) packet, 28, 0x0806);
 }
 
 void ARP_Manager::arp_receive(ARP_Packet* packet) {
-    db<ARP_Manager>(WRN) << "ARP_Manager::receive()"<< endl;
+    db<ARP_Manager>(TRC) << "ARP_Manager::receive()"<< endl;
 
     unsigned int operation = ntohs(packet->_operation);
 
     if (operation == 0x0001) { // arp request
-        db<ARP_Manager>(WRN) << "Receiving a request: " << operation << endl;
-        //int result = strcmp(IP_ADDR, packet->_target_prot);
+        db<ARP_Manager>(TRC) << "Receiving a request: " << operation << endl;
 
         bool my_IP = true;
         for (int i = 0; i < 4 && my_IP; i++) {
             if (IP_ADDR[i] != packet->_target_prot[i]) my_IP = false;
         }
         
-        if (!my_IP) return; // Request nao é para o meu IP
+        if (!my_IP) {
+            db<ARP_Manager>(TRC) << "IP destino nao é o meu " << endl;
+            return; // Request nao é para o meu IP
+        } 
+
+        db<ARP_Manager>(WRN) << "My IP was requested" << endl;
         
         // Envia a resposta
         arp_send_reply(packet);
 
     } else { // recebendo um reply
-        db<ARP_Manager>(WRN) << "Receiving a reply: " << operation << endl;
+        db<ARP_Manager>(TRC) << "Receiving a reply: " << operation << endl;
 
+        // Por enquanto, se confere o IP pois cada pacote enviado é, ao mesmo tempo,
+        // recebido. Esse pacotes recebidos por estar em promiscuos mode devem ser descartados
+        bool my_IP = true;
+        for (int i = 0; i < 4 && my_IP; i++) {
+            if (IP_ADDR[i] != packet->_target_prot[i]) my_IP = false;
+        }
+        
+        if (!my_IP) {
+            db<ARP_Manager>(TRC) << "IP destino nao é o meu " << endl;
+            return; // Request nao é para o meu IP
+        } 
+
+        db<ARP_Manager>(WRN) << "MAC descoberto: " << packet->_sender_hw << endl;
+        // Atualizar ARP table com novo mac.
+        // Fazer o envio para o MAC desejado
     }
     
 }

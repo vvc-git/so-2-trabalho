@@ -47,7 +47,7 @@ public:
     class Packet: public Header
     {
     public:
-        Packet() {db<Packet>(WRN) << "ARP::Packet"<< endl;};
+        Packet() {db<Packet>(TRC) << "ARP::Packet"<< endl;};
         // Packet(const Address & src, const Address & dst, const Protocol & prot): Header(src, dst, prot) {}
         //Packet(Reg32 sender_hw, Reg32 sender_prot, Reg32 target_hw, Reg32 target_prot) : Header(sender_hw, sender_prot, target_hw, target_prot) {db<Packet>(WRN) << "ARPr::Packet"<< endl;};
         //Packet(Reg32 sender_hw, Reg32 sender_prot, Reg32 target_hw, Reg32 target_prot, const void * data, unsigned int size): Header(sender_hw, sender_prot, target_hw, target_prot) { memcpy(_data, data, size); }

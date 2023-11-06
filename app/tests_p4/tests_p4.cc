@@ -37,6 +37,7 @@ int main()
           ARP_Manager * arp_mng = ARP_Manager::_arp_mng;
           arp_mng->arp_send_request();
           arp_mng->arp_send_request();
+          Delay(10000000000);
 
           
      //      char data_first[data_size];
