@@ -87,10 +87,10 @@ void ARP_Manager::arp_send_reply(ARP_Packet* requester_packet) {
     packet->_sender_prot[3] = IP_ADDR[3];
 
     // IP destino (hardcoded por enquanto)
-    packet->_target_prot[0] = 127; // requester_packet->_sender_prot[0]; // 127.0.0.1       
-    packet->_target_prot[1] = 0; // requester_packet->_sender_prot[1];
-    packet->_target_prot[2] = 0; // requester_packet->_sender_prot[2];
-    packet->_target_prot[3] = 1; // requester_packet->_sender_prot[3];
+    packet->_target_prot[0] = static_cast<int>(requester_packet->_sender_prot[0]); // 127.0.0.1       
+    packet->_target_prot[1] = static_cast<int>(requester_packet->_sender_prot[1]); 
+    packet->_target_prot[2] = static_cast<int>(requester_packet->_sender_prot[2]); 
+    packet->_target_prot[3] = static_cast<int>(requester_packet->_sender_prot[3]); 
 
     // Setando os pacotes
     packet->_hw_type = CPU::htons(0x01);
@@ -100,14 +100,10 @@ void ARP_Manager::arp_send_reply(ARP_Packet* requester_packet) {
     packet->_operation = CPU::htons(0x0002);
     packet->_sender_hw = src;
     packet->_target_hw = dst;
+    
 
     db<ARP_Manager>(WRN) << "Sending reply to mac: " << hex << dst << endl;
     SiFiveU_NIC::_device->send(dst, (void*) packet, 28, 0x0806);
-    // db<ARP_Manager>(WRN) << "Delay..."  << endl;
-    // Delay(500000);
-    // db<ARP_Manager>(WRN) << "Sending reply to mac: " << hex << dst << endl;
-    // SiFiveU_NIC::_device->send(dst, (void*) packet, 28, 0x0806);
-    // SiFiveU_NIC::_device->send(dst, (void*) packet, 28, 0x0806);
 }
 
 void ARP_Manager::arp_receive(ARP_Packet* packet) {
