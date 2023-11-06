@@ -35,8 +35,8 @@ int main()
      // unsigned int data_size = 1480;
      if(sifiveu_nic->address[5] % 2 ) {
           ARP_Manager * arp_mng = ARP_Manager::_arp_mng;
-          arp_mng->arp_send();
-          arp_mng->arp_send();
+          arp_mng->arp_send_request();
+          arp_mng->arp_send_request();
 
           
      //      char data_first[data_size];

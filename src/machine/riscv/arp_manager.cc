@@ -10,11 +10,11 @@ void ARP_Manager::init() {
     _arp_mng = new (SYSTEM) ARP_Manager();
 }
 
-void ARP_Manager::arp_send() {
+void ARP_Manager::arp_send_request() {
 
     ARP_Packet* packet = new ARP_Packet();
 
-    db<ARP_Manager>(WRN) << "ARP_Manager::send()"<< endl;
+    db<ARP_Manager>(WRN) << "ARP_Manager::send_request()"<< endl;
 
     Address src;
     Address dst;
@@ -68,16 +68,67 @@ void ARP_Manager::arp_send() {
 
 }
 
+void ARP_Manager::arp_send_reply(ARP_Packet* requester_packet) {
+    db<ARP_Manager>(WRN) << "ARP_Manager::send_reply()"<< endl;
+
+    ARP_Packet* packet = new ARP_Packet();
+
+    Address src;
+    Address dst;
+
+    // Mac origem e destino
+    src = SiFiveU_NIC::_device->address;
+    dst = requester_packet->_sender_hw;
+
+    // IP origem (proprio)
+    packet->_sender_prot[0] = IP_ADDR[0]; // 127.0.0.2      
+    packet->_sender_prot[1] = IP_ADDR[1];
+    packet->_sender_prot[2] = IP_ADDR[2];
+    packet->_sender_prot[3] = IP_ADDR[3];
+
+    // IP destino
+    packet->_target_prot[0] = requester_packet->_sender_prot[0]; // 127.0.0.1       
+    packet->_target_prot[1] = requester_packet->_sender_prot[1];
+    packet->_target_prot[2] = requester_packet->_sender_prot[2];
+    packet->_target_prot[3] = requester_packet->_sender_prot[3];
+    
+    // Setando os pacotes
+    packet->_hw_type = CPU::htons(0x01);
+    packet->_prot_type = CPU::htons(0x0800);
+    packet->_hw_length = 0x06;
+    packet->_prot_length = 0x04;
+    packet->_operation = CPU::htons(0x0002);
+    packet->_sender_hw = src;
+    packet->_target_hw = dst;
+
+    SiFiveU_NIC::_device->send(dst, (void*) packet, 28, 0x0806);
+
+
+}
+
 void ARP_Manager::arp_receive(ARP_Packet* packet) {
     db<ARP_Manager>(WRN) << "ARP_Manager::receive()"<< endl;
 
-    if (ntohs(packet->_operation) == 1) { // arp request
-        db<ARP_Manager>(WRN) << "Operation ARP request: " << ntohs(packet->_operation) << endl;
+    unsigned int operation = ntohs(packet->_operation);
+
+    if (operation == 0x0001) { // arp request
+        db<ARP_Manager>(WRN) << "Receiving a request: " << operation << endl;
+        //int result = strcmp(IP_ADDR, packet->_target_prot);
+
+        bool my_IP = true;
+        for (int i = 0; i < 4 && my_IP; i++) {
+            if (IP_ADDR[i] != packet->_target_prot[i]) my_IP = false;
+        }
+        
+        if (!my_IP) return; // Request nao é para o meu IP
+        
+        // Envia a resposta
+        arp_send_reply(packet);
+
+    } else { // recebendo um reply
+        db<ARP_Manager>(WRN) << "Receiving a reply: " << operation << endl;
 
     }
-    
-    db<ARP_Manager>(WRN) << "HW type: " << ntohs(packet->_hw_type) << endl;
-    db<ARP_Manager>(WRN) << "Protocol type: " << hex << ntohs(packet->_prot_type) << endl;
     
 }
 

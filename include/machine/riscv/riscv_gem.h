@@ -313,14 +313,17 @@ public:
 
         
         // !! ATENCAO
-        Address address = get_mac();
-        if (!(address[5] % 2)) {
-            db<SiFiveU_NIC>(TRC) << "riscv::init_regs ENABLE_RECEIVE: "<< endl;
-            db<SiFiveU_NIC>(TRC) << address << endl;
+        // Address address = get_mac();
+        // if (!(address[5] % 2)) {
+        //     db<SiFiveU_NIC>(TRC) << "riscv::init_regs ENABLE_RECEIVE: "<< endl;
+        //     db<SiFiveU_NIC>(TRC) << address << endl;
 
-            // c. Enable the receiver. Write a 1 to the gem.network_control[enable_receive] bit.
-            set_bits(NETWORK_CONTROL, ENABLE_RECEIVE);
-        }
+        //     // c. Enable the receiver. Write a 1 to the gem.network_control[enable_receive] bit.
+        //     set_bits(NETWORK_CONTROL, ENABLE_RECEIVE);
+        // }
+
+        // c. Enable the receiver. Write a 1 to the gem.network_control[enable_receive] bit.
+        set_bits(NETWORK_CONTROL, ENABLE_RECEIVE);
         
         //set_reg(INT_ENABLE, 0x2fffffff); // habilitando todas as interrupcoes
         // set_reg(INT_ENABLE, INT_TRASNMIT_COMPLETE | INT_RECEIVE_OVERRUN | INT_RECEIVE_COMPLETE);

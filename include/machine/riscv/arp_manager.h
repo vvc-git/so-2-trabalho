@@ -4,6 +4,7 @@
 #include <system.h>
 #include <network/arp.h>
 #include <machine/riscv/riscv_nic.h>
+#include <utility/string.h>
 
 __BEGIN_SYS
 
@@ -14,7 +15,8 @@ class ARP_Manager {
     typedef NIC_Common::Address<6> Address;
 
     public:
-        void arp_send();
+        void arp_send_request();
+        void arp_send_reply(ARP_Packet* requester_packet);
         void arp_receive(ARP_Packet* packet);
         static void init();
         void set_own_IP();
