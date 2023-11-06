@@ -24,7 +24,7 @@ public:
     {
     public:
         Header() {}
-        Header(const Address & sender_hw, Reg32 sender_prot, const Address & target_hw, Reg32 target_prot) : _sender_hw(sender_hw),  _sender_prot(sender_prot),_target_hw(target_hw),  _target_prot(target_prot) {}
+        // Header(const Address & sender_hw, Reg32 sender_prot, const Address & target_hw, Reg32 target_prot) : _sender_hw(sender_hw),  _sender_prot(sender_prot),_target_hw(target_hw),  _target_prot(target_prot) {}
 
         // const Reg32 & src() const { return _src; }
         // const Reg32 & dst() const { return _dst; }
@@ -38,9 +38,9 @@ public:
         Reg8 _prot_length;
         Reg16 _operation;
         Address _sender_hw;
-        Reg32 _sender_prot;
+        char _sender_prot[4];
         Address _target_hw;
-        Reg32 _target_prot;
+        char _target_prot[4];
 
     } __attribute__((packed));;
     
@@ -63,7 +63,7 @@ public:
         // }
 
     // protected:
-    //     char _data[1500];
+        // char _data[18];
     } __attribute__((packed));
 
 };

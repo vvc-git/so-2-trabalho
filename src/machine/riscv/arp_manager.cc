@@ -41,6 +41,18 @@ void ARP_Manager::arp_send() {
     dst[3] = 0x00;
     dst[4] = 0x00;
     dst[5] = 0x00;
+
+    // IP origem (proprio)
+    packet->_sender_prot[0] = IP_ADDR[0]; // 127.0.0.1      
+    packet->_sender_prot[1] = IP_ADDR[1];
+    packet->_sender_prot[2] = IP_ADDR[2];
+    packet->_sender_prot[3] = IP_ADDR[3];
+
+    // IP destino
+    packet->_target_prot[0] = 127; // 127.0.0.2       
+    packet->_target_prot[1] = 0;
+    packet->_target_prot[2] = 0;
+    packet->_target_prot[3] = 2;
     
     // Setando os pacotes
     packet->_hw_type = CPU::htons(0x01);
@@ -49,23 +61,35 @@ void ARP_Manager::arp_send() {
     packet->_prot_length = 0x04;
     packet->_operation = CPU::htons(0x0001);
     packet->_sender_hw = src;
-    packet->_sender_prot = 0;
     packet->_target_hw = dst;
-    packet->_target_prot = 0;
 
-    SiFiveU_NIC::_device->send(dst, (void*) packet, 100, 0x0806);
+    SiFiveU_NIC::_device->send(dst, (void*) packet, 28, 0x0806);
 
 
 }
 
-void ARP_Manager::arp_receive() {
+void ARP_Manager::arp_receive(ARP_Packet* packet) {
     db<ARP_Manager>(WRN) << "ARP_Manager::receive()"<< endl;
+
+    if (ntohs(packet->_operation) == 1) { // arp request
+        db<ARP_Manager>(WRN) << "Operation ARP request: " << ntohs(packet->_operation) << endl;
+
+    }
     
+    db<ARP_Manager>(WRN) << "HW type: " << ntohs(packet->_hw_type) << endl;
+    db<ARP_Manager>(WRN) << "Protocol type: " << hex << ntohs(packet->_prot_type) << endl;
     
+}
 
+void ARP_Manager::set_own_IP() {
+    db<ARP_Manager>(TRC) << "ARP_Manager::set_own_IP()"<< endl;
 
+    // Setando o proprio endereco IP a partir do MAC definido no makefile
 
-
+    IP_ADDR[0] = 127; // 127.0.0.2       
+    IP_ADDR[1] = 0;
+    IP_ADDR[2] = 0;
+    IP_ADDR[3] = SiFiveU_NIC::_device->address[5];
 
 }
 

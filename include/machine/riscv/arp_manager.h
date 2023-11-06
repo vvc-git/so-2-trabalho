@@ -15,11 +15,13 @@ class ARP_Manager {
 
     public:
         void arp_send();
-        void arp_receive();
+        void arp_receive(ARP_Packet* packet);
         static void init();
+        void set_own_IP();
 
     public:
         static ARP_Manager* _arp_mng;
+        char IP_ADDR[4];
 };
 __END_SYS
 

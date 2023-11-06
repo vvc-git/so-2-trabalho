@@ -342,19 +342,35 @@ int Network_buffer::copy() {
         // Definindo endereço do buffer de dados a partir do índice salvo
         data = net_buffer->rx_data_phy + idx * FRAME_SIZE; 
         
-        // Setando o no rx de dados
+        // Setando o address no rx_desc
         desc->address = data;
 
-        // T
+        // Protocolo do frame que chegou
         short int protocol = ntohs(*(reinterpret_cast<short int *>(data) + 6));
+
+        // Frame size
         unsigned int frame_size = (desc->control & Cadence_GEM::GET_FRAME_LENGTH); //- sizeof(Ethernet::CRC32) - sizeof(Ethernet::Header);
-        db<Network_buffer>(WRN) << "Header: " <<  sizeof(Ethernet::Header)  << endl;
-        db<Network_buffer>(WRN) << "CRC: " <<  sizeof(Ethernet::CRC)  << endl;
-        db<Network_buffer>(WRN) << "Frame size: " << frame_size << endl;
+        db<Network_buffer>(TRC) << "Header: " <<  sizeof(Ethernet::Header)  << endl;
+        db<Network_buffer>(TRC) << "CRC: " <<  sizeof(Ethernet::CRC)  << endl;
+        db<Network_buffer>(TRC) << "Frame size: " << frame_size << endl;
+
 
         if  (protocol == 0x0806) {
+            db<Network_buffer>(TRC) << "Network_buffer::copy -> ARP frame received" << endl;
+
+            unsigned int arp_hsize = 28; // arp header size
             ARP_Packet* packet = new ARP_Packet();
-            memcpy(packet, reinterpret_cast<ARP_Packet*>(desc->address + 14), frame_size);
+
+            // Copiando os dados do buffer RX
+            memcpy(packet, reinterpret_cast<ARP_Packet*>(desc->address + sizeof(Ethernet::Header)), arp_hsize);
+            
+            // Liberando a o buffer RX para a NIC, 
+            // Setando os 2 ultimos bits da word[0] (O wrap bit caso seja necessário)
+            desc->set_rx_own_wrap(idx == ( net_buffer->SLOTS_BUFFER - 1));
+
+            // ARP_Manager trata o pacote
+            ARP_Manager::_arp_mng->arp_receive(packet);
+
             return 0;
         } 
         
@@ -362,11 +378,11 @@ int Network_buffer::copy() {
 
         // Setando os 2 ultimos bits da word[0]
         // (O wrap bit caso seja necessário)
-        desc->set_rx_own_wrap(idx == ( net_buffer->SLOTS_BUFFER - 1));
+        // desc->set_rx_own_wrap(idx == ( net_buffer->SLOTS_BUFFER - 1));
 
         // Faz a copia do buffer rx para data
-        char  payload[1600];
-        net_buffer->buf->get_data_frame(payload);
+        // char  payload[1600];
+        // net_buffer->buf->get_data_frame(payload);
 
         // net_buffer->IP_receive((void *)(payload+14));
     }

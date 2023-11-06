@@ -35,6 +35,8 @@ void Machine::init()
     if(Traits<SiFiveU_NIC>::enabled)
         SiFiveU_NIC::init();
     
+    ARP_Manager::_arp_mng->set_own_IP();
+    
 }
 
 __END_SYS

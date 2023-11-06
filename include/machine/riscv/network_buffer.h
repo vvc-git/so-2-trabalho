@@ -19,6 +19,8 @@
 #include <machine/riscv/riscv_gem.h>
 #include <machine/riscv/riscv_nic.h>
 #include <time.h>
+#include <machine/riscv/arp_manager.h>
+
 
 
 

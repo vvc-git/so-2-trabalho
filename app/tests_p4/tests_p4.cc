@@ -37,7 +37,6 @@ int main()
           ARP_Manager * arp_mng = ARP_Manager::_arp_mng;
           arp_mng->arp_send();
           arp_mng->arp_send();
-          arp_mng->arp_send();
 
           
      //      char data_first[data_size];
