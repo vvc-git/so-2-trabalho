@@ -14,26 +14,12 @@ void ARP_Manager::arp_send_request() {
 
     ARP_Packet* packet = new ARP_Packet();
 
-    db<ARP_Manager>(WRN) << "ARP_Manager::send_request()"<< endl;
+    db<ARP_Manager>(WRN) << "ARP_Manager::send_request() "<< send << endl;
 
     Address src;
     Address dst;
 
     src = SiFiveU_NIC::_device->address;
-
-    // dst[0] = 0xFF;
-    // dst[1] = 0xFF;
-    // dst[2] = 0xFF;
-    // dst[3] = 0xFF;
-    // dst[4] = 0xFF;
-    // dst[5] = 0xFF;
-
-    // src[0] = 0x00;
-    // src[1] = 0x00;
-    // src[2] = 0x00;
-    // src[3] = 0x00;
-    // src[4] = 0x00;
-    // src[5] = 0x00;
 
     dst[0] = 0x00;
     dst[1] = 0x00;
@@ -64,12 +50,13 @@ void ARP_Manager::arp_send_request() {
     packet->_target_hw = dst;
 
     SiFiveU_NIC::_device->send(dst, (void*) packet, 28, 0x0806);
+    send++;
 
 
 }
 
 void ARP_Manager::arp_send_reply(ARP_Packet* requester_packet) {
-    db<ARP_Manager>(WRN) << "ARP_Manager::send_reply()"<< endl;
+    db<ARP_Manager>(TRC) << "ARP_Manager::send_reply() "<< reply <<  endl;
 
     ARP_Packet* packet = new ARP_Packet();
 
@@ -92,6 +79,8 @@ void ARP_Manager::arp_send_reply(ARP_Packet* requester_packet) {
     packet->_target_prot[2] = static_cast<int>(requester_packet->_sender_prot[2]); 
     packet->_target_prot[3] = static_cast<int>(requester_packet->_sender_prot[3]); 
 
+
+
     // Setando os pacotes
     packet->_hw_type = CPU::htons(0x01);
     packet->_prot_type = CPU::htons(0x0800);
@@ -102,8 +91,10 @@ void ARP_Manager::arp_send_reply(ARP_Packet* requester_packet) {
     packet->_target_hw = dst;
     
 
-    db<ARP_Manager>(WRN) << "Sending reply to mac: " << hex << dst << endl;
+    db<ARP_Manager>(TRC) << "Sending reply to mac: " << hex << dst << endl;
     SiFiveU_NIC::_device->send(dst, (void*) packet, 28, 0x0806);
+
+    reply++;
 }
 
 void ARP_Manager::arp_receive(ARP_Packet* packet) {
@@ -112,15 +103,16 @@ void ARP_Manager::arp_receive(ARP_Packet* packet) {
     unsigned int operation = ntohs(packet->_operation);
 
     if (operation == 0x0001) { // arp request
-        db<ARP_Manager>(TRC) << "Receiving a request: " << operation << endl;
+        db<ARP_Manager>(WRN) << "Receiving a request: "<< endl;
 
-        bool my_IP = true;
-        for (int i = 0; i < 4 && my_IP; i++) {
-            if (IP_ADDR[i] != packet->_target_prot[i]) my_IP = false;
-        }
-        
-        if (!my_IP) {
-            db<ARP_Manager>(TRC) << "IP destino nao é o meu " << endl;
+        // // !! BROADCAST
+        // if (is_my_ip(packet->_sender_prot)) {
+        //     db<ARP_Manager>(WRN) <<  "IP origem é o meu "<< endl;
+        //     return;
+        // } 
+
+        if (!is_my_ip(packet->_target_prot)) {
+            db<ARP_Manager>(WRN) << "IP destino nao é o meu " << endl;
             return; // Request nao é para o meu IP
         } 
 
@@ -130,17 +122,16 @@ void ARP_Manager::arp_receive(ARP_Packet* packet) {
         arp_send_reply(packet);
 
     } else { // recebendo um reply
-        db<ARP_Manager>(TRC) << "Receiving a reply: " << operation << endl;
+        db<ARP_Manager>(WRN) << "Receiving a reply: " << endl;
 
-        // Por enquanto, se confere o IP pois cada pacote enviado é, ao mesmo tempo,
-        // recebido. Esse pacotes recebidos por estar em promiscuos mode devem ser descartados
-        bool my_IP = true;
-        for (int i = 0; i < 4 && my_IP; i++) {
-            if (IP_ADDR[i] != packet->_target_prot[i]) my_IP = false;
-        }
+        // // !! BROADCAST
+        // if (is_my_ip(packet->_sender_prot)) {
+        //     db<ARP_Manager>(WRN) << "IP origem é o meu " << endl;
+        //     return; 
+        // } 
         
-        if (!my_IP) {
-            db<ARP_Manager>(TRC) << "IP destino nao é o meu " << endl;
+        if (!is_my_ip(packet->_target_prot)) {
+            db<ARP_Manager>(WRN) << "IP destino nao é o meu " << endl;
             return; // Request nao é para o meu IP
         } 
 
@@ -155,11 +146,56 @@ void ARP_Manager::set_own_IP() {
     db<ARP_Manager>(TRC) << "ARP_Manager::set_own_IP()"<< endl;
 
     // Setando o proprio endereco IP a partir do MAC definido no makefile
-
     IP_ADDR[0] = 127; // 127.0.0.2       
     IP_ADDR[1] = 0;
     IP_ADDR[2] = 0;
     IP_ADDR[3] = SiFiveU_NIC::_device->address[5];
+
+    // Capturando o mac
+    Address mac = SiFiveU_NIC::_device->address;
+
+    // Criando uma nova entrada na tabela
+    ARPTableEntry * entry = new ARPTableEntry{IP_ADDR, mac};
+    
+    // Adicionando na ARP List
+    Element * link = new Element(entry);
+    ARP_Table->insert(link);
+
+}
+
+ARP_Manager::Address * ARP_Manager::get_mac_in_table(unsigned char * ip) {
+
+        List::Element * e;
+        db<ARP_Manager>(TRC) << "ARP_Manager::get_mac_in_table(IP=" << static_cast<int>(ip[0]) << ".";
+        db<ARP_Manager>(TRC) << static_cast<int>(ip[1]) << ".";
+        db<ARP_Manager>(TRC) << static_cast<int>(ip[2]) << ".";
+        db<ARP_Manager>(TRC) << static_cast<int>(ip[3]) << ")" <<endl;
+
+        for (e = ARP_Table->head(); e; e = e->next()) {
+
+            db<ARP_Manager>(TRC) << "ARP_Manager::get_mac_in_table() - Tabela: " << static_cast<int>(e->object()->ip[0]) << ".";
+            db<ARP_Manager>(TRC) << static_cast<int>(e->object()->ip[1]) << ".";
+            db<ARP_Manager>(TRC) << static_cast<int>(e->object()->ip[2]) << ".";
+            db<ARP_Manager>(TRC) << static_cast<int>(e->object()->ip[3]) <<  endl;
+
+            bool find = true;
+            for (int i = 0; i < 4 && find; i++) {
+                if (e->object()->ip[i] != ip[i]) find = false;         
+            }
+
+            if (find) return &(e->object()->mac);
+
+        }  
+
+        return nullptr;
+
+}
+
+bool ARP_Manager::is_my_ip(unsigned char * ip) {
+
+    if (get_mac_in_table(ip))
+        return true;
+    return false;
 
 }
 

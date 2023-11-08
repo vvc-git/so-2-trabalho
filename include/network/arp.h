@@ -38,9 +38,9 @@ public:
         Reg8 _prot_length;
         Reg16 _operation;
         Address _sender_hw;
-        char _sender_prot[4];
+        unsigned char _sender_prot[4];
         Address _target_hw;
-        char _target_prot[4];
+        unsigned char _target_prot[4];
 
     } __attribute__((packed));;
     

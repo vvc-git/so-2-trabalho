@@ -367,6 +367,7 @@ int Network_buffer::copy() {
             
             // Liberando a o buffer RX para a NIC, 
             // Setando os 2 ultimos bits da word[0] (O wrap bit caso seja necessário)
+            // ?? ISSO CONTINUA FUNCIONANDO PARA O IP??
             desc->set_rx_own_wrap(idx == ( net_buffer->SLOTS_BUFFER - 1));
 
             // ARP_Manager trata o pacote
