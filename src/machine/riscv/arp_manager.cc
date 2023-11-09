@@ -10,7 +10,11 @@ void ARP_Manager::init() {
     _arp_mng = new (SYSTEM) ARP_Manager();
 }
 
-void ARP_Manager::arp_send_request() {
+
+// Essa função retorna falso para quando a o IP destino não está na rede ou de algum erro no envio
+// Se for true, foi feito um arp request ou a entrada já está na tabela. Então quem a chamou precisa ir na
+// tabela
+bool ARP_Manager::arp_send_request() {
 
     ARP_Packet* packet = new ARP_Packet();
 
@@ -37,8 +41,19 @@ void ARP_Manager::arp_send_request() {
     // IP destino
     packet->_target_prot[0] = 127; // 127.0.0.2       
     packet->_target_prot[1] = 0;
-    packet->_target_prot[2] = 0;
+    packet->_target_prot[2] = 60;
     packet->_target_prot[3] = 2;
+
+
+        // Verifico se é na minha rede
+    is_my_network(packet->_target_prot);
+    // Se sim,
+        // Verifca se está na minha tabela (Meu ip está incluso)
+            // Se sim, retorno false
+            // ** Se não, faço o arp request 
+    // Se não,
+        // return false
+
     
     // Setando os pacotes
     packet->_hw_type = CPU::htons(0x01);
@@ -51,7 +66,7 @@ void ARP_Manager::arp_send_request() {
 
     SiFiveU_NIC::_device->send(dst, (void*) packet, 28, 0x0806);
     send++;
-
+    return true;
 
 }
 
@@ -137,6 +152,8 @@ void ARP_Manager::arp_receive(ARP_Packet* packet) {
 
         db<ARP_Manager>(WRN) << "MAC descoberto: " << packet->_sender_hw << endl;
         // Atualizar ARP table com novo mac.
+
+
         // Fazer o envio para o MAC desejado
     }
     
@@ -196,6 +213,36 @@ bool ARP_Manager::is_my_ip(unsigned char * ip) {
     if (get_mac_in_table(ip))
         return true;
     return false;
+
+}
+
+
+bool ARP_Manager::is_my_network(unsigned char * ip) {
+     
+    db<ARP_Manager>(TRC) << "is_my_network::ip(IP=" << static_cast<int>(ip[0]) << ".";
+    db<ARP_Manager>(TRC) << static_cast<int>(ip[1]) << ".";
+    db<ARP_Manager>(TRC) << static_cast<int>(ip[2]) << ".";
+    db<ARP_Manager>(TRC) << static_cast<int>(ip[3]) << ")" <<endl;
+
+    // Aplicando a máscara de sub-rede no endereço IP
+    unsigned char subnetwork1[4];
+    unsigned char subnetwork2[4];
+
+
+    for (int i = 0; i < 4; i++) {
+        subnetwork1[i] = ip[i] & submask[i];
+        subnetwork2[i] = IP_ADDR[i] & submask[i];
+
+        db<ARP_Manager>(TRC) << "is_my_network::submask1[" << i << "]: " << static_cast<int>(subnetwork1[i]) << endl;
+        db<ARP_Manager>(TRC) << "is_my_network::submask2[" << i << "]: " << static_cast<int>(subnetwork2[i]) << endl;
+
+        if (subnetwork1[i] != subnetwork2[i]) {
+            return false;
+        }
+
+    }
+
+    return true;
 
 }
 

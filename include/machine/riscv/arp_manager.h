@@ -17,9 +17,10 @@ class ARP_Manager {
     private:
         Address * get_mac_in_table(unsigned char * ip);
         bool is_my_ip(unsigned char * ip);
+        bool is_my_network(unsigned char * ip);
 
     public:
-        void arp_send_request();
+        bool arp_send_request();
         void arp_send_reply(ARP_Packet* requester_packet);
         void arp_receive(ARP_Packet* packet);
         static void init();
@@ -40,9 +41,11 @@ class ARP_Manager {
         // Lista de infos dos datagramas em construção
         List * ARP_Table = new List;
 
-        // Testes
-        int send = 0;
-        int reply = 0;
+        // Rede com dois hosts (252)
+        char submask[4] = {255, 255, 255, 252};
+
+        int send =0 ;
+        int reply =0 ;
 };
 __END_SYS
 
