@@ -5,7 +5,7 @@ __BEGIN_SYS
 ARP_Manager* ARP_Manager::_arp_mng;
 
 void ARP_Manager::init() {
-    db<ARP_Manager>(WRN) << "ARP_Manager::init()"<< endl;
+    db<ARP_Manager>(TRC) << "ARP_Manager::init()"<< endl;
 
     _arp_mng = new (SYSTEM) ARP_Manager();
 }
@@ -14,12 +14,31 @@ void ARP_Manager::init() {
 // Essa função retorna falso para quando a o IP destino não está na rede ou de algum erro no envio
 // Se for true, foi feito um arp request ou a entrada já está na tabela. Então quem a chamou precisa ir na
 // tabela
-bool ARP_Manager::arp_send_request() {
+bool ARP_Manager::arp_send_request(unsigned char * dst_ip) {
 
+
+    // Verifico se é na minha rede
+    if (is_my_network(dst_ip)) {
+    // // Se sim,
+        // Verifca se está na minha tabela (Meu ip está incluso)
+        Address * mac = get_mac_in_table(dst_ip);
+        // Se sim, retorno true (quem chamou a função precisa pega na tabela)
+        db<ARP_Manager>(TRC) << "ARP_Manager::send_request()::É da minha rede" << endl;
+        if (mac) {
+            db<ARP_Manager>(WRN) << "ARP_Manager::send_request()::ACHOU O MAC " << endl;
+            return true; 
+        }
+        // ** Se não, faço o arp request 
+    } else {
+        db<ARP_Manager>(TRC) << "ARP_Manager::send_request()::NÃO É da minha rede" << endl;
+        return false;
+    }
+    
+    db<ARP_Manager>(TRC) << "ARP_Manager::send_request() "<< send << endl;
+    
+    // ** Fazendo o ARP Request 
     ARP_Packet* packet = new ARP_Packet();
-
-    db<ARP_Manager>(WRN) << "ARP_Manager::send_request() "<< send << endl;
-
+   
     Address src;
     Address dst;
 
@@ -32,27 +51,15 @@ bool ARP_Manager::arp_send_request() {
     dst[4] = 0x00;
     dst[5] = 0x00;
 
-    // IP origem (proprio)
-    packet->_sender_prot[0] = IP_ADDR[0]; // 127.0.0.1      
-    packet->_sender_prot[1] = IP_ADDR[1];
-    packet->_sender_prot[2] = IP_ADDR[2];
-    packet->_sender_prot[3] = IP_ADDR[3];
+    for (int i = 0; i < 4; i++) {
+        packet->_sender_prot[i] = IP_ADDR[i];
+        packet->_target_prot[i] = dst_ip[i]; 
+    }
 
-    // IP destino
-    packet->_target_prot[0] = 127; // 127.0.0.2       
-    packet->_target_prot[1] = 0;
-    packet->_target_prot[2] = 60;
-    packet->_target_prot[3] = 2;
-
-
-        // Verifico se é na minha rede
-    is_my_network(packet->_target_prot);
-    // Se sim,
-        // Verifca se está na minha tabela (Meu ip está incluso)
-            // Se sim, retorno false
-            // ** Se não, faço o arp request 
-    // Se não,
-        // return false
+    db<ARP_Manager>(TRC) << "arp_send_request::packet->target_prot: (" << static_cast<int>(packet->_target_prot[0]) << ".";
+    db<ARP_Manager>(TRC) << static_cast<int>(packet->_target_prot[1]) << ".";
+    db<ARP_Manager>(TRC) << static_cast<int>(packet->_target_prot[2]) << ".";
+    db<ARP_Manager>(TRC) << static_cast<int>(packet->_target_prot[3]) << ")" <<endl;
 
     
     // Setando os pacotes
@@ -94,8 +101,6 @@ void ARP_Manager::arp_send_reply(ARP_Packet* requester_packet) {
     packet->_target_prot[2] = static_cast<int>(requester_packet->_sender_prot[2]); 
     packet->_target_prot[3] = static_cast<int>(requester_packet->_sender_prot[3]); 
 
-
-
     // Setando os pacotes
     packet->_hw_type = CPU::htons(0x01);
     packet->_prot_type = CPU::htons(0x0800);
@@ -106,7 +111,7 @@ void ARP_Manager::arp_send_reply(ARP_Packet* requester_packet) {
     packet->_target_hw = dst;
     
 
-    db<ARP_Manager>(TRC) << "Sending reply to mac: " << hex << dst << endl;
+    db<ARP_Manager>(WRN) << "Sending reply to mac: " << hex << dst << endl;
     SiFiveU_NIC::_device->send(dst, (void*) packet, 28, 0x0806);
 
     reply++;
@@ -118,41 +123,31 @@ void ARP_Manager::arp_receive(ARP_Packet* packet) {
     unsigned int operation = ntohs(packet->_operation);
 
     if (operation == 0x0001) { // arp request
-        db<ARP_Manager>(WRN) << "Receiving a request: "<< endl;
-
-        // // !! BROADCAST
-        // if (is_my_ip(packet->_sender_prot)) {
-        //     db<ARP_Manager>(WRN) <<  "IP origem é o meu "<< endl;
-        //     return;
-        // } 
+        db<ARP_Manager>(TRC) << "Receiving a request: "<< endl;
 
         if (!is_my_ip(packet->_target_prot)) {
-            db<ARP_Manager>(WRN) << "IP destino nao é o meu " << endl;
+            db<ARP_Manager>(TRC) << "IP destino nao é o meu " << endl;
             return; // Request nao é para o meu IP
         } 
 
-        db<ARP_Manager>(WRN) << "My IP was requested" << endl;
+        db<ARP_Manager>(TRC) << "My IP was requested" << endl;
         
         // Envia a resposta
         arp_send_reply(packet);
 
     } else { // recebendo um reply
-        db<ARP_Manager>(WRN) << "Receiving a reply: " << endl;
-
-        // // !! BROADCAST
-        // if (is_my_ip(packet->_sender_prot)) {
-        //     db<ARP_Manager>(WRN) << "IP origem é o meu " << endl;
-        //     return; 
-        // } 
+        db<ARP_Manager>(TRC) << "Receiving a reply: " << endl;
         
         if (!is_my_ip(packet->_target_prot)) {
-            db<ARP_Manager>(WRN) << "IP destino nao é o meu " << endl;
+            db<ARP_Manager>(TRC) << "IP destino nao é o meu " << endl;
             return; // Request nao é para o meu IP
         } 
 
+        db<ARP_Manager>(TRC) << "IP do MAC descoberto: " << static_cast<int>(packet->_sender_prot[0]) << endl;
         db<ARP_Manager>(WRN) << "MAC descoberto: " << packet->_sender_hw << endl;
+        
         // Atualizar ARP table com novo mac.
-
+        add_ip(packet->_sender_prot, packet->_sender_hw);
 
         // Fazer o envio para o MAC desejado
     }
@@ -171,16 +166,17 @@ void ARP_Manager::set_own_IP() {
     // Capturando o mac
     Address mac = SiFiveU_NIC::_device->address;
 
-    // Criando uma nova entrada na tabela
-    ARPTableEntry * entry = new ARPTableEntry{IP_ADDR, mac};
+    // // Criando uma nova entrada na tabela
+    // ARPTableEntry * entry = new ARPTableEntry{IP_ADDR, mac};
     
-    // Adicionando na ARP List
-    Element * link = new Element(entry);
-    ARP_Table->insert(link);
+    // // Adicionando na ARP List
+    // Element * link = new Element(entry);
+    // ARP_Table->insert(link);
+    add_ip(IP_ADDR, mac);
 
 }
 
-ARP_Manager::Address * ARP_Manager::get_mac_in_table(unsigned char * ip) {
+ARP_Manager::Address * ARP_Manager::get_mac_in_table(const unsigned char * ip) {
 
         List::Element * e;
         db<ARP_Manager>(TRC) << "ARP_Manager::get_mac_in_table(IP=" << static_cast<int>(ip[0]) << ".";
@@ -200,22 +196,33 @@ ARP_Manager::Address * ARP_Manager::get_mac_in_table(unsigned char * ip) {
                 if (e->object()->ip[i] != ip[i]) find = false;         
             }
 
-            if (find) return &(e->object()->mac);
+            if (find) {
+                db<ARP_Manager>(TRC) <<"ARP_Manager::get_mac_in_table()::Mac descoberto: " << e->object()->mac << endl;
+                return &(e->object()->mac);
+            }
 
         }  
 
+        db<ARP_Manager>(TRC) <<"ARP_Manager::get_mac_in_table()::Não achou na tabela" << endl;
         return nullptr;
 
 }
 
 bool ARP_Manager::is_my_ip(unsigned char * ip) {
 
-    if (get_mac_in_table(ip))
-        return true;
-    return false;
+    for (int i = 0; i < 4; i++) {
+
+        db<ARP_Manager>(TRC) << "is_my_network::IP_ADDR[" << i << "]: " << static_cast<int>(IP_ADDR[i]) << endl;
+        db<ARP_Manager>(TRC) << "is_my_network::submask2[" << i << "]: " << static_cast<int>(ip[i]) << endl;
+
+        if (ip[i] != IP_ADDR[i]) {
+            return false;
+        }
+    }
+
+    return true;
 
 }
-
 
 bool ARP_Manager::is_my_network(unsigned char * ip) {
      
@@ -239,10 +246,42 @@ bool ARP_Manager::is_my_network(unsigned char * ip) {
         if (subnetwork1[i] != subnetwork2[i]) {
             return false;
         }
-
     }
 
     return true;
+
+}
+
+void ARP_Manager::add_ip(unsigned char * ip, const Address mac) {
+
+    db<ARP_Manager>(TRC) << "add_ip::ip(IP=" << static_cast<int>(ip[0]) << ".";
+    db<ARP_Manager>(TRC) << static_cast<int>(ip[1]) << ".";
+    db<ARP_Manager>(TRC) << static_cast<int>(ip[2]) << ".";
+    db<ARP_Manager>(TRC) << static_cast<int>(ip[3]) << ")" <<endl;
+    
+    db<ARP_Manager>(TRC) << "add_ip::ip(MAC=" << mac << ")" << endl;
+    // db<ARP_Manager>(TRC) << static_cast<int>(mac[1]) << ".";
+    // db<ARP_Manager>(TRC) << static_cast<int>(mac[2]) << ".";
+    // db<ARP_Manager>(TRC) << static_cast<int>(mac[3]) << ".";
+    // db<ARP_Manager>(TRC) << static_cast<int>(mac[4]) << ".";
+    // db<ARP_Manager>(TRC) << static_cast<int>(mac[5]) << ")" <<endl;
+
+    // Criando uma nova entrada na tabela
+    ARPTableEntry * entry = new ARPTableEntry{ip, mac};
+    
+    // Adicionando na ARP List
+    Element * link = new Element(entry);
+    ARP_Table->insert(link);
+
+    List::Element * e;
+    for (e = ARP_Table->head(); e; e = e->next()) {
+
+        db<ARP_Manager>(TRC) << "add_ip::ip(MAC_Tabela=" << e->object()->mac << ")" << endl;     
+        db<ARP_Manager>(TRC) << "add_ip::ip(IP_Tabela= "<< static_cast<int>(e->object()->ip[0]) << ".";
+        db<ARP_Manager>(TRC) << static_cast<int>(e->object()->ip[1]) << ".";
+        db<ARP_Manager>(TRC) << static_cast<int>(e->object()->ip[2]) << ".";
+        db<ARP_Manager>(TRC) << static_cast<int>(e->object()->ip[3]) << ")\n" <<endl;
+    }
 
 }
 

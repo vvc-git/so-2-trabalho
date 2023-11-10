@@ -15,12 +15,13 @@ class ARP_Manager {
     typedef NIC_Common::Address<6> Address;
 
     private:
-        Address * get_mac_in_table(unsigned char * ip);
+        Address * get_mac_in_table(const unsigned char * ip);
         bool is_my_ip(unsigned char * ip);
         bool is_my_network(unsigned char * ip);
+        void add_ip(unsigned char * ip, const Address mac);
 
     public:
-        bool arp_send_request();
+        bool arp_send_request(unsigned char * dst_ip);
         void arp_send_reply(ARP_Packet* requester_packet);
         void arp_receive(ARP_Packet* packet);
         static void init();
