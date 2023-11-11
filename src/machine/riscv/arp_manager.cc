@@ -15,24 +15,6 @@ void ARP_Manager::init() {
 // Se for true, foi feito um arp request ou a entrada já está na tabela. Então quem a chamou precisa ir na
 // tabela
 bool ARP_Manager::arp_send_request(unsigned char * dst_ip) {
-
-
-    // Verifico se é na minha rede
-    if (is_my_network(dst_ip)) {
-    // // Se sim,
-        // Verifca se está na minha tabela (Meu ip está incluso)
-        Address * mac = get_mac_in_table(dst_ip);
-        // Se sim, retorno true (quem chamou a função precisa pega na tabela)
-        db<ARP_Manager>(TRC) << "ARP_Manager::send_request()::É da minha rede" << endl;
-        if (mac) {
-            db<ARP_Manager>(WRN) << "ARP_Manager::send_request()::ACHOU O MAC " << endl;
-            return true; 
-        }
-        // ** Se não, faço o arp request 
-    } else {
-        db<ARP_Manager>(TRC) << "ARP_Manager::send_request()::NÃO É da minha rede" << endl;
-        return false;
-    }
     
     db<ARP_Manager>(TRC) << "ARP_Manager::send_request() "<< send << endl;
     
@@ -216,34 +198,6 @@ bool ARP_Manager::is_my_ip(unsigned char * ip) {
         db<ARP_Manager>(TRC) << "is_my_network::submask2[" << i << "]: " << static_cast<int>(ip[i]) << endl;
 
         if (ip[i] != IP_ADDR[i]) {
-            return false;
-        }
-    }
-
-    return true;
-
-}
-
-bool ARP_Manager::is_my_network(unsigned char * ip) {
-     
-    db<ARP_Manager>(TRC) << "is_my_network::ip(IP=" << static_cast<int>(ip[0]) << ".";
-    db<ARP_Manager>(TRC) << static_cast<int>(ip[1]) << ".";
-    db<ARP_Manager>(TRC) << static_cast<int>(ip[2]) << ".";
-    db<ARP_Manager>(TRC) << static_cast<int>(ip[3]) << ")" <<endl;
-
-    // Aplicando a máscara de sub-rede no endereço IP
-    unsigned char subnetwork1[4];
-    unsigned char subnetwork2[4];
-
-
-    for (int i = 0; i < 4; i++) {
-        subnetwork1[i] = ip[i] & submask[i];
-        subnetwork2[i] = IP_ADDR[i] & submask[i];
-
-        db<ARP_Manager>(TRC) << "is_my_network::submask1[" << i << "]: " << static_cast<int>(subnetwork1[i]) << endl;
-        db<ARP_Manager>(TRC) << "is_my_network::submask2[" << i << "]: " << static_cast<int>(subnetwork2[i]) << endl;
-
-        if (subnetwork1[i] != subnetwork2[i]) {
             return false;
         }
     }

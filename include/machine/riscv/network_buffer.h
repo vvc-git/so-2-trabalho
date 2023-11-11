@@ -74,6 +74,14 @@ public:
         char data[1480];
     };
 
+    struct IPTableEntry 
+    {
+        unsigned char* destination;
+        unsigned char* gateway;
+        unsigned char* genmask;
+
+    };
+
 public:
     
     Network_buffer(); 
@@ -94,6 +102,10 @@ public:
 
    void IP_send(char* data, unsigned int data_size);
    void IP_receive(void* data);
+   void IP_routing(unsigned char* dst_ip);
+   bool IP_is_my_network(unsigned char * dst_ip);
+   bool IP_is_localhost(unsigned char * dst_ip);
+   void IP_add_entry(unsigned char* dst, unsigned char* gateway, unsigned char* genmask);
 
 
 public:
@@ -152,6 +164,16 @@ public:
 
     // Lista de infos dos datagramas em construção
     List * dt_list = new List;
+
+
+    typedef Simple_List<IPTableEntry> IP_Table;
+    typedef typename IP_Table::Element IP_Element;
+
+    // Informações de cada datagrama sendo montado
+
+
+    // Lista de infos dos datagramas em construção
+    IP_Table * routing_table = new IP_Table;
 
 
 };

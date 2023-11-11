@@ -28,23 +28,23 @@ int main()
      dst[4] = 0x00;
      dst[5] = 0x02;
 
-     // unsigned char ip1[4];
-     unsigned char ip2[4];
+     unsigned char ip1[4];
+     // unsigned char ip2[4];
      // unsigned char ip3[4];
 
      // // IP destino fora da minha rede
-     // ip1[0] = 127; // 127.0.60.2       
-     // ip1[1] = 0;
-     // ip1[2] = 60;
-     // ip1[3] = 2;
+     ip1[0] = 127; // 127.0.60.2       
+     ip1[1] = 0;
+     ip1[2] = 60;
+     ip1[3] = 2;
 
-     // IP destino na minha rede e não é o meu
-     ip2[0] = 127; // 127.0.0.2       
-     ip2[1] = 0;
-     ip2[2] = 0;
-     ip2[3] = 2;
+     // IP destino na minha rede e não é o meu 150, 162, 60, 0
+     // ip2[0] = 150; // 127.0.0.2       
+     // ip2[1] = 162;
+     // ip2[2] = 60;
+     // ip2[3] = 2;
 
-     // // IP destino na minha rede e sou eu mesmo 
+     // IP destino na minha rede e sou eu mesmo 
      // ip3[0] = 127; // 127.0.0.1     
      // ip3[1] = 0;
      // ip3[2] = 0;
@@ -56,20 +56,23 @@ int main()
      // unsigned int frag_data_size = 1480;
      // unsigned int data_size = 1480;
      if(sifiveu_nic->address[5] % 2 ) {
-          ARP_Manager * arp_mng = ARP_Manager::_arp_mng;
-          cout << "Caso ignorado " << endl;
-          arp_mng->arp_send_request(ip2);
+
+          Network_buffer::net_buffer->IP_routing(ip1);
+
+          // ARP_Manager * arp_mng = ARP_Manager::_arp_mng;
+          // cout << "Caso ignorado " << endl;
+          // arp_mng->arp_send_request(ip2);
           
-          // cout << "Caso 1: IP destino fora da minha rede (não faz nada ainda) "<< endl;
-          // arp_mng->arp_send_request(ip1);
+          // // cout << "Caso 1: IP destino fora da minha rede (não faz nada ainda) "<< endl;
+          // // arp_mng->arp_send_request(ip1);
 
-          cout << "Caso 2:  IP destino na minha rede e não é o meu (e NÃO tem na tabela) "<< endl;
-          arp_mng->arp_send_request(ip2);
+          // cout << "Caso 2:  IP destino na minha rede e não é o meu (e NÃO tem na tabela) "<< endl;
+          // arp_mng->arp_send_request(ip2);
 
-          Delay(5000000);
+          // Delay(5000000);
 
-          cout << "Caso 2.1:  IP destino na minha rede e não é o meu ( tem na tabela) "<< endl;
-          arp_mng->arp_send_request(ip2);
+          // cout << "Caso 2.1:  IP destino na minha rede e não é o meu ( tem na tabela) "<< endl;
+          // arp_mng->arp_send_request(ip2);
 
 
           // cout << "  Caso 3: IP destino na minha rede e sou eu mesmo (e tem na tabela) " << "\n" << endl;
