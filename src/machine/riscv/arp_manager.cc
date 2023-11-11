@@ -137,7 +137,7 @@ void ARP_Manager::set_own_IP() {
     db<ARP_Manager>(TRC) << "ARP_Manager::set_own_IP()"<< endl;
 
     // Setando o proprio endereco IP a partir do MAC definido no makefile 150, 162, 60, 0
-    IP_ADDR[0] = 150; // 127.0.0.2       
+    IP_ADDR[0] = 150;      
     IP_ADDR[1] = 162;
     IP_ADDR[2] = 60;
     IP_ADDR[3] = SiFiveU_NIC::_device->address[5];
@@ -245,7 +245,7 @@ bool ARP_Manager::send(unsigned char * dst_ip) {
         db<ARP_Manager>(WRN) <<"ARP_Manager::send()::Tentativa " << tries << endl;
         arp_send_request(dst_ip);
         tries++;
-        Delay(25000000);
+        Delay(250000);
         mac = get_mac_in_table(dst_ip);
 
     }
