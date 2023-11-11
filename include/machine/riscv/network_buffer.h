@@ -43,6 +43,7 @@ Network_buffer :  public Observer// , Data_Observed<DT_Buffer, void>
     typedef Heap DT_Buffer;
     typedef Ethernet::Protocol Protocol;
     typedef Arp::Packet ARP_Packet;
+    typedef NIC_Common::Address<6> Address;
 
 
 public:
@@ -58,8 +59,8 @@ public:
         Reg8 TTL; // Time to live
         Reg8 Protocol; // This field indicates the next level protocol used in the data portion of the internet datagram.
         Reg16 Header_Checksum;
-        char SRC_ADDR[4];
-        char DST_ADDR[4];
+        unsigned char * SRC_ADDR;
+        unsigned char * DST_ADDR;
     };
 
     enum {
@@ -100,7 +101,7 @@ public:
    // Função de execução da thread
    static int copy();
 
-   void IP_send(char* data, unsigned int data_size);
+   void IP_send(char* data, unsigned int data_size, unsigned char * dst_ip, Address * dst_mac);
    void IP_receive(void* data);
    void IP_routing(unsigned char* dst_ip);
    bool IP_is_my_network(unsigned char * dst_ip);

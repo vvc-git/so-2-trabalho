@@ -15,15 +15,16 @@ class ARP_Manager {
     typedef NIC_Common::Address<6> Address;
 
     private:
-        Address * get_mac_in_table(const unsigned char * ip);
         bool is_my_ip(unsigned char * ip);
         bool is_my_network(unsigned char * ip);
         void add_ip(unsigned char * ip, const Address mac);
 
     public:
+        bool send(unsigned char * dst_ip);
         bool arp_send_request(unsigned char * dst_ip);
         void arp_send_reply(ARP_Packet* requester_packet);
         void arp_receive(ARP_Packet* packet);
+        Address * get_mac_in_table(const unsigned char * ip);
         static void init();
         void set_own_IP();
 
@@ -44,9 +45,6 @@ class ARP_Manager {
 
         // Rede com dois hosts (252)
         char submask[4] = {255, 255, 255, 252};
-
-        int send =0 ;
-        int reply =0 ;
 };
 __END_SYS
 

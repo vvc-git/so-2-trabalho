@@ -54,17 +54,11 @@ Network_buffer::Network_buffer() {
 
 }
 
-void Network_buffer::IP_send(char* data, unsigned int data_size) {
-    db<Network_buffer>(WRN) << "Network_buffer::IP_send inicio"<< endl;
+void Network_buffer::IP_send(char* data, unsigned int data_size, unsigned char * dst_ip, Address * dst_mac) {
+    db<Network_buffer>(TRC) << "Network_buffer::IP_send inicio"<< endl;
 
     // Setando MAC de destino
-    NIC<Ethernet>::Address dst;
-    dst[0] = 0x00;
-    dst[1] = 0x00;
-    dst[2] = 0x00;
-    dst[3] = 0x00;
-    dst[4] = 0x00;
-    dst[5] = 0x02;
+    Address dst = *dst_mac;
     
     // Irá avançar sobre data para fazer o memcpy
     char* data_pointer;
@@ -88,20 +82,18 @@ void Network_buffer::IP_send(char* data, unsigned int data_size) {
     dt_header.TTL = 64;
     dt_header.Protocol = 4;
     dt_header.Header_Checksum = 0;
-    dt_header.SRC_ADDR[0] = 127; // 127.0.0.1
-    dt_header.SRC_ADDR[1] = 0;
-    dt_header.SRC_ADDR[2] = 0;
-    dt_header.SRC_ADDR[3] = 1;
-    dt_header.DST_ADDR[0] = 127; // 127.0.0.2       
-    dt_header.DST_ADDR[1] = 0;
-    dt_header.DST_ADDR[2] = 0;
-    dt_header.DST_ADDR[3] = 2;
+    // dt_header.SRC_ADDR[0] = 127; // 127.0.0.1
+    // dt_header.SRC_ADDR[1] = 0;
+    // dt_header.SRC_ADDR[2] = 0;
+    // dt_header.SRC_ADDR[3] = 1;
+    dt_header.SRC_ADDR = ARP_Manager::_arp_mng->IP_ADDR;
+    dt_header.DST_ADDR = dst_ip;
     
 
-    db<Network_buffer>(WRN) << "Identification: " << hex << CPU_Common::htons(dt_header.Identification) << endl;
+    db<Network_buffer>(TRC) << "Identification: " << hex << CPU_Common::htons(dt_header.Identification) << endl;
     for (unsigned int i = 0; i < iter; i++) {
         if (i == iter - 1 && !last_size) break; // fragmentação já realizada
-        db<Network_buffer>(WRN) << i << "° fragmento " << endl;
+        db<Network_buffer>(TRC) << i << "° fragmento " << endl;
 
         // Construindo Fragmento    
         Datagram_Fragment fragment;
@@ -130,7 +122,7 @@ void Network_buffer::IP_send(char* data, unsigned int data_size) {
 
         // Preenchimento do último fragmento e Seta total length
         if (i == iter - 1) {
-            db<Network_buffer>(WRN) << "Last_siz " << last_size << endl;
+            db<Network_buffer>(TRC) << "Last_siz " << last_size << endl;
             fragment.header.Total_Length = CPU_Common::htons(last_size + header_size);
             data_pointer = fragment.data + last_size;   
             memset(data_pointer, '9', frag_data_size - last_size);
@@ -143,10 +135,10 @@ void Network_buffer::IP_send(char* data, unsigned int data_size) {
         db<Network_buffer>(TRC) << "Total_Length original " << CPU_Common::ntohs(fragment.header.Total_Length)<< endl;
         db<Network_buffer>(TRC) << "Total_Length sem o size: " << (CPU_Common::ntohs(fragment.header.Total_Length) * 8) - header_size << endl;
         db<Network_buffer>(TRC) << "Identification: " << hex << CPU_Common::htons(fragment.header.Identification) << endl;
-        db<Network_buffer>(WRN) << "Offset: " << (CPU_Common::htons(fragment.header.Flags_Offset) & GET_OFFSET)*8 << endl;
+        db<Network_buffer>(TRC) << "Offset: " << (CPU_Common::htons(fragment.header.Flags_Offset) & GET_OFFSET)*8 << endl;
     }
     
-    db<Network_buffer>(WRN) << "---------------------"<< endl;
+    db<Network_buffer>(TRC) << "---------------------"<< endl;
     db<Network_buffer>(TRC) << "Network_buffer::IP_send fim"<< endl;
 }
 
@@ -158,11 +150,9 @@ void Network_buffer::IP_receive(void* data) {
     memcpy(content, data, 1500);
 
     Datagram_Fragment * fragment = reinterpret_cast<Datagram_Fragment*>(content);
+    db<Network_buffer>(TRC) << "---------------------"<< endl;
+    db<Network_buffer>(TRC) << "Network_buffer::IP_receive\n"<< endl;
 
-    if (fragment->header.Total_Length == 0) return;
-
-    db<Network_buffer>(WRN) << "---------------------"<< endl;
-    db<Network_buffer>(WRN) << "Network_buffer::IP_receive\n"<< endl;
     
     // Capturando os valores do fragmento
     unsigned int length = CPU_Common::ntohs(fragment->header.Total_Length) - 20;
@@ -174,8 +164,8 @@ void Network_buffer::IP_receive(void* data) {
     
     // Verificação se os valores estão certos
     db<Network_buffer>(TRC) << "length: " << hex << length << endl;
-    db<Network_buffer>(WRN) << "identification: " << hex << identification << endl;
-    db<Network_buffer>(WRN) << "offset: " << offset << endl;
+    db<Network_buffer>(TRC) << "identification: " << hex << identification << endl;
+    db<Network_buffer>(TRC) << "offset: " << offset << endl;
     db<Network_buffer>(TRC) << "flags: " << flags << endl;
 
 
@@ -234,7 +224,7 @@ void Network_buffer::IP_receive(void* data) {
     // Quando todos os framentos chegaram, remonta.
     if (total_frame == dt_info->num_fragments) {
         
-        db<Network_buffer>(WRN) << "Remontagem" << endl;
+        db<Network_buffer>(TRC) << "Remontagem" << endl;
         
         // Capturando o 1° fragmento 
         Simple_List<Datagram_Fragment>::Element * h = e->object()->fragments->head();
@@ -392,8 +382,8 @@ int Network_buffer::copy() {
 
 
         if  (protocol == 0x0806) {
-            db<Network_buffer>(TRC) << "Network_buffer::copy -> ARP frame received" << endl;
-
+            db<Network_buffer>(TRC) << "copy(): Pacote ARP"<< endl;
+            
             unsigned int arp_hsize = 28; // arp header size
             ARP_Packet* packet = new ARP_Packet();
 
@@ -402,25 +392,44 @@ int Network_buffer::copy() {
             
             // Liberando a o buffer RX para a NIC, 
             // Setando os 2 ultimos bits da word[0] (O wrap bit caso seja necessário)
-            // ?? ISSO CONTINUA FUNCIONANDO PARA O IP??
             desc->set_rx_own_wrap(idx == ( net_buffer->SLOTS_BUFFER - 1));
 
             // ARP_Manager trata o pacote
             ARP_Manager::_arp_mng->arp_receive(packet);
 
-        } 
+        }
         
+        if (protocol == 0x0800) {
+            
+            db<Network_buffer>(TRC) << "copy(): Pacote IP "<< endl;
 
+            // Verifica se o ip destino está certo
+            Datagram_Header * header = (reinterpret_cast<Datagram_Header*>(desc->address + 14));
 
-        // Setando os 2 ultimos bits da word[0]
-        // (O wrap bit caso seja necessário)
-        // desc->set_rx_own_wrap(idx == ( net_buffer->SLOTS_BUFFER - 1));
+            bool equal = true;
+            for (int i = 0; equal && i < 4; i++) {
 
-        // Faz a copia do buffer rx para data
-        // char  payload[1600];
-        // net_buffer->buf->get_data_frame(payload);
+                if (ARP_Manager::_arp_mng->IP_ADDR[i] != header->DST_ADDR[i]) {
+                    equal = false;
+                }
+            }
 
-        // net_buffer->IP_receive((void *)(payload+14));
+            if (!equal) continue;
+        
+            
+            // Faz a copia do buffer rx para data
+            char  payload[1600];
+            net_buffer->buf->get_data_frame(payload);
+            memcpy(payload, reinterpret_cast<char*>(desc->address), FRAME_SIZE);
+            
+            // Setando os 2 ultimos bits da word[0]
+            // (O wrap bit caso seja necessário)
+            desc->set_rx_own_wrap(idx == ( net_buffer->SLOTS_BUFFER - 1));
+
+            net_buffer->IP_receive((void *)(payload+sizeof(Ethernet::Header)));
+
+        }
+        
     }
     
     return 0;
@@ -455,22 +464,38 @@ Cadence_GEM::Desc * Network_buffer::get_free_tx_desc() {
 void Network_buffer::IP_routing(unsigned char* dst_ip)
  {
 
-    db<ARP_Manager>(WRN) << "IP_Routing()" << endl;
+    db<ARP_Manager>(TRC) << "IP_Routing()" << endl;
     
 
     if (IP_is_localhost(dst_ip)) {
-        db<ARP_Manager>(WRN) << "IP_Routing() - É localhost() " << endl;
+        db<ARP_Manager>(TRC) << "IP_Routing() - É localhost() " << endl;
 
     } else if (IP_is_my_network(dst_ip)) { // Verifico se é na minha rede
-        db<ARP_Manager>(WRN) << "IP_Routing() - É a própria rede " << endl;
+        db<ARP_Manager>(TRC) << "IP_Routing() - É a própria rede " << endl;
+        if (ARP_Manager::_arp_mng->send(dst_ip)) {
+            
+            Address * mac = ARP_Manager::_arp_mng->get_mac_in_table(dst_ip);
+
+            unsigned int data_size = 1480;
+            unsigned int frag_data_size = 1480;
+            char data_second[data_size];
+            for(unsigned int i = 0; i < data_size; i++) {
+                if (i < frag_data_size) data_second[i] = '3';
+                else if (i < frag_data_size*2) data_second[i] = 'D';
+                else data_second[i] = 'U';
+            }
+            IP_send(data_second, data_size, dst_ip, mac);
+
+        }
+        
 
     } else { // é externa
         IPTableEntry * external = routing_table->head()->next()->next()->object();
         unsigned char* gateway = external->gateway;
-        db<ARP_Manager>(WRN) << "IP_is_external(IP=" << static_cast<int>(gateway[0]) << ".";
-        db<ARP_Manager>(WRN) << static_cast<int>(gateway[1]) << ".";
-        db<ARP_Manager>(WRN) << static_cast<int>(gateway[2]) << ".";
-        db<ARP_Manager>(WRN) << static_cast<int>(gateway[3]) << ")" <<endl;
+        db<ARP_Manager>(TRC) << "IP_is_external(IP=" << static_cast<int>(gateway[0]) << ".";
+        db<ARP_Manager>(TRC) << static_cast<int>(gateway[1]) << ".";
+        db<ARP_Manager>(TRC) << static_cast<int>(gateway[2]) << ".";
+        db<ARP_Manager>(TRC) << static_cast<int>(gateway[3]) << ")" <<endl;
 
     }
 
@@ -481,7 +506,7 @@ void Network_buffer::IP_routing(unsigned char* dst_ip)
         // Se sim, retorno true (quem chamou a função precisa pega na tabela)
     //    db<ARP_Manager>(TRC) << "ARP_Manager::send_request()::É da minha rede" << endl;
     //    if (mac) {
-    //        db<ARP_Manager>(WRN) << "ARP_Manager::send_request()::ACHOU O MAC " << endl;
+    //        db<ARP_Manager>(TRC) << "ARP_Manager::send_request()::ACHOU O MAC " << endl;
     //        return true; 
     //    }
         // ** Se não, faço o arp request 
@@ -495,10 +520,10 @@ void Network_buffer::IP_routing(unsigned char* dst_ip)
 
 
 bool Network_buffer::IP_is_localhost(unsigned char * dst_ip) {
-    db<ARP_Manager>(WRN) << "IP_is_localhost(IP=" << static_cast<int>(dst_ip[0]) << ".";
-    db<ARP_Manager>(WRN) << static_cast<int>(dst_ip[1]) << ".";
-    db<ARP_Manager>(WRN) << static_cast<int>(dst_ip[2]) << ".";
-    db<ARP_Manager>(WRN) << static_cast<int>(dst_ip[3]) << ")" <<endl;
+    db<ARP_Manager>(TRC) << "IP_is_localhost(IP=" << static_cast<int>(dst_ip[0]) << ".";
+    db<ARP_Manager>(TRC) << static_cast<int>(dst_ip[1]) << ".";
+    db<ARP_Manager>(TRC) << static_cast<int>(dst_ip[2]) << ".";
+    db<ARP_Manager>(TRC) << static_cast<int>(dst_ip[3]) << ")" <<endl;
 
 
     IPTableEntry * localhost = routing_table->head()->next()->object();
@@ -528,10 +553,10 @@ bool Network_buffer::IP_is_localhost(unsigned char * dst_ip) {
 
 bool Network_buffer::IP_is_my_network(unsigned char * dst_ip) {
      
-    db<ARP_Manager>(WRN) << "is_my_network::ip(IP=" << static_cast<int>(dst_ip[0]) << ".";
-    db<ARP_Manager>(WRN) << static_cast<int>(dst_ip[1]) << ".";
-    db<ARP_Manager>(WRN) << static_cast<int>(dst_ip[2]) << ".";
-    db<ARP_Manager>(WRN) << static_cast<int>(dst_ip[3]) << ")" <<endl;
+    db<ARP_Manager>(TRC) << "is_my_network::ip(IP=" << static_cast<int>(dst_ip[0]) << ".";
+    db<ARP_Manager>(TRC) << static_cast<int>(dst_ip[1]) << ".";
+    db<ARP_Manager>(TRC) << static_cast<int>(dst_ip[2]) << ".";
+    db<ARP_Manager>(TRC) << static_cast<int>(dst_ip[3]) << ")" <<endl;
 
     IPTableEntry * same_network = routing_table->head()->object();
 

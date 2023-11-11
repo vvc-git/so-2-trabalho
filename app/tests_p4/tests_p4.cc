@@ -28,21 +28,21 @@ int main()
      dst[4] = 0x00;
      dst[5] = 0x02;
 
-     unsigned char ip1[4];
-     // unsigned char ip2[4];
+     // unsigned char ip1[4];
+     unsigned char ip2[4];
      // unsigned char ip3[4];
 
      // // IP destino fora da minha rede
-     ip1[0] = 127; // 127.0.60.2       
-     ip1[1] = 0;
-     ip1[2] = 60;
-     ip1[3] = 2;
+     // ip1[0] = 127; // 127.0.60.2       
+     // ip1[1] = 0;
+     // ip1[2] = 60;
+     // ip1[3] = 2;
 
      // IP destino na minha rede e não é o meu 150, 162, 60, 0
-     // ip2[0] = 150; // 127.0.0.2       
-     // ip2[1] = 162;
-     // ip2[2] = 60;
-     // ip2[3] = 2;
+     ip2[0] = 150; // 127.0.0.2       
+     ip2[1] = 162;
+     ip2[2] = 60;
+     ip2[3] = 2;
 
      // IP destino na minha rede e sou eu mesmo 
      // ip3[0] = 127; // 127.0.0.1     
@@ -57,7 +57,7 @@ int main()
      // unsigned int data_size = 1480;
      if(sifiveu_nic->address[5] % 2 ) {
 
-          Network_buffer::net_buffer->IP_routing(ip1);
+          Network_buffer::net_buffer->IP_routing(ip2);
 
           // ARP_Manager * arp_mng = ARP_Manager::_arp_mng;
           // cout << "Caso ignorado " << endl;

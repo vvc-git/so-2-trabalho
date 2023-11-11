@@ -16,7 +16,7 @@ void ARP_Manager::init() {
 // tabela
 bool ARP_Manager::arp_send_request(unsigned char * dst_ip) {
     
-    db<ARP_Manager>(TRC) << "ARP_Manager::send_request() "<< send << endl;
+    db<ARP_Manager>(TRC) << "ARP_Manager::send_request() "<< endl;
     
     // ** Fazendo o ARP Request 
     ARP_Packet* packet = new ARP_Packet();
@@ -54,13 +54,12 @@ bool ARP_Manager::arp_send_request(unsigned char * dst_ip) {
     packet->_target_hw = dst;
 
     SiFiveU_NIC::_device->send(dst, (void*) packet, 28, 0x0806);
-    send++;
     return true;
 
 }
 
 void ARP_Manager::arp_send_reply(ARP_Packet* requester_packet) {
-    db<ARP_Manager>(TRC) << "ARP_Manager::send_reply() "<< reply <<  endl;
+    db<ARP_Manager>(TRC) << "ARP_Manager::send_reply() " <<  endl;
 
     ARP_Packet* packet = new ARP_Packet();
 
@@ -93,10 +92,8 @@ void ARP_Manager::arp_send_reply(ARP_Packet* requester_packet) {
     packet->_target_hw = dst;
     
 
-    db<ARP_Manager>(WRN) << "Sending reply to mac: " << hex << dst << endl;
+    db<ARP_Manager>(TRC) << "Sending reply to mac: " << hex << dst << endl;
     SiFiveU_NIC::_device->send(dst, (void*) packet, 28, 0x0806);
-
-    reply++;
 }
 
 void ARP_Manager::arp_receive(ARP_Packet* packet) {
@@ -110,10 +107,10 @@ void ARP_Manager::arp_receive(ARP_Packet* packet) {
         if (!is_my_ip(packet->_target_prot)) {
             db<ARP_Manager>(TRC) << "IP destino nao é o meu " << endl;
             return; // Request nao é para o meu IP
-        } 
+        } else {
+            db<ARP_Manager>(WRN) << "My IP was requested" << endl;
+        }
 
-        db<ARP_Manager>(TRC) << "My IP was requested" << endl;
-        
         // Envia a resposta
         arp_send_reply(packet);
 
@@ -139,10 +136,10 @@ void ARP_Manager::arp_receive(ARP_Packet* packet) {
 void ARP_Manager::set_own_IP() {
     db<ARP_Manager>(TRC) << "ARP_Manager::set_own_IP()"<< endl;
 
-    // Setando o proprio endereco IP a partir do MAC definido no makefile
-    IP_ADDR[0] = 127; // 127.0.0.2       
-    IP_ADDR[1] = 0;
-    IP_ADDR[2] = 0;
+    // Setando o proprio endereco IP a partir do MAC definido no makefile 150, 162, 60, 0
+    IP_ADDR[0] = 150; // 127.0.0.2       
+    IP_ADDR[1] = 162;
+    IP_ADDR[2] = 60;
     IP_ADDR[3] = SiFiveU_NIC::_device->address[5];
 
     // Capturando o mac
@@ -237,6 +234,23 @@ void ARP_Manager::add_ip(unsigned char * ip, const Address mac) {
         db<ARP_Manager>(TRC) << static_cast<int>(e->object()->ip[3]) << ")\n" <<endl;
     }
 
+}
+
+bool ARP_Manager::send(unsigned char * dst_ip) {
+
+    unsigned int tries = 0;
+    Address * mac = get_mac_in_table(dst_ip);
+    while (tries < 3) {
+        db<ARP_Manager>(WRN) <<"ARP_Manager::send()::Tentativa " << tries << endl;
+        if (mac) return true;
+        arp_send_request(dst_ip);
+        tries++;
+        Delay(50000000);
+        mac = get_mac_in_table(dst_ip);
+
+    }
+
+    return false;
 }
 
 __END_SYS
