@@ -127,6 +127,7 @@ void Network_buffer::IP_send(char* data, unsigned int data_size, unsigned char *
             data_pointer = fragment.data + last_size;   
             memset(data_pointer, '9', frag_data_size - last_size);
         }
+
         SiFiveU_NIC::_device->send(dst, (void*) &fragment, nic_mtu, 0x0800);
         Delay (1000000);
         
@@ -146,12 +147,12 @@ void Network_buffer::IP_send(char* data, unsigned int data_size, unsigned char *
 void Network_buffer::IP_receive(void* data) {
  
     // Crita um novo ponteiro para adicionar na lista de fragmentos que estão chegando
-    char * content = new char[1500];
-    memcpy(content, data, 1500);
+    char * content = new char[1480];
+    memcpy(content, data, 1480);
 
     Datagram_Fragment * fragment = reinterpret_cast<Datagram_Fragment*>(content);
     db<Network_buffer>(TRC) << "---------------------"<< endl;
-    db<Network_buffer>(TRC) << "Network_buffer::IP_receive\n"<< endl;
+    db<Network_buffer>(WRN) << "Network_buffer::IP_receive\n"<< endl;
 
     
     // Capturando os valores do fragmento
@@ -163,10 +164,10 @@ void Network_buffer::IP_receive(void* data) {
     
     
     // Verificação se os valores estão certos
-    db<Network_buffer>(TRC) << "length: " << hex << length << endl;
-    db<Network_buffer>(TRC) << "identification: " << hex << identification << endl;
-    db<Network_buffer>(TRC) << "offset: " << offset << endl;
-    db<Network_buffer>(TRC) << "flags: " << flags << endl;
+    db<Network_buffer>(WRN) << "length: " << hex << length << endl;
+    db<Network_buffer>(WRN) << "identification: " << hex << identification << endl;
+    db<Network_buffer>(WRN) << "offset: " << offset << endl;
+    db<Network_buffer>(WRN) << "flags: " << flags << endl;
 
 
     List::Element * e;
@@ -175,7 +176,7 @@ void Network_buffer::IP_receive(void* data) {
     // Verifica se já temos informações do fragmento que chegou
     // Se não tiver, inicia um datagrama novo
     if (!e) {
-        db<SiFiveU_NIC>(TRC) << "Primeiro frame"<<endl;
+        db<SiFiveU_NIC>(WRN) << "Primeiro frame"<<endl;
         
         // Criando uma nova estrutura para frames do mesmo datagrama
         Simple_List<Datagram_Fragment>*  fragments = new Simple_List<Datagram_Fragment>();
@@ -224,7 +225,7 @@ void Network_buffer::IP_receive(void* data) {
     // Quando todos os framentos chegaram, remonta.
     if (total_frame == dt_info->num_fragments) {
         
-        db<Network_buffer>(TRC) << "Remontagem" << endl;
+        db<Network_buffer>(WRN) << "Remontagem" << endl;
         
         // Capturando o 1° fragmento 
         Simple_List<Datagram_Fragment>::Element * h = e->object()->fragments->head();
@@ -246,9 +247,9 @@ void Network_buffer::IP_receive(void* data) {
             unsigned int size = CPU_Common::ntohs(f->header.Total_Length) - 20;
 
             
-            db<Network_buffer>(TRC) << "Data " << f->data <<endl;
-            db<Network_buffer>(TRC) << "Size " << size << endl;
-            db<Network_buffer>(TRC) << "Offset do frame " << offset <<endl;
+            db<Network_buffer>(WRN) << "Data " << f->data << endl;
+            db<Network_buffer>(WRN) << "Size " << size << endl;
+            db<Network_buffer>(WRN) << "Offset do frame " << offset <<endl;
 
             // Remontagem do fragmento na heap
             char * next = reinterpret_cast<char*>(base) + offset;
@@ -256,6 +257,14 @@ void Network_buffer::IP_receive(void* data) {
 
         }  
 
+        // for (unsigned int i = 0; i < 2000; i++) {
+        //     db<Network_buffer>(WRN) << reinterpret_cast<char*>(base)[i];
+        //     if (i == 1479) 
+        //     {
+        //         db<Network_buffer>(WRN) << "K";
+        //     }
+        // }
+        // db<Network_buffer>(WRN) << endl;
         db<Network_buffer>(WRN) << "Datagrama: " <<reinterpret_cast<char*>(base) << endl;
 
     }
@@ -415,18 +424,20 @@ int Network_buffer::copy() {
             }
 
             if (!equal) continue;
+
+            db<Network_buffer>(WRN) << "Frame size: " << frame_size << endl;
         
             
             // Faz a copia do buffer rx para data
-            char  payload[1600];
-            net_buffer->buf->get_data_frame(payload);
-            memcpy(payload, reinterpret_cast<char*>(desc->address), FRAME_SIZE);
+            char  payload[frame_size - 4];
+            // net_buffer->buf->get_data_frame(payload);
+            memcpy(payload, reinterpret_cast<char*>(desc->address), frame_size - 4);
             
             // Setando os 2 ultimos bits da word[0]
             // (O wrap bit caso seja necessário)
             desc->set_rx_own_wrap(idx == ( net_buffer->SLOTS_BUFFER - 1));
 
-            net_buffer->IP_receive((void *)(payload+sizeof(Ethernet::Header)));
+            net_buffer->IP_receive((void *)(payload + 14));
 
         }
         
@@ -476,7 +487,7 @@ void Network_buffer::IP_routing(unsigned char* dst_ip)
             
             Address * mac = ARP_Manager::_arp_mng->get_mac_in_table(dst_ip);
 
-            unsigned int data_size = 1480;
+            unsigned int data_size = 2000;
             unsigned int frag_data_size = 1480;
             char data_second[data_size];
             for(unsigned int i = 0; i < data_size; i++) {
@@ -484,6 +495,8 @@ void Network_buffer::IP_routing(unsigned char* dst_ip)
                 else if (i < frag_data_size*2) data_second[i] = 'D';
                 else data_second[i] = 'U';
             }
+
+            db<Network_buffer>(WRN) << "Datagrama enviado: " << data_second << endl;
             IP_send(data_second, data_size, dst_ip, mac);
 
         }

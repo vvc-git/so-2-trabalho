@@ -241,11 +241,11 @@ bool ARP_Manager::send(unsigned char * dst_ip) {
     unsigned int tries = 0;
     Address * mac = get_mac_in_table(dst_ip);
     while (tries < 3) {
-        db<ARP_Manager>(WRN) <<"ARP_Manager::send()::Tentativa " << tries << endl;
         if (mac) return true;
+        db<ARP_Manager>(WRN) <<"ARP_Manager::send()::Tentativa " << tries << endl;
         arp_send_request(dst_ip);
         tries++;
-        Delay(50000000);
+        Delay(25000000);
         mac = get_mac_in_table(dst_ip);
 
     }
