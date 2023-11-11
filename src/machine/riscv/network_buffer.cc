@@ -82,17 +82,11 @@ void Network_buffer::IP_send(char* data, unsigned int data_size, unsigned char *
     dt_header.TTL = 64;
     dt_header.Protocol = 4;
     dt_header.Header_Checksum = 0;
-    dt_header.SRC_ADDR[0] = 150;
-    dt_header.SRC_ADDR[1] = 162;
-    dt_header.SRC_ADDR[2] = 60;
-    dt_header.SRC_ADDR[3] = 1;
-    dt_header.DST_ADDR[0] = 150;
-    dt_header.DST_ADDR[1] = 162;
-    dt_header.DST_ADDR[2] = 60;
-    dt_header.DST_ADDR[3] = 2;
-    // dt_header.SRC_ADDR = ARP_Manager::_arp_mng->IP_ADDR;
-    // dt_header.DST_ADDR = dst_ip;
-    
+
+    for (int i = 0; i < 4; i++) {
+        dt_header.SRC_ADDR[i] = ARP_Manager::_arp_mng->IP_ADDR[i];
+        dt_header.DST_ADDR[i] = dst_ip[i];
+    }
 
     db<Network_buffer>(TRC) << "Identification: " << hex << CPU_Common::htons(dt_header.Identification) << endl;
     for (unsigned int i = 0; i < iter; i++) {
