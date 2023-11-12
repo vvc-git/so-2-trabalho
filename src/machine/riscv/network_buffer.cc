@@ -142,7 +142,7 @@ void Network_buffer::IP_send(char* data, unsigned int data_size, unsigned char *
 }
 
 
-void Network_buffer::IP_receive(void* data) {
+void Network_buffer::IP_receive(void* data, bool retransmit) {
  
     // Cria um novo ponteiro para adicionar na lista de fragmentos que estão chegando
     char * content = new char[1500];
@@ -256,6 +256,11 @@ void Network_buffer::IP_receive(void* data) {
         }  
 
         db<Network_buffer>(WRN) << "Datagrama: " <<reinterpret_cast<char*>(base) << endl;
+
+        if (retransmit) {
+            // TODO: fazer lógica...
+            db<Network_buffer>(WRN) << "Precisa retransmitir"<< endl;
+        }
 
     }
 
@@ -402,18 +407,23 @@ int Network_buffer::copy() {
             
             db<Network_buffer>(TRC) << "copy(): Pacote IP "<< endl;
 
-            // Verifica se o ip destino está certo
-            Datagram_Header * header = (reinterpret_cast<Datagram_Header*>(desc->address + 14));
+            // Se MAC é igual e IP é diferente do pacote, é preciso retransmitir
+            Frame * frame = (reinterpret_cast<Frame*>(desc->address));
 
-            bool equal = true;
-            for (int i = 0; equal && i < 4; i++) {
-
-                if (ARP_Manager::_arp_mng->IP_ADDR[i] != header->DST_ADDR[i]) {
-                    equal = false;
-                }
+            if (frame->dst() != SiFiveU_NIC::_device->address) {
+                db<Network_buffer>(WRN) << "copy(): Não é meu MAC"<< frame->dst() << endl;
+                continue;
             }
 
-            if (!equal) continue;        
+            // Verifica se eu sou o ip
+            // Caso negativo, eh preciso retransmitir
+            Datagram_Header * header = (reinterpret_cast<Datagram_Header*>(desc->address + 14));
+            bool retransmit = false;
+            for (int i = 0; retransmit && i < 4; i++) {
+                if (ARP_Manager::_arp_mng->IP_ADDR[i] != header->DST_ADDR[i]) {
+                    retransmit = true;
+                }
+            }      
             
             // Faz a copia do buffer rx para data
             char  payload[frame_size - 4];
@@ -424,7 +434,7 @@ int Network_buffer::copy() {
             // (O wrap bit caso seja necessário)
             desc->set_rx_own_wrap(idx == ( net_buffer->SLOTS_BUFFER - 1));
 
-            net_buffer->IP_receive((void *)(payload + 14));
+            net_buffer->IP_receive((void *)(payload + 14), retransmit);
 
         }
         
@@ -459,32 +469,37 @@ Cadence_GEM::Desc * Network_buffer::get_free_tx_desc() {
 
 }
 
-void Network_buffer::IP_routing(unsigned char* dst_ip)
+Network_buffer::Address * Network_buffer::IP_find_mac(unsigned char* dst_ip)
  {
 
-    db<ARP_Manager>(TRC) << "IP_Routing()" << endl;
+    db<Network_buffer>(WRN) << "IP_find_mac()" << endl;
     
-
     if (IP_is_localhost(dst_ip)) {
-        db<ARP_Manager>(TRC) << "IP_Routing() - É localhost() " << endl;
+        db<Network_buffer>(WRN) << "IP_find_mac()::É localhost() " << endl;
+        Address * localhost = ARP_Manager::_arp_mng->get_mac_in_table(dst_ip);
+        db<ARP_Manager>(TRC) << "IP_find_mac()::MAC Localhost " << localhost << endl;
+        return localhost;
+
 
     } else if (IP_is_my_network(dst_ip)) { // Verifico se é na minha rede
-        db<ARP_Manager>(TRC) << "IP_Routing() - É a própria rede " << endl;
+        db<ARP_Manager>(WRN) << "IP_find_mac() - É a própria rede " << endl;
+
         if (ARP_Manager::_arp_mng->send(dst_ip)) {
             
             Address * mac = ARP_Manager::_arp_mng->get_mac_in_table(dst_ip);
+            return mac;
 
-            unsigned int data_size = 2380;
-            unsigned int frag_data_size = 1480;
-            char data_second[data_size];
-            for(unsigned int i = 0; i < data_size; i++) {
-                if (i < frag_data_size) data_second[i] = '3';
-                else if (i < frag_data_size*2) data_second[i] = 'D';
-                else data_second[i] = 'U';
-            }
+            // unsigned int data_size = 2380;
+            // unsigned int frag_data_size = 1480;
+            // char data_second[data_size];
+            // for(unsigned int i = 0; i < data_size; i++) {
+            //     if (i < frag_data_size) data_second[i] = '3';
+            //     else if (i < frag_data_size*2) data_second[i] = 'D';
+            //     else data_second[i] = 'U';
+            // }
 
-            // db<Network_buffer>(WRN) << "Datagrama enviado: " << data_second << endl;
-            IP_send(data_second, data_size, dst_ip, mac);
+            // // db<Network_buffer>(WRN) << "Datagrama enviado: " << data_second << endl;
+            // IP_send(data_second, data_size, dst_ip, mac);
 
         }
         
@@ -499,22 +514,7 @@ void Network_buffer::IP_routing(unsigned char* dst_ip)
 
     }
 
-
-        // // Se sim,
-        // Verifca se está na minha tabela (Meu ip está incluso)
-    //    Address * mac = get_mac_in_table(dst_ip);
-        // Se sim, retorno true (quem chamou a função precisa pega na tabela)
-    //    db<ARP_Manager>(TRC) << "ARP_Manager::send_request()::É da minha rede" << endl;
-    //    if (mac) {
-    //        db<ARP_Manager>(TRC) << "ARP_Manager::send_request()::ACHOU O MAC " << endl;
-    //        return true; 
-    //    }
-        // ** Se não, faço o arp request 
-    //} else {
-    //    db<ARP_Manager>(TRC) << "ARP_Manager::send_request()::NÃO É da minha rede" << endl;
-    //    return false;
-    // }
-
+    return nullptr;
 
 }
 

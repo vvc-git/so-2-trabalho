@@ -44,6 +44,7 @@ Network_buffer :  public Observer// , Data_Observed<DT_Buffer, void>
     typedef Ethernet::Protocol Protocol;
     typedef Arp::Packet ARP_Packet;
     typedef NIC_Common::Address<6> Address;
+    typedef Ethernet::Frame Frame;
 
 
 public:
@@ -61,7 +62,7 @@ public:
         Reg16 Header_Checksum;
         unsigned char SRC_ADDR[4];
         unsigned char DST_ADDR[4];
-    };
+    } __attribute__((packed));
 
     enum {
         MORE_FRAGS = 0X2000,
@@ -102,8 +103,8 @@ public:
    static int copy();
 
    void IP_send(char* data, unsigned int data_size, unsigned char * dst_ip, Address * dst_mac);
-   void IP_receive(void* data);
-   void IP_routing(unsigned char* dst_ip);
+   void IP_receive(void* data, bool retransmit);
+   Address * IP_find_mac(unsigned char* dst_ip);
    bool IP_is_my_network(unsigned char * dst_ip);
    bool IP_is_localhost(unsigned char * dst_ip);
    void IP_add_entry(unsigned char* dst, unsigned char* gateway, unsigned char* genmask);

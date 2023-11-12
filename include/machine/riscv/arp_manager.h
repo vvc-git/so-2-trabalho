@@ -17,9 +17,10 @@ class ARP_Manager {
     private:
         bool is_my_ip(unsigned char * ip);
         bool is_my_network(unsigned char * ip);
-        void add_ip(unsigned char * ip, const Address mac);
+        void add_ip(const unsigned char * ip, const Address mac);
 
     public:
+        // ARP_Manager();
         bool send(unsigned char * dst_ip);
         bool arp_send_request(unsigned char * dst_ip);
         void arp_send_reply(ARP_Packet* requester_packet);
@@ -31,9 +32,10 @@ class ARP_Manager {
     public:
         static ARP_Manager* _arp_mng;
         unsigned char IP_ADDR[4];
+        // unsigned char localhost[4];
 
         struct ARPTableEntry {
-            unsigned char * ip; 
+            unsigned char ip[4]; 
             Address mac;
         };
 

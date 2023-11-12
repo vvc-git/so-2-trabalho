@@ -42,7 +42,7 @@ public:
         Address _target_hw;
         unsigned char _target_prot[4];
 
-    } __attribute__((packed));;
+    } __attribute__((packed));
     
     class Packet: public Header
     {
