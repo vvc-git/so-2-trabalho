@@ -177,6 +177,12 @@ public:
     // Lista de infos dos datagramas em construção
     IP_Table * routing_table = new IP_Table;
 
+    //
+    IP_Element * default_router;
+    IP_Element * localhost;
+    IP_Element * internal;
+    IP_Element * external;
+
 
 };
 

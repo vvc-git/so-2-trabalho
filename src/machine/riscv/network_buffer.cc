@@ -16,23 +16,43 @@ Network_buffer::Network_buffer() {
     char data[FRAME_SIZE*64*10];
     dt =  new DT_Buffer(data, FRAME_SIZE*64*10);
 
-    unsigned char dst[4] = {150, 162, 60, 0};
-    unsigned char gateway[4] = {150, 162, 60, 2};
-    unsigned char genmask[4] = {255, 255, 255, 0};
-    IP_add_entry(dst, gateway, genmask);
-
-    unsigned char dst1[4] = {127, 0, 0, 1};
-    unsigned char gateway1[4] = {127, 0, 0, 1};
-    unsigned char genmask1[4] = {255, 255, 255, 255};
+    // Default
+    unsigned char dst1[4] = {0, 0, 0, 0};
+    unsigned char gateway1[4] = {150, 162, 60, 2};
+    unsigned char genmask1[4] = {0, 0, 0, 0};
     IP_add_entry(dst1, gateway1, genmask1);
-
-    unsigned char dst2[4] = {0, 0, 0, 0};
-    unsigned char gateway2[4] = {150, 162, 60, 1};
-    unsigned char genmask2[4] = {0, 0, 0, 0};
+    
+    // localhost
+    unsigned char dst2[4] = {127, 0, 0, 1};
+    unsigned char gateway2[4] = {127, 0, 0, 1};
+    unsigned char genmask2[4] = {255, 255, 255, 255};
     IP_add_entry(dst2, gateway2, genmask2);
 
-    // Funções
+    // internal
+    unsigned char dst3[4] = {150, 162, 60, 0};
+    unsigned char gateway3[4] = {150, 162, 60, 2};
+    unsigned char genmask3[4] = {255, 255, 255, 0};
+    IP_add_entry(dst3, gateway3, genmask3);
 
+    // external
+    unsigned char dst4[4] = {210, 154, 80, 0};
+    unsigned char gateway4[4] = {144, 121, 100, 2};
+    unsigned char genmask4[4] = {255, 255, 0, 0};
+    IP_add_entry(dst4, gateway4, genmask4);
+       
+    // external
+    unsigned char dst5[4] = {180, 155, 0, 0};
+    unsigned char gateway5[4] = {169, 225, 236, 3};
+    unsigned char genmask5[4] = {255, 255, 255, 0};
+    IP_add_entry(dst5, gateway5, genmask5);
+
+
+    default_router = routing_table->head();
+    localhost  = default_router->next();
+    internal   = localhost->next();
+    external   = internal->next();
+    
+    // Funções
     IP_Element * e;
     for (e = routing_table->head(); e; e = e->next()) {
 
@@ -474,44 +494,60 @@ Network_buffer::Address * Network_buffer::IP_find_mac(unsigned char* dst_ip)
 
     db<Network_buffer>(WRN) << "IP_find_mac()" << endl;
     
-    if (IP_is_localhost(dst_ip)) {
-        db<Network_buffer>(WRN) << "IP_find_mac()::É localhost() " << endl;
-        Address * localhost = ARP_Manager::_arp_mng->get_mac_in_table(dst_ip);
-        db<ARP_Manager>(TRC) << "IP_find_mac()::MAC Localhost " << localhost << endl;
-        return localhost;
-
-
-    } else if (IP_is_my_network(dst_ip)) { // Verifico se é na minha rede
-        db<ARP_Manager>(WRN) << "IP_find_mac() - É a própria rede " << endl;
-
-        if (ARP_Manager::_arp_mng->send(dst_ip)) {
-            
-            Address * mac = ARP_Manager::_arp_mng->get_mac_in_table(dst_ip);
-            return mac;
-
-            // unsigned int data_size = 2380;
-            // unsigned int frag_data_size = 1480;
-            // char data_second[data_size];
-            // for(unsigned int i = 0; i < data_size; i++) {
-            //     if (i < frag_data_size) data_second[i] = '3';
-            //     else if (i < frag_data_size*2) data_second[i] = 'D';
-            //     else data_second[i] = 'U';
-            // }
-
-            // // db<Network_buffer>(WRN) << "Datagrama enviado: " << data_second << endl;
-            // IP_send(data_second, data_size, dst_ip, mac);
-
-        }
+    if (IP_is_localhost(dst_ip) || IP_is_my_network(dst_ip)) {
+        db<Network_buffer>(WRN) << "IP_find_mac()::É localhost() ou Minha rede " << endl;
+        return ARP_Manager::_arp_mng->get_mac(dst_ip);
         
-
     } else { // é externa
-        IPTableEntry * external = routing_table->head()->next()->next()->object();
-        unsigned char* gateway = external->gateway;
-        db<ARP_Manager>(TRC) << "IP_is_external(IP=" << static_cast<int>(gateway[0]) << ".";
-        db<ARP_Manager>(TRC) << static_cast<int>(gateway[1]) << ".";
-        db<ARP_Manager>(TRC) << static_cast<int>(gateway[2]) << ".";
-        db<ARP_Manager>(TRC) << static_cast<int>(gateway[3]) << ")" <<endl;
 
+        db<Network_buffer>(WRN) << "IP_find_mac():: É external" << endl;
+        
+        // Varrer todas a entradas da tabela de roteamento
+        IP_Element * e = external;
+
+        unsigned char subnetwork1[4];
+        unsigned char subnetwork2[4];
+
+        bool find = true;
+        for (; e; e = e->next()) {
+
+            for (int i = 0; i < 4; i++) {
+                
+                subnetwork1[i] = dst_ip[i] & e->object()->genmask[i];
+                subnetwork2[i] = e->object()->destination[i] & e->object()->genmask[i];
+
+                db<Network_buffer>(WRN) << "IP_find_mac::submask1[" << i << "]: " << static_cast<int>(subnetwork1[i]) << endl;
+                db<Network_buffer>(WRN) << "IP_find_mac::submask2[" << i << "]: " << static_cast<int>(subnetwork2[i]) << endl;
+
+                
+                if (subnetwork1[i] != subnetwork2[i]) {
+                    find = false;
+                    break;
+                }
+            }
+
+            if (find) break;
+        }
+
+        // b. Não encontrou a rede
+        if (!find) e = default_router;
+
+        unsigned char* gateway = e->object()->gateway;
+
+        db<ARP_Manager>(WRN) << "gateway (IP=" << static_cast<int>(gateway[0]) << ".";
+        db<ARP_Manager>(WRN) << static_cast<int>(gateway[1]) << ".";
+        db<ARP_Manager>(WRN) << static_cast<int>(gateway[2]) << ".";
+        db<ARP_Manager>(WRN) << static_cast<int>(gateway[3]) << ")" <<endl;
+
+        
+            
+
+        // ii. Pega o ip vindo de 'a' ou 'b'
+        Address * mac = ARP_Manager::_arp_mng->get_mac(dst_ip);
+        return mac;
+            // i. Vai na tabela ARP
+                // Tem na tabela ARP -> Pega o Mac
+                // Não tem na tabela -> Faz o ARP Request
     }
 
     return nullptr;
@@ -558,7 +594,7 @@ bool Network_buffer::IP_is_my_network(unsigned char * dst_ip) {
     db<ARP_Manager>(TRC) << static_cast<int>(dst_ip[2]) << ".";
     db<ARP_Manager>(TRC) << static_cast<int>(dst_ip[3]) << ")" <<endl;
 
-    IPTableEntry * same_network = routing_table->head()->object();
+    IPTableEntry * same_network = internal->object();
 
     unsigned char* submask = same_network->genmask;
     unsigned char* dst_table = same_network->destination;

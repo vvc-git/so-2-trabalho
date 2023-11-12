@@ -161,9 +161,9 @@ void ARP_Manager::set_own_IP() {
 
 }
 
-ARP_Manager::Address * ARP_Manager::get_mac_in_table(const unsigned char * ip) {
+ARP_Manager::Address * ARP_Manager::search_ARP_cache(const unsigned char * ip) {
         List::Element * e;
-        db<ARP_Manager>(TRC) << "ARP_Manager::get_mac_in_table(IP=" << static_cast<int>(ip[0]) << ".";
+        db<ARP_Manager>(TRC) << "ARP_Manager::search_ARP_cache(IP=" << static_cast<int>(ip[0]) << ".";
         db<ARP_Manager>(TRC) << static_cast<int>(ip[1]) << ".";
         db<ARP_Manager>(TRC) << static_cast<int>(ip[2]) << ".";
         db<ARP_Manager>(TRC) << static_cast<int>(ip[3]) << ")" <<endl;
@@ -172,7 +172,7 @@ ARP_Manager::Address * ARP_Manager::get_mac_in_table(const unsigned char * ip) {
 
         for (e = ARP_Table->head(); e; e = e->next()) {
 
-            db<ARP_Manager>(TRC) << "ARP_Manager::get_mac_in_table() - Tabela: " << static_cast<int>(e->object()->ip[0]) << ".";
+            db<ARP_Manager>(TRC) << "ARP_Manager::search_ARP_cache() - Tabela: " << static_cast<int>(e->object()->ip[0]) << ".";
             db<ARP_Manager>(TRC) << static_cast<int>(e->object()->ip[1]) << ".";
             db<ARP_Manager>(TRC) << static_cast<int>(e->object()->ip[2]) << ".";
             db<ARP_Manager>(TRC) << static_cast<int>(e->object()->ip[3]) <<  endl;
@@ -183,13 +183,13 @@ ARP_Manager::Address * ARP_Manager::get_mac_in_table(const unsigned char * ip) {
             }
 
             if (find) {
-                db<ARP_Manager>(TRC) <<"ARP_Manager::get_mac_in_table()::Mac descoberto: " << e->object()->mac << endl;
+                db<ARP_Manager>(TRC) <<"ARP_Manager::search_ARP_cache()::Mac descoberto: " << e->object()->mac << endl;
                 return &(e->object()->mac);
             }
 
         }  
 
-        db<ARP_Manager>(TRC) <<"ARP_Manager::get_mac_in_table()::Não achou na tabela" << endl;
+        db<ARP_Manager>(TRC) <<"ARP_Manager::search_ARP_cache()::Não achou na tabela" << endl;
         return nullptr;
 
 }
@@ -252,22 +252,21 @@ void ARP_Manager::add_ip(const unsigned char * ip, const Address mac) {
 
 }
 
-bool ARP_Manager::send(unsigned char * dst_ip) {
+ARP_Manager::Address * ARP_Manager::get_mac(unsigned char * dst_ip) {
 
     unsigned int tries = 0;
-    Address * mac = get_mac_in_table(dst_ip);
-    db<ARP_Manager>(WRN) <<"Enviando ARP request na rede local" << tries << endl;
-    while (tries < 3) {
-        if (mac) return true;
+    Address * mac = search_ARP_cache(dst_ip);
+    if (mac) return mac;
+    while (tries < 3) {  
         db<ARP_Manager>(WRN) <<"ARP request: tentativa " << tries << endl;
         arp_send_request(dst_ip);
-        tries++;
         Delay(250000);
-        mac = get_mac_in_table(dst_ip);
-
+        tries++;
+        mac = search_ARP_cache(dst_ip);
+        if (mac) return mac;
     }
 
-    return false;
+    return nullptr;
 }
 
 __END_SYS

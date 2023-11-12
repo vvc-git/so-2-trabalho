@@ -20,12 +20,12 @@ class ARP_Manager {
         void add_ip(const unsigned char * ip, const Address mac);
 
     public:
-        // ARP_Manager();
-        bool send(unsigned char * dst_ip);
+        // Busca na ARP_Cache e caso não encontre, já realiza a requisição ARP
+        ARP_Manager::Address * get_mac(unsigned char * dst_ip);
         bool arp_send_request(unsigned char * dst_ip);
         void arp_send_reply(ARP_Packet* requester_packet);
         void arp_receive(ARP_Packet* packet);
-        Address * get_mac_in_table(const unsigned char * ip);
+        Address * search_ARP_cache(const unsigned char * ip);
         static void init();
         void set_own_IP();
 
