@@ -234,11 +234,10 @@ void Network_buffer::IP_receive(void* data, bool retransmit) {
             db<ARP_Manager>(TRC) << static_cast<int>(ip_final[3]) <<  endl;
 
             Address * mac_next_hop = IP_find_mac(ip_final);
-
             unsigned int total_length = dt_info->total_length;
 
             db<Network_buffer>(TRC) << "total length" << total_length << endl;
-            db<Network_buffer>(WRN) << "ARP_Manager::receive() mac_next_hop: " << mac_next_hop << endl;
+            db<Network_buffer>(WRN) << "ARP_Manager::receive() mac_next_hop: " << *mac_next_hop << endl;
             IP_send(reinterpret_cast<char*>(base), total_length, ip_final, mac_next_hop);
             db<Network_buffer>(WRN) << "Retransmitiu" << endl;
         }
@@ -392,18 +391,20 @@ int Network_buffer::copy() {
             Frame * frame = (reinterpret_cast<Frame*>(desc->address));
 
             if (frame->dst() != SiFiveU_NIC::_device->address) {
-                db<Network_buffer>(WRN) << "copy(): Não é meu MAC"<< frame->dst() << endl;
+                db<Network_buffer>(TRC) << "copy(): Não é meu MAC"<< frame->dst() << endl;
                 continue;
             }
 
             // Verifica se eu sou o ip
             // Caso negativo, eh preciso retransmitir
             Datagram_Header * header = (reinterpret_cast<Datagram_Header*>(desc->address + 14));
+            
             bool retransmit = false;
             for (int i = 0; (!retransmit) && i < 4; i++) {
-                if (ARP_Manager::_arp_mng->IP_ADDR[i] != header->DST_ADDR[i]) {
+                if ((ARP_Manager::_arp_mng->IP_ADDR[i] != header->DST_ADDR[i]) && (header->DST_ADDR[i] !=  Network_buffer::net_buffer->localhost->object()->destination[i])) {
                     retransmit = true;
                 }
+
             }      
             
             // Faz a copia do buffer rx para data
@@ -415,7 +416,7 @@ int Network_buffer::copy() {
             // (O wrap bit caso seja necessário)
             desc->set_rx_own_wrap(idx == ( net_buffer->SLOTS_BUFFER - 1));
 
-            db<Network_buffer>(WRN) << "Retransmit " << retransmit << endl;
+            db<Network_buffer>(TRC) << "Retransmit " << retransmit << endl;
             net_buffer->IP_receive((void *)(payload + 14), retransmit);
 
         }
@@ -478,8 +479,8 @@ Network_buffer::Address * Network_buffer::IP_find_mac(unsigned char* dst_ip)
                 subnetwork1[i] = dst_ip[i] & e->object()->genmask[i];
                 subnetwork2[i] = e->object()->destination[i] & e->object()->genmask[i];
 
-                db<Network_buffer>(WRN) << "IP_find_mac::submask1[" << i << "]: " << static_cast<int>(subnetwork1[i]) << endl;
-                db<Network_buffer>(WRN) << "IP_find_mac::submask2[" << i << "]: " << static_cast<int>(subnetwork2[i]) << endl;
+                db<Network_buffer>(TRC) << "IP_find_mac::submask1[" << i << "]: " << static_cast<int>(subnetwork1[i]) << endl;
+                db<Network_buffer>(TRC) << "IP_find_mac::submask2[" << i << "]: " << static_cast<int>(subnetwork2[i]) << endl;
 
                 
                 if (subnetwork1[i] != subnetwork2[i]) {
@@ -496,10 +497,10 @@ Network_buffer::Address * Network_buffer::IP_find_mac(unsigned char* dst_ip)
 
         unsigned char* gateway = e->object()->gateway;
 
-        db<ARP_Manager>(WRN) << "gateway (IP=" << static_cast<int>(gateway[0]) << ".";
-        db<ARP_Manager>(WRN) << static_cast<int>(gateway[1]) << ".";
-        db<ARP_Manager>(WRN) << static_cast<int>(gateway[2]) << ".";
-        db<ARP_Manager>(WRN) << static_cast<int>(gateway[3]) << ")" <<endl;
+        db<ARP_Manager>(TRC) << "gateway (IP=" << static_cast<int>(gateway[0]) << ".";
+        db<ARP_Manager>(TRC) << static_cast<int>(gateway[1]) << ".";
+        db<ARP_Manager>(TRC) << static_cast<int>(gateway[2]) << ".";
+        db<ARP_Manager>(TRC) << static_cast<int>(gateway[3]) << ")" <<endl;
 
         
         // ii. Pega o ip vindo de 'a' ou 'b'
@@ -516,18 +517,16 @@ Network_buffer::Address * Network_buffer::IP_find_mac(unsigned char* dst_ip)
 
 
 bool Network_buffer::IP_is_localhost(unsigned char * dst_ip) {
-    db<ARP_Manager>(WRN) << "IP_is_localhost(IP=" << static_cast<int>(dst_ip[0]) << ".";
-    db<ARP_Manager>(WRN) << static_cast<int>(dst_ip[1]) << ".";
-    db<ARP_Manager>(WRN) << static_cast<int>(dst_ip[2]) << ".";
-    db<ARP_Manager>(WRN) << static_cast<int>(dst_ip[3]) << ")" <<endl;
+    db<Network_buffer>(TRC) << "IP_is_localhost(IP=" << static_cast<int>(dst_ip[0]) << ".";
+    db<Network_buffer>(TRC) << static_cast<int>(dst_ip[1]) << ".";
+    db<Network_buffer>(TRC) << static_cast<int>(dst_ip[2]) << ".";
+    db<Network_buffer>(TRC) << static_cast<int>(dst_ip[3]) << ")" <<endl;
 
 
-    IPTableEntry * localhost = routing_table->head()->next()->object();
-
-    unsigned char* submask = localhost->genmask;
-    unsigned char* dst_table = localhost->destination;
-
-    // // Aplicando a máscara de sub-rede no endereço IP
+    unsigned char* submask = localhost->object()->genmask;
+    unsigned char* dst_table = localhost->object()->destination;
+    
+    // Aplicando a máscara de sub-rede no endereço IP
     unsigned char subnetwork1[4];
     unsigned char subnetwork2[4];
 
@@ -536,8 +535,10 @@ bool Network_buffer::IP_is_localhost(unsigned char * dst_ip) {
         subnetwork1[i] = dst_ip[i] & submask[i];
         subnetwork2[i] = dst_table[i] & submask[i];
 
-        db<ARP_Manager>(TRC) << "is_my_network::submask1[" << i << "]: " << static_cast<int>(subnetwork1[i]) << endl;
-        db<ARP_Manager>(TRC) << "is_my_network::submask2[" << i << "]: " << static_cast<int>(subnetwork2[i]) << endl;
+        db<ARP_Manager>(TRC) << "is_my_network::submask[" << i << "]: " << static_cast<int>(submask[i]) << endl;
+        db<ARP_Manager>(TRC) << "is_my_network::dst_table[" << i << "]: " << static_cast<int>(dst_table[i]) << endl;
+        db<ARP_Manager>(TRC) << "is_my_network::subnetwork1[" << i << "]: " << static_cast<int>(subnetwork1[i]) << endl;
+        db<ARP_Manager>(TRC) << "is_my_network::subnetwork2[" << i << "]: " << static_cast<int>(subnetwork2[i]) << endl;
 
         if (subnetwork1[i] != subnetwork2[i]) {
             return false;
@@ -549,17 +550,15 @@ bool Network_buffer::IP_is_localhost(unsigned char * dst_ip) {
 
 bool Network_buffer::IP_is_my_network(unsigned char * dst_ip) {
      
-    db<ARP_Manager>(TRC) << "is_my_network::ip(IP=" << static_cast<int>(dst_ip[0]) << ".";
-    db<ARP_Manager>(TRC) << static_cast<int>(dst_ip[1]) << ".";
-    db<ARP_Manager>(TRC) << static_cast<int>(dst_ip[2]) << ".";
-    db<ARP_Manager>(TRC) << static_cast<int>(dst_ip[3]) << ")" <<endl;
+    db<Network_buffer>(TRC) << "is_my_network::ip(IP=" << static_cast<int>(dst_ip[0]) << ".";
+    db<Network_buffer>(TRC) << static_cast<int>(dst_ip[1]) << ".";
+    db<Network_buffer>(TRC) << static_cast<int>(dst_ip[2]) << ".";
+    db<Network_buffer>(TRC) << static_cast<int>(dst_ip[3]) << ")" <<endl;
 
-    IPTableEntry * same_network = internal->object();
+    unsigned char* submask =  internal->object()->genmask;
+    unsigned char* dst_table =  internal->object()->destination;
 
-    unsigned char* submask = same_network->genmask;
-    unsigned char* dst_table = same_network->destination;
-
-    // // Aplicando a máscara de sub-rede no endereço IP
+    // Aplicando a máscara de sub-rede no endereço IP
     unsigned char subnetwork1[4];
     unsigned char subnetwork2[4];
 
@@ -584,8 +583,14 @@ bool Network_buffer::IP_is_my_network(unsigned char * dst_ip) {
 void Network_buffer::IP_add_entry(unsigned char* dst, unsigned char* gateway, unsigned char* genmask) {
 
     // Criando uma nova entrada na tabela
-    IPTableEntry * entry = new IPTableEntry{dst, gateway, genmask};
-    
+    IPTableEntry * entry = new IPTableEntry;
+
+    for (int i = 0; i < 4; i++) {
+        entry->destination[i] = dst[i];
+        entry->gateway[i] = gateway[i];
+        entry->genmask[i] = genmask[i];
+
+    }    
     // Adicionando na ARP List
     IP_Element * link = new IP_Element(entry);
     routing_table->insert(link);
@@ -641,20 +646,20 @@ void Network_buffer::IP_populate_routing_table() {
     IP_Element * e;
     for (e = routing_table->head(); e; e = e->next()) {
 
-        db<ARP_Manager>(WRN) << "destination(=" << static_cast<int>(e->object()->destination[0]) << ".";
-        db<ARP_Manager>(WRN) << static_cast<int>(e->object()->destination[1]) << ".";
-        db<ARP_Manager>(WRN) << static_cast<int>(e->object()->destination[2]) << ".";
-        db<ARP_Manager>(WRN) << static_cast<int>(e->object()->destination[3]) << ")\n" <<endl;
+        db<ARP_Manager>(TRC) << "destination(=" << static_cast<int>(e->object()->destination[0]) << ".";
+        db<ARP_Manager>(TRC) << static_cast<int>(e->object()->destination[1]) << ".";
+        db<ARP_Manager>(TRC) << static_cast<int>(e->object()->destination[2]) << ".";
+        db<ARP_Manager>(TRC) << static_cast<int>(e->object()->destination[3]) << ")\n" <<endl;
 
-        db<ARP_Manager>(WRN) << "gateway(=" << static_cast<int>(e->object()->gateway[0]) << ".";
-        db<ARP_Manager>(WRN) << static_cast<int>(e->object()->gateway[1]) << ".";
-        db<ARP_Manager>(WRN) << static_cast<int>(e->object()->gateway[2]) << ".";
-        db<ARP_Manager>(WRN) << static_cast<int>(e->object()->gateway[3]) << ")\n" <<endl;
+        db<ARP_Manager>(TRC) << "gateway(=" << static_cast<int>(e->object()->gateway[0]) << ".";
+        db<ARP_Manager>(TRC) << static_cast<int>(e->object()->gateway[1]) << ".";
+        db<ARP_Manager>(TRC) << static_cast<int>(e->object()->gateway[2]) << ".";
+        db<ARP_Manager>(TRC) << static_cast<int>(e->object()->gateway[3]) << ")\n" <<endl;
 
-        db<ARP_Manager>(WRN) << "genmask(=" << static_cast<int>(e->object()->genmask[0]) << ".";
-        db<ARP_Manager>(WRN) << static_cast<int>(e->object()->genmask[1]) << ".";
-        db<ARP_Manager>(WRN) << static_cast<int>(e->object()->genmask[2]) << ".";
-        db<ARP_Manager>(WRN) << static_cast<int>(e->object()->genmask[3]) << ")\n" <<endl;
+        db<ARP_Manager>(TRC) << "genmask(=" << static_cast<int>(e->object()->genmask[0]) << ".";
+        db<ARP_Manager>(TRC) << static_cast<int>(e->object()->genmask[1]) << ".";
+        db<ARP_Manager>(TRC) << static_cast<int>(e->object()->genmask[2]) << ".";
+        db<ARP_Manager>(TRC) << static_cast<int>(e->object()->genmask[3]) << ")\n" <<endl;
     }
 
 }

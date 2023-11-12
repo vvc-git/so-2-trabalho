@@ -78,9 +78,9 @@ public:
 
     struct IPTableEntry 
     {
-        unsigned char* destination;
-        unsigned char* gateway;
-        unsigned char* genmask;
+        unsigned char destination[4];
+        unsigned char gateway[4];
+        unsigned char genmask[4];
 
     };
 
