@@ -108,6 +108,7 @@ public:
    bool IP_is_my_network(unsigned char * dst_ip);
    bool IP_is_localhost(unsigned char * dst_ip);
    void IP_add_entry(unsigned char* dst, unsigned char* gateway, unsigned char* genmask);
+   void IP_populate_routing_table();
 
 
 public:

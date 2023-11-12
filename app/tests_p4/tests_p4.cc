@@ -28,22 +28,28 @@ int main()
      dst[4] = 0x00;
      dst[5] = 0x02;
 
-     // unsigned char ip1[4];
-     unsigned char ip2[4];
+     unsigned char ip1[4];
+     // unsigned char ip4[4];
+     // unsigned char ip2[4];
      // unsigned char ip3[4];
 
-     // IP destino fora da minha rede
+     // IP destino fora da minha rede ()
+     ip1[0] = 99; // 127.0.60.2       
+     ip1[1] = 0;
+     ip1[2] = 0;
+     ip1[3] = 1;
 
-     // ip1[0] = 210; // 127.0.60.2       
-     // ip1[1] = 154;
-     // ip1[2] = 40;
-     // ip1[3] = 2;
+     // IP destino fora da minha rede ()
+     // ip4[0] = 210;
+     // ip4[1] = 154;
+     // ip4[2] = 80;
+     // ip4[3] = 0;
 
      // IP destino na minha rede e não é o meu 150, 162, 60, 0
-     ip2[0] = 150;        
-     ip2[1] = 162;
-     ip2[2] = 60;
-     ip2[3] = 2;
+     // ip2[0] = 150;        
+     // ip2[1] = 162;
+     // ip2[2] = 60;
+     // ip2[3] = 2;
 
      // IP destino na minha rede e sou eu mesmo 
      // ip3[0] = 127; // 127.0.0.1     
@@ -53,7 +59,6 @@ int main()
 
           
      cout << "  MAC: " << sifiveu_nic->address << "\n" << endl;
-     NIC_Common::Address<6> * mac;
 
      // unsigned int frag_data_size = 1480;
      // unsigned int data_size = 1480;
@@ -81,36 +86,13 @@ int main()
           // Delay(5000000);
 
           // Envio para host na mesma rede local
-          cout << "Quem tem o mac do IP  " << static_cast<int>(ip2[0]) << ".";
-          cout << static_cast<int>(ip2[1]) << ".";
-          cout << static_cast<int>(ip2[2]) << ".";
-          cout << static_cast<int>(ip2[3]) << "?" <<endl;
+          // cout << "Quem tem o mac do IP  " << static_cast<int>(ip2[0]) << ".";
+          // cout << static_cast<int>(ip2[1]) << ".";
+          // cout << static_cast<int>(ip2[2]) << ".";
+          // cout << static_cast<int>(ip2[3]) << "?" <<endl;
 
-          mac =  Network_buffer::net_buffer->IP_find_mac(ip2);
-          if (mac) cout << "MAC encontrado: " << *mac << "\n" << endl;
-
-          unsigned int data_size = 4020;
-          unsigned int frag_data_size = 1480;
-          char data_second[data_size];
-          for(unsigned int i = 0; i < data_size; i++) {
-              if (i < frag_data_size) data_second[i] = '3';
-              else if (i < frag_data_size*2) data_second[i] = 'D';
-              else data_second[i] = 'U';
-          }
-
-          // // db<Network_buffer>(WRN) << "Datagrama enviado: " << data_second << endl;
-          Network_buffer::net_buffer->IP_send(data_second, data_size, ip2, mac);
-          // Delay(5000000);
-
-          // Envio para host na rede externa
-          // cout << "Quem tem o mac do IP  " << static_cast<int>(ip1[0]) << ".";
-          // cout << static_cast<int>(ip1[1]) << ".";
-          // cout << static_cast<int>(ip1[2]) << ".";
-          // cout << static_cast<int>(ip1[3]) << "?" <<endl;
-
-          // NIC_Common::Address<6> * mac = Network_buffer::net_buffer->IP_find_mac(ip1);
-          // if (mac)
-          //      cout << "MAC encontrado: " << *mac << "\n" << endl;
+          // mac =  Network_buffer::net_buffer->IP_find_mac(ip2);
+          // if (mac) cout << "MAC encontrado: " << *mac << "\n" << endl;
 
           // unsigned int data_size = 4020;
           // unsigned int frag_data_size = 1480;
@@ -121,8 +103,31 @@ int main()
           //     else data_second[i] = 'U';
           // }
 
-          // // db<Network_buffer>(WRN) << "Datagrama enviado: " << data_second << endl;
+          // // // db<Network_buffer>(WRN) << "Datagrama enviado: " << data_second << endl;
           // Network_buffer::net_buffer->IP_send(data_second, data_size, ip2, mac);
+          // Delay(5000000);
+
+          // Envio para host na rede externa (E não temos na tabela de roteamento -> vai para default)
+          cout << "Quem tem o mac do IP  " << static_cast<int>(ip1[0]) << ".";
+          cout << static_cast<int>(ip1[1]) << ".";
+          cout << static_cast<int>(ip1[2]) << ".";
+          cout << static_cast<int>(ip1[3]) << "?" <<endl;
+
+          NIC_Common::Address<6> * mac = Network_buffer::net_buffer->IP_find_mac(ip1);
+          if (mac)
+               cout << "MAC encontrado: " << *mac << "\n" << endl;
+
+          unsigned int data_size = 4020;
+          unsigned int frag_data_size = 1480;
+          char data_second[data_size];
+          for(unsigned int i = 0; i < data_size; i++) {
+              if (i < frag_data_size) data_second[i] = '3';
+              else if (i < frag_data_size*2) data_second[i] = 'D';
+              else data_second[i] = 'U';
+          }
+
+          // db<Network_buffer>(WRN) << "Datagrama enviado: " << data_second << endl;
+          Network_buffer::net_buffer->IP_send(data_second, data_size, ip1, mac);
           // Delay(5000000);
 
 

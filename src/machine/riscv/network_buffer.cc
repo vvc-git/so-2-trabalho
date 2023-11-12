@@ -16,62 +16,6 @@ Network_buffer::Network_buffer() {
     char data[FRAME_SIZE*64*10];
     dt =  new DT_Buffer(data, FRAME_SIZE*64*10);
 
-    // Default
-    unsigned char dst1[4] = {0, 0, 0, 0};
-    unsigned char gateway1[4] = {150, 162, 60, 2};
-    unsigned char genmask1[4] = {0, 0, 0, 0};
-    IP_add_entry(dst1, gateway1, genmask1);
-    
-    // localhost
-    unsigned char dst2[4] = {127, 0, 0, 1};
-    unsigned char gateway2[4] = {127, 0, 0, 1};
-    unsigned char genmask2[4] = {255, 255, 255, 255};
-    IP_add_entry(dst2, gateway2, genmask2);
-
-    // internal
-    unsigned char dst3[4] = {150, 162, 60, 0};
-    unsigned char gateway3[4] = {150, 162, 60, 2};
-    unsigned char genmask3[4] = {255, 255, 255, 0};
-    IP_add_entry(dst3, gateway3, genmask3);
-
-    // external
-    unsigned char dst4[4] = {210, 154, 80, 0};
-    unsigned char gateway4[4] = {144, 121, 100, 2};
-    unsigned char genmask4[4] = {255, 255, 0, 0};
-    IP_add_entry(dst4, gateway4, genmask4);
-       
-    // external
-    unsigned char dst5[4] = {180, 155, 0, 0};
-    unsigned char gateway5[4] = {169, 225, 236, 3};
-    unsigned char genmask5[4] = {255, 255, 255, 0};
-    IP_add_entry(dst5, gateway5, genmask5);
-
-
-    default_router = routing_table->head();
-    localhost  = default_router->next();
-    internal   = localhost->next();
-    external   = internal->next();
-    
-    // Funções
-    IP_Element * e;
-    for (e = routing_table->head(); e; e = e->next()) {
-
-        db<ARP_Manager>(TRC) << "destination(=" << static_cast<int>(e->object()->destination[0]) << ".";
-        db<ARP_Manager>(TRC) << static_cast<int>(e->object()->destination[1]) << ".";
-        db<ARP_Manager>(TRC) << static_cast<int>(e->object()->destination[2]) << ".";
-        db<ARP_Manager>(TRC) << static_cast<int>(e->object()->destination[3]) << ")\n" <<endl;
-
-        db<ARP_Manager>(TRC) << "gateway(=" << static_cast<int>(e->object()->gateway[0]) << ".";
-        db<ARP_Manager>(TRC) << static_cast<int>(e->object()->gateway[1]) << ".";
-        db<ARP_Manager>(TRC) << static_cast<int>(e->object()->gateway[2]) << ".";
-        db<ARP_Manager>(TRC) << static_cast<int>(e->object()->gateway[3]) << ")\n" <<endl;
-
-        db<ARP_Manager>(TRC) << "genmask(=" << static_cast<int>(e->object()->genmask[0]) << ".";
-        db<ARP_Manager>(TRC) << static_cast<int>(e->object()->genmask[1]) << ".";
-        db<ARP_Manager>(TRC) << static_cast<int>(e->object()->genmask[2]) << ".";
-        db<ARP_Manager>(TRC) << static_cast<int>(e->object()->genmask[3]) << ")\n" <<endl;
-    }
-
 }
 
 void Network_buffer::IP_send(char* data, unsigned int data_size, unsigned char * dst_ip, Address * dst_mac) {
@@ -279,7 +223,24 @@ void Network_buffer::IP_receive(void* data, bool retransmit) {
 
         if (retransmit) {
             // TODO: fazer lógica...
-            db<Network_buffer>(WRN) << "Precisa retransmitir"<< endl;
+            unsigned char ip_final[4];
+            for (int i=0; i < 4; i++) {
+                ip_final[i] = fragment->header.DST_ADDR[i];
+            }
+
+            db<ARP_Manager>(TRC) << "ARP_Manager::receive() - Retransmissao: " << static_cast<int>(ip_final[0]) << ".";
+            db<ARP_Manager>(TRC) << static_cast<int>(ip_final[1]) << ".";
+            db<ARP_Manager>(TRC) << static_cast<int>(ip_final[2]) << ".";
+            db<ARP_Manager>(TRC) << static_cast<int>(ip_final[3]) <<  endl;
+
+            Address * mac_next_hop = IP_find_mac(ip_final);
+
+            unsigned int total_length = dt_info->total_length;
+
+            db<Network_buffer>(TRC) << "total length" << total_length << endl;
+            db<Network_buffer>(WRN) << "ARP_Manager::receive() mac_next_hop: " << mac_next_hop << endl;
+            IP_send(reinterpret_cast<char*>(base), total_length, ip_final, mac_next_hop);
+            db<Network_buffer>(WRN) << "Retransmitiu" << endl;
         }
 
     }
@@ -439,7 +400,7 @@ int Network_buffer::copy() {
             // Caso negativo, eh preciso retransmitir
             Datagram_Header * header = (reinterpret_cast<Datagram_Header*>(desc->address + 14));
             bool retransmit = false;
-            for (int i = 0; retransmit && i < 4; i++) {
+            for (int i = 0; (!retransmit) && i < 4; i++) {
                 if (ARP_Manager::_arp_mng->IP_ADDR[i] != header->DST_ADDR[i]) {
                     retransmit = true;
                 }
@@ -454,6 +415,7 @@ int Network_buffer::copy() {
             // (O wrap bit caso seja necessário)
             desc->set_rx_own_wrap(idx == ( net_buffer->SLOTS_BUFFER - 1));
 
+            db<Network_buffer>(WRN) << "Retransmit " << retransmit << endl;
             net_buffer->IP_receive((void *)(payload + 14), retransmit);
 
         }
@@ -540,10 +502,8 @@ Network_buffer::Address * Network_buffer::IP_find_mac(unsigned char* dst_ip)
         db<ARP_Manager>(WRN) << static_cast<int>(gateway[3]) << ")" <<endl;
 
         
-            
-
         // ii. Pega o ip vindo de 'a' ou 'b'
-        Address * mac = ARP_Manager::_arp_mng->get_mac(dst_ip);
+        Address * mac = ARP_Manager::_arp_mng->get_mac(gateway);
         return mac;
             // i. Vai na tabela ARP
                 // Tem na tabela ARP -> Pega o Mac
@@ -556,10 +516,10 @@ Network_buffer::Address * Network_buffer::IP_find_mac(unsigned char* dst_ip)
 
 
 bool Network_buffer::IP_is_localhost(unsigned char * dst_ip) {
-    db<ARP_Manager>(TRC) << "IP_is_localhost(IP=" << static_cast<int>(dst_ip[0]) << ".";
-    db<ARP_Manager>(TRC) << static_cast<int>(dst_ip[1]) << ".";
-    db<ARP_Manager>(TRC) << static_cast<int>(dst_ip[2]) << ".";
-    db<ARP_Manager>(TRC) << static_cast<int>(dst_ip[3]) << ")" <<endl;
+    db<ARP_Manager>(WRN) << "IP_is_localhost(IP=" << static_cast<int>(dst_ip[0]) << ".";
+    db<ARP_Manager>(WRN) << static_cast<int>(dst_ip[1]) << ".";
+    db<ARP_Manager>(WRN) << static_cast<int>(dst_ip[2]) << ".";
+    db<ARP_Manager>(WRN) << static_cast<int>(dst_ip[3]) << ")" <<endl;
 
 
     IPTableEntry * localhost = routing_table->head()->next()->object();
@@ -629,6 +589,73 @@ void Network_buffer::IP_add_entry(unsigned char* dst, unsigned char* gateway, un
     // Adicionando na ARP List
     IP_Element * link = new IP_Element(entry);
     routing_table->insert(link);
+
+}
+
+void Network_buffer::IP_populate_routing_table() {
+
+    // Default
+
+    if (SiFiveU_NIC::_device->address[5] % 2) {
+        unsigned char dst1[4] = {0, 0, 0, 0};
+        unsigned char gateway1[4] = {150, 162, 60, 2};
+        unsigned char genmask1[4] = {0, 0, 0, 0};
+        IP_add_entry(dst1, gateway1, genmask1);
+    } else {
+        unsigned char dst1[4] = {0, 0, 0, 0};
+        unsigned char gateway1[4] = {144, 121, 100, 2};
+        unsigned char genmask1[4] = {0, 0, 0, 0};
+        IP_add_entry(dst1, gateway1, genmask1);
+    }
+    
+    // localhost
+    unsigned char dst2[4] = {127, 0, 0, 1};
+    unsigned char gateway2[4] = {127, 0, 0, 1};
+    unsigned char genmask2[4] = {255, 255, 255, 255};
+    IP_add_entry(dst2, gateway2, genmask2);
+
+    // internal
+    unsigned char dst3[4] = {150, 162, 60, 0};
+    unsigned char gateway3[4] = {0, 0, 0, 0};
+    unsigned char genmask3[4] = {255, 255, 255, 0};
+    IP_add_entry(dst3, gateway3, genmask3);
+
+    // external
+    unsigned char dst4[4] = {210, 154, 80, 0};
+    unsigned char gateway4[4] = {144, 121, 100, 2};
+    unsigned char genmask4[4] = {255, 255, 0, 0};
+    IP_add_entry(dst4, gateway4, genmask4);
+       
+    // external
+    unsigned char dst5[4] = {180, 155, 0, 0};
+    unsigned char gateway5[4] = {169, 225, 236, 3};
+    unsigned char genmask5[4] = {255, 255, 255, 0};
+    IP_add_entry(dst5, gateway5, genmask5);
+
+
+    default_router = routing_table->head();
+    localhost  = default_router->next();
+    internal   = localhost->next();
+    external   = internal->next();
+
+    IP_Element * e;
+    for (e = routing_table->head(); e; e = e->next()) {
+
+        db<ARP_Manager>(WRN) << "destination(=" << static_cast<int>(e->object()->destination[0]) << ".";
+        db<ARP_Manager>(WRN) << static_cast<int>(e->object()->destination[1]) << ".";
+        db<ARP_Manager>(WRN) << static_cast<int>(e->object()->destination[2]) << ".";
+        db<ARP_Manager>(WRN) << static_cast<int>(e->object()->destination[3]) << ")\n" <<endl;
+
+        db<ARP_Manager>(WRN) << "gateway(=" << static_cast<int>(e->object()->gateway[0]) << ".";
+        db<ARP_Manager>(WRN) << static_cast<int>(e->object()->gateway[1]) << ".";
+        db<ARP_Manager>(WRN) << static_cast<int>(e->object()->gateway[2]) << ".";
+        db<ARP_Manager>(WRN) << static_cast<int>(e->object()->gateway[3]) << ")\n" <<endl;
+
+        db<ARP_Manager>(WRN) << "genmask(=" << static_cast<int>(e->object()->genmask[0]) << ".";
+        db<ARP_Manager>(WRN) << static_cast<int>(e->object()->genmask[1]) << ".";
+        db<ARP_Manager>(WRN) << static_cast<int>(e->object()->genmask[2]) << ".";
+        db<ARP_Manager>(WRN) << static_cast<int>(e->object()->genmask[3]) << ")\n" <<endl;
+    }
 
 }
 

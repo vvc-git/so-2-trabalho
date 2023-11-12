@@ -156,8 +156,25 @@ void ARP_Manager::set_own_IP() {
     localhost[1] = 0;
     localhost[2] = 0;
     localhost[3] = 1;
+
+    unsigned char external[4];
+    external[0] = 144;
+    external[1] = 121;
+    external[2] = 100;
+    external[3] = 2;
     add_ip(localhost, mac);
     add_ip(IP_ADDR, mac);
+
+    // Para simular uma rede externa conhecida
+    Address external_mac;
+    external_mac[0] = 0;
+    external_mac[1] = 0;
+    external_mac[2] = 0;
+    external_mac[3] = 0;
+    external_mac[4] = 0;
+    external_mac[5] = 3;
+
+    add_ip(external, external_mac);
 
 }
 
@@ -260,7 +277,7 @@ ARP_Manager::Address * ARP_Manager::get_mac(unsigned char * dst_ip) {
     while (tries < 3) {  
         db<ARP_Manager>(WRN) <<"ARP request: tentativa " << tries << endl;
         arp_send_request(dst_ip);
-        Delay(250000);
+        Delay(500000);
         tries++;
         mac = search_ARP_cache(dst_ip);
         if (mac) return mac;
