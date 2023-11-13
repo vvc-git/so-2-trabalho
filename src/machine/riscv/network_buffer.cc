@@ -44,7 +44,7 @@ void Network_buffer::IP_send(char* data, unsigned int data_size, unsigned char *
     dt_header.Total_Length = CPU_Common::htons(nic_mtu);
     dt_header.Identification = CPU_Common::htons(id);
     dt_header.TTL = 64;
-    dt_header.Protocol = 4;
+    dt_header.Protocol = 253;
     dt_header.Header_Checksum = 0;
 
     for (int i = 0; i < 4; i++) {
