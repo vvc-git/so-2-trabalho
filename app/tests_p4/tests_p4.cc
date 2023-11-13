@@ -103,12 +103,13 @@ void test_external_network() {
      cout << static_cast<int>(ip[2]) << ".";
      cout << static_cast<int>(ip[3]) << "?" << endl;
 
-     cout << "Iniciando envio de dados IP" << endl;
 
      NIC_Common::Address<6> * mac = Network_buffer::net_buffer->IP_find_mac(ip);
      if (mac)
           cout << "MAC do gateway default: " << *mac << endl;
 
+     cout << "Iniciando envio de dados IP" << endl;
+     
      unsigned int data_size = 1480;
      char data_third[data_size];
      for(unsigned int i = 0; i < data_size; i++) {

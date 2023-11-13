@@ -227,6 +227,8 @@ void Network_buffer::IP_receive(void* data, bool retransmit) {
 
         if (retransmit) {
             IP_routing(fragment->header.DST_ADDR, dt_info->total_length, reinterpret_cast<char*>(base));
+        } else {
+            db<Network_buffer>(WRN) << "Sou o destino final deste datagrama" << endl;
         }
     }
 
