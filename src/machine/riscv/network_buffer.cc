@@ -219,8 +219,11 @@ void Network_buffer::IP_receive(void* data, bool retransmit) {
 
         }  
 
-        
-        db<Network_buffer>(WRN) << "\nRecebido datagrama: \n" <<reinterpret_cast<char*>(base) << endl;
+        db<Network_buffer>(WRN) << "\nRecebido datagrama:" << endl;
+        for (unsigned int i = 0; i < dt_info->total_length; i++) {
+            db<Network_buffer>(WRN) << reinterpret_cast<char*>(base)[i];
+        }
+        db<Network_buffer>(WRN) << endl;
 
         if (retransmit) {
             IP_routing(fragment->header.DST_ADDR, dt_info->total_length, reinterpret_cast<char*>(base));
@@ -654,7 +657,7 @@ void Network_buffer::IP_routing(unsigned char * ip, unsigned int total_length, c
         ip_final[i] = ip[i];
     }
 
-    db<ARP_Manager>(WRN) << "Retransmissao para: " << static_cast<int>(ip_final[0]) << ".";
+    db<ARP_Manager>(WRN) << "\nRetransmissao para: " << static_cast<int>(ip_final[0]) << ".";
     db<ARP_Manager>(WRN) << static_cast<int>(ip_final[1]) << ".";
     db<ARP_Manager>(WRN) << static_cast<int>(ip_final[2]) << ".";
     db<ARP_Manager>(WRN) << static_cast<int>(ip_final[3]) <<  endl;
