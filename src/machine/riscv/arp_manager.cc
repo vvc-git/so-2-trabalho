@@ -97,7 +97,7 @@ void ARP_Manager::arp_send_reply(ARP_Packet* requester_packet) {
     packet->_target_hw = dst;
     
 
-    db<ARP_Manager>(TRC) << "Sending reply to mac: " << hex << dst << endl;
+    db<ARP_Manager>(WRN) << "Enviando resposta para o mac: " << hex << dst << endl;
     SiFiveU_NIC::_device->send(dst, (void*) packet, 28, 0x0806);
 }
 
@@ -113,7 +113,7 @@ void ARP_Manager::arp_receive(ARP_Packet* packet) {
             db<ARP_Manager>(TRC) << "IP destino nao é o meu " << endl;
             return; // Request nao é para o meu IP
         } else {
-            db<ARP_Manager>(TRC) << "My IP was requested" << endl;
+            db<ARP_Manager>(WRN) << "Meu IP foi requisitado" << endl;
         }
 
         // Envia a resposta
@@ -275,7 +275,7 @@ ARP_Manager::Address * ARP_Manager::get_mac(unsigned char * dst_ip) {
     Address * mac = search_ARP_cache(dst_ip);
     if (mac) return mac;
     while (tries < 3) {  
-        db<ARP_Manager>(TRC) <<"ARP request: tentativa " << tries << endl;
+        db<ARP_Manager>(WRN) <<"ARP request: tentativa " << tries + 1 << endl;
         arp_send_request(dst_ip);
         Delay(500000);
         tries++;

@@ -109,6 +109,7 @@ public:
    bool IP_is_localhost(unsigned char * dst_ip);
    void IP_add_entry(unsigned char* dst, unsigned char* gateway, unsigned char* genmask);
    void IP_populate_routing_table();
+   void IP_routing(unsigned char * ip, unsigned int total_length, char * data);
 
 
 public:

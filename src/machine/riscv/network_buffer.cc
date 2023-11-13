@@ -219,29 +219,12 @@ void Network_buffer::IP_receive(void* data, bool retransmit) {
 
         }  
 
-        db<Network_buffer>(WRN) << "Datagrama: " <<reinterpret_cast<char*>(base) << endl;
+        
+        db<Network_buffer>(WRN) << "\nRecebido datagrama: \n" <<reinterpret_cast<char*>(base) << endl;
 
         if (retransmit) {
-            // TODO: fazer lógica...
-            unsigned char ip_final[4];
-            for (int i=0; i < 4; i++) {
-                ip_final[i] = fragment->header.DST_ADDR[i];
-            }
-
-            db<ARP_Manager>(TRC) << "ARP_Manager::receive() - Retransmissao: " << static_cast<int>(ip_final[0]) << ".";
-            db<ARP_Manager>(TRC) << static_cast<int>(ip_final[1]) << ".";
-            db<ARP_Manager>(TRC) << static_cast<int>(ip_final[2]) << ".";
-            db<ARP_Manager>(TRC) << static_cast<int>(ip_final[3]) <<  endl;
-
-            Address * mac_next_hop = IP_find_mac(ip_final);
-            unsigned int total_length = dt_info->total_length;
-
-            db<Network_buffer>(TRC) << "total length" << total_length << endl;
-            db<Network_buffer>(WRN) << "ARP_Manager::receive() mac_next_hop: " << *mac_next_hop << endl;
-            IP_send(reinterpret_cast<char*>(base), total_length, ip_final, mac_next_hop);
-            db<Network_buffer>(WRN) << "Retransmitiu" << endl;
+            IP_routing(fragment->header.DST_ADDR, dt_info->total_length, reinterpret_cast<char*>(base));
         }
-
     }
 
 }
@@ -455,15 +438,15 @@ Cadence_GEM::Desc * Network_buffer::get_free_tx_desc() {
 Network_buffer::Address * Network_buffer::IP_find_mac(unsigned char* dst_ip)
  {
 
-    db<Network_buffer>(WRN) << "IP_find_mac()" << endl;
+    db<Network_buffer>(TRC) << "IP_find_mac()" << endl;
     
     if (IP_is_localhost(dst_ip) || IP_is_my_network(dst_ip)) {
-        db<Network_buffer>(WRN) << "IP_find_mac()::É localhost() ou Minha rede " << endl;
+        db<Network_buffer>(TRC) << "IP_find_mac()::É localhost() ou Minha rede " << endl;
         return ARP_Manager::_arp_mng->get_mac(dst_ip);
         
     } else { // é externa
 
-        db<Network_buffer>(WRN) << "IP_find_mac():: É external" << endl;
+        db<Network_buffer>(TRC) << "IP_find_mac():: É external" << endl;
         
         // Varrer todas a entradas da tabela de roteamento
         IP_Element * e = external;
@@ -661,6 +644,30 @@ void Network_buffer::IP_populate_routing_table() {
         db<ARP_Manager>(TRC) << static_cast<int>(e->object()->genmask[2]) << ".";
         db<ARP_Manager>(TRC) << static_cast<int>(e->object()->genmask[3]) << ")\n" <<endl;
     }
+
+}
+
+void Network_buffer::IP_routing(unsigned char * ip, unsigned int total_length, char * data) {
+
+    unsigned char ip_final[4];
+    for (int i=0; i < 4; i++) {
+        ip_final[i] = ip[i];
+    }
+
+    db<ARP_Manager>(WRN) << "Retransmissao para: " << static_cast<int>(ip_final[0]) << ".";
+    db<ARP_Manager>(WRN) << static_cast<int>(ip_final[1]) << ".";
+    db<ARP_Manager>(WRN) << static_cast<int>(ip_final[2]) << ".";
+    db<ARP_Manager>(WRN) << static_cast<int>(ip_final[3]) <<  endl;
+
+    Address * mac_next_hop = IP_find_mac(ip_final);
+
+    db<Network_buffer>(TRC) << "total length" << total_length << endl;
+    db<Network_buffer>(WRN) << "MAC do próximo gateway: " << *mac_next_hop << endl;
+    db<Network_buffer>(WRN) << "Iniciando envio de dados IP" << endl;
+    IP_send(data, total_length, ip_final, mac_next_hop);
+    db<Network_buffer>(TRC) << "Retransmitiu" << endl;
+
+
 
 }
 
