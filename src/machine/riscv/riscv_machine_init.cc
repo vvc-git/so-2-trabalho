@@ -31,12 +31,13 @@ void Machine::init()
     Network_buffer::init();
 
     ARP_Manager::init();
+    IP_Manager::init();
 
     if(Traits<SiFiveU_NIC>::enabled)
         SiFiveU_NIC::init();
     
     ARP_Manager::_arp_mng->set_own_IP();
-    Network_buffer::net_buffer->IP_populate_routing_table();
+    IP_Manager::_ip_mng->populate_routing_table();
     
 }
 

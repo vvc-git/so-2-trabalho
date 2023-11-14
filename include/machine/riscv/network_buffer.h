@@ -20,6 +20,7 @@
 #include <machine/riscv/riscv_nic.h>
 #include <time.h>
 #include <machine/riscv/arp_manager.h>
+#include <machine/riscv/ip_manager.h>
 
 
 
@@ -45,44 +46,7 @@ Network_buffer :  public Observer// , Data_Observed<DT_Buffer, void>
     typedef Arp::Packet ARP_Packet;
     typedef NIC_Common::Address<6> Address;
     typedef Ethernet::Frame Frame;
-
-
-public:
-    
-
-    // https://www.rfc-editor.org/rfc/rfc791#page-11
-    struct Datagram_Header {
-        Reg8 Version_IHL; // Version and Internet Header Length
-        Reg8 Type_Service;
-        Reg16 Total_Length;
-        Reg16 Identification;
-        Reg16 Flags_Offset;
-        Reg8 TTL; // Time to live
-        Reg8 Protocol; // This field indicates the next level protocol used in the data portion of the internet datagram.
-        Reg16 Header_Checksum;
-        unsigned char SRC_ADDR[4];
-        unsigned char DST_ADDR[4];
-    } __attribute__((packed));
-
-    enum {
-        MORE_FRAGS = 0X2000,
-        LAST_FRAG = 0X1FFF,
-        GET_OFFSET = 0x1fff,
-        GET_FLAGS = 0xe000, 
-    };
-
-    struct Datagram_Fragment {
-        Datagram_Header header;
-        char data[1480];
-    };
-
-    struct IPTableEntry 
-    {
-        unsigned char destination[4];
-        unsigned char gateway[4];
-        unsigned char genmask[4];
-
-    };
+    typedef IP::Fragment Fragment;
 
 public:
     
@@ -101,16 +65,6 @@ public:
 
    // Função de execução da thread
    static int copy();
-
-   void IP_send(char* data, unsigned int data_size, unsigned char * dst_ip, Address * dst_mac);
-   void IP_receive(void* data, bool retransmit);
-   Address * IP_find_mac(unsigned char* dst_ip);
-   bool IP_is_my_network(unsigned char * dst_ip);
-   bool IP_is_localhost(unsigned char * dst_ip);
-   void IP_add_entry(unsigned char* dst, unsigned char* gateway, unsigned char* genmask);
-   void IP_populate_routing_table();
-   void IP_routing(unsigned char * ip, unsigned int total_length, char * data);
-
 
 public:
     
@@ -147,43 +101,6 @@ public:
     unsigned int DESC_SIZE = 8;
     unsigned int SLOTS_BUFFER = 64;
     unsigned int last_desc_idx = 0;
-
-    // Datagrama counter
-    unsigned int id_send = 1;
-
-
-    // Informações de cada datagrama sendo montado
-    struct INFO 
-    {
-        unsigned int id;
-        unsigned int num_fragments = 0;
-        unsigned int total_length;
-        Simple_List<Datagram_Fragment>  * fragments;
-
-    };
-
-
-    typedef Simple_List<INFO> List;
-    typedef typename List::Element Element;
-
-    // Lista de infos dos datagramas em construção
-    List * dt_list = new List;
-
-
-    typedef Simple_List<IPTableEntry> IP_Table;
-    typedef typename IP_Table::Element IP_Element;
-
-    // Informações de cada datagrama sendo montado
-
-
-    // Lista de infos dos datagramas em construção
-    IP_Table * routing_table = new IP_Table;
-
-    //
-    IP_Element * default_router;
-    IP_Element * localhost;
-    IP_Element * internal;
-    IP_Element * external;
 
 
 };

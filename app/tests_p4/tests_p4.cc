@@ -33,19 +33,19 @@ void test_localhost() {
      cout << static_cast<int>(ip[2]) << ".";
      cout << static_cast<int>(ip[3]) << "?" <<endl;
 
-     NIC_Common::Address<6> * mac =  Network_buffer::net_buffer->IP_find_mac(ip);
+     NIC_Common::Address<6> * mac =  IP_Manager::_ip_mng->find_mac(ip);
      if (mac)
           cout << "MAC encontrado: " << *mac << endl;
 
      cout << "Iniciando envio de dados IP" << endl;
 
      unsigned int data_size = 1480;
-     char data_first[data_size];
+     unsigned char data_first[data_size];
      for(unsigned int i = 0; i < data_size; i++) {
           data_first[i] = '3';
      }
 
-     Network_buffer::net_buffer->IP_send(data_first, data_size, ip, mac);
+     IP_Manager::_ip_mng->send(data_first, data_size, ip, mac);
 
 }
 
@@ -68,13 +68,13 @@ void test_same_network() {
      cout << static_cast<int>(ip[2]) << ".";
      cout << static_cast<int>(ip[3]) << "?" <<endl;
 
-     NIC_Common::Address<6> * mac =  Network_buffer::net_buffer->IP_find_mac(ip);
+     NIC_Common::Address<6> * mac =  IP_Manager::_ip_mng->find_mac(ip);
      if (mac) cout << "MAC encontrado: " << *mac << endl;
 
      cout << "Iniciando envio de dados IP" << endl;
 
      unsigned int data_size = 1480;
-     char data_second[data_size];
+     unsigned char data_second[data_size];
      for(unsigned int i = 0; i < data_size; i++) {
           if (i < frag_data_size) data_second[i] = '3';
           else if (i < frag_data_size*2) data_second[i] = 'D';
@@ -82,7 +82,7 @@ void test_same_network() {
      }
 
      // db<Network_buffer>(WRN) << "Datagrama enviado: " << data_second << endl;
-     Network_buffer::net_buffer->IP_send(data_second, data_size, ip, mac);
+     IP_Manager::_ip_mng->send(data_second, data_size, ip, mac);
 
 }
 
@@ -106,14 +106,14 @@ void test_external_network() {
      cout << static_cast<int>(ip[3]) << "?" << endl;
 
 
-     NIC_Common::Address<6> * mac = Network_buffer::net_buffer->IP_find_mac(ip);
+     NIC_Common::Address<6> * mac = IP_Manager::_ip_mng->find_mac(ip);
      if (mac)
           cout << "MAC do gateway default: " << *mac << endl;
 
      cout << "Iniciando envio de dados IP" << endl;
      
      unsigned int data_size = 1480;
-     char data_third[data_size];
+     unsigned char data_third[data_size];
      for(unsigned int i = 0; i < data_size; i++) {
           if (i < frag_data_size) data_third[i] = 'A';
           else if (i < frag_data_size*2) data_third[i] = 'B';
@@ -121,7 +121,7 @@ void test_external_network() {
      }
 
      // db<Network_buffer>(WRN) << "Datagrama enviado: " << data_second << endl;
-     Network_buffer::net_buffer->IP_send(data_third, data_size, ip, mac);
+     IP_Manager::_ip_mng->send(data_third, data_size, ip, mac);
      
 }
 
@@ -134,23 +134,21 @@ int main()
      SiFiveU_NIC * sifiveu_nic = SiFiveU_NIC::_device;          
      cout << "  MAC: " << sifiveu_nic->address << "\n" << endl;
 
-     Function_Handler handler = Function_Handler(funcao_teste);
-     Second seconds(5);
-     Microsecond time(seconds);
-     Alarm alarm(time, &handler, 1); // Dá pra colocar um número diretamente em time
+     // Function_Handler handler = Function_Handler(funcao_teste);
+     // Second seconds(5);
+     // Microsecond time(seconds);
+     // Alarm alarm(time, &handler, 1); // Dá pra colocar um número diretamente em time
 
      // Sender
      if(sifiveu_nic->address[5] % 2 ) {
-          cout << "Sender" << endl;
-          // test_localhost();
-          // Delay(5000000);
+          // cout << "Sender" << endl;
+          test_localhost();
+          Delay(5000000);
 
-          // test_same_network();     
-          // Delay(5000000);
+          test_same_network();     
+          Delay(5000000);
 
-
-
-          // test_external_network();
+          test_external_network();
           Delay(10000000000);
 
      // Receiver | Router
