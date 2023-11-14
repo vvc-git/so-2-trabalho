@@ -503,7 +503,6 @@ Network_buffer::Address * Network_buffer::IP_find_mac(unsigned char* dst_ip)
 
 }
 
-
 bool Network_buffer::IP_is_localhost(unsigned char * dst_ip) {
     db<Network_buffer>(TRC) << "IP_is_localhost(IP=" << static_cast<int>(dst_ip[0]) << ".";
     db<Network_buffer>(TRC) << static_cast<int>(dst_ip[1]) << ".";
