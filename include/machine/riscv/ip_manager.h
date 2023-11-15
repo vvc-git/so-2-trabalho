@@ -5,6 +5,7 @@
 #include <network/ip.h>
 #include <machine/riscv/riscv_nic.h>
 #include <utility/string.h>
+#include <synchronizer.h>
 
 __BEGIN_SYS
 
@@ -16,8 +17,8 @@ struct INFO
     unsigned int total_length;
     Simple_List<IP::Fragment>  * fragments;
     Alarm * timer;
-    // Mutex mtx;
-
+    Functor_Handler<INFO> * timeout_handler;
+    Semaphore * sem;
 };
 
 struct IPTableEntry 
@@ -50,6 +51,7 @@ public:
     void add_entry(unsigned char* dst, unsigned char* gateway, unsigned char* genmask);
     void populate_routing_table();
     void routing(unsigned char * ip, unsigned int total_length, unsigned char * data);
+    void clear_dt_info(INFO * dt_info);
     static void timeout_handler(INFO * dt_info);
 
 

@@ -220,12 +220,6 @@ void IP_Manager::send(unsigned char* data, unsigned int data_size, unsigned char
         if (i == iter - 1 && !last_size) break; // fragmentação já realizada
         db<IP_Manager>(TRC) << i << "° fragmento " << endl;
 
-        // // Construindo Fragmento    
-        // Fragment fragment;
-
-        // // Construindo Header
-        // fragment = fragment;
-        
         // Flags e Offset
         unsigned int offset = (i*frag_data_size)/8;
         Reg16 flag_off = 0;
@@ -253,9 +247,9 @@ void IP_Manager::send(unsigned char* data, unsigned int data_size, unsigned char
             memset(data_pointer, '9', frag_data_size - last_size);
         }
 
+        if (i == 1) continue;
         SiFiveU_NIC::_device->send(dst, (void*) &fragment, nic_mtu, 0x0800);
         Delay (1000000);
-        
 
         // Print para verificar o header
         db<IP_Manager>(TRC) << "Total_Length original " << CPU_Common::ntohs(fragment.Total_Length)<< endl;
@@ -270,6 +264,7 @@ void IP_Manager::send(unsigned char* data, unsigned int data_size, unsigned char
 
 void IP_Manager::receive(void* data, bool retransmit) {
  
+    
     // Cria um novo ponteiro para adicionar na lista de fragmentos que estão chegando
     char * content = new char[1500];
     memcpy(content, data, 1500);
@@ -309,27 +304,31 @@ void IP_Manager::receive(void* data, bool retransmit) {
         INFO * datagram_info = new INFO;
 
         // Alarme
-        Functor_Handler<INFO> functor = Functor_Handler<INFO>(&timeout_handler, datagram_info);
-        Alarm * timer = new Alarm(Microsecond(Second(4)), &functor, 1);
+        Functor_Handler<INFO> * functor = new Functor_Handler<INFO>(&timeout_handler, datagram_info);
+        Alarm * timer = new Alarm(Microsecond(Second(20)), functor, 1);
 
         datagram_info->fragments = fragments;
         datagram_info->id = identification;
         datagram_info->num_fragments = 0;
         datagram_info->total_length = 0;
         datagram_info->timer = timer;
-        
+        datagram_info->timeout_handler = functor;
+        datagram_info->sem = new Semaphore(1);
+
         // INFO * datagram_info = new INFO{identification, 0, 0, fragments, timer};
         Element * link2 = new Element(datagram_info);
         
-        // Adicionana na lista de datagramas
+        // Adiciona na lista de datagramas
         dt_list->insert(link2);
         e = link2; 
         
     }
-
-
+    db<IP_Manager>(WRN) << "setando fragmento: " << endl;
+    
     // Informações do datagrama em que o frgamentos que chegou se encontra
     INFO * dt_info = e->object();
+
+    dt_info->sem->p();
 
     // Lista de fragmentos  de um mesmo datagram
     Simple_List<Fragment> * dt_list = e->object()->fragments; 
@@ -358,7 +357,7 @@ void IP_Manager::receive(void* data, bool retransmit) {
         db<IP_Manager>(TRC) << "Total frame:  " << total_frame << endl;
 
     }
-
+ 
     // Quando todos os framentos chegaram, remonta.
     if (total_frame == dt_info->num_fragments) {
         
@@ -403,16 +402,17 @@ void IP_Manager::receive(void* data, bool retransmit) {
             routing(fragment->DST_ADDR, dt_info->total_length, reinterpret_cast<unsigned char*>(base));
         } else {
             db<IP_Manager>(WRN) << "Sou o destino final deste datagrama" << endl;
+
         }
 
-    }
+        clear_dt_info(dt_info);
 
-
-    while (true)
-    {
-        db<IP_Manager>(TRC) << "Espera ocupada" << endl;
+    } else {
+        dt_info->timer->reset();
+        dt_info->sem->v();
     }
     
+
 }
 
 IP_Manager::Address * IP_Manager::find_mac(unsigned char* dst_ip)
@@ -480,8 +480,37 @@ IP_Manager::Address * IP_Manager::find_mac(unsigned char* dst_ip)
 
 void IP_Manager::timeout_handler(INFO * dt_info) {
 
-    db<IP_Manager>(WRN) << "id " <<endl;
+    db<IP_Manager>(WRN) << "Timeout handler" <<endl;
+    dt_info->sem->p();
+    IP_Manager::_ip_mng->clear_dt_info(dt_info);
 
+} 
+
+void IP_Manager::clear_dt_info(INFO * dt_info) {
+
+    db<IP_Manager>(WRN) << "Clear dt_info" <<endl;
+
+    db<IP_Manager>(TRC) << "Deletando fragmentos " << endl;
+    unsigned long size = dt_info->fragments->size();
+    while (size > 0)
+    {
+        Simple_List<IP::Fragment>::Element * e =  dt_info->fragments->remove();
+        delete e->object();
+        delete e;
+        size--;
+
+    }
+
+
+    db<IP_Manager>(TRC) << "Deletando timer " << endl;
+    delete dt_info->timer;
+    delete dt_info->timeout_handler;
+
+    List::Element * d = dt_list->search(dt_info);
+    dt_list->remove(d);
+    dt_info->sem->v();
+    delete dt_info->sem;
+    delete dt_info;
 }
 
 

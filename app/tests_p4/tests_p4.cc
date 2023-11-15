@@ -73,7 +73,7 @@ void test_same_network() {
 
      cout << "Iniciando envio de dados IP" << endl;
 
-     unsigned int data_size = 1480;
+     unsigned int data_size = 7400;
      unsigned char data_second[data_size];
      for(unsigned int i = 0; i < data_size; i++) {
           if (i < frag_data_size) data_second[i] = '3';
@@ -149,13 +149,13 @@ int main()
           // cout << "Passaram dois segundos" << endl;
           // delete alarm1;
 
-          test_localhost();
-          Delay(5000000);
-
-          // test_same_network();     
+          // test_localhost();
           // Delay(5000000);
 
-          // test_external_network();
+          test_same_network();     
+          Delay(5000000);
+          
+          //test_external_network();
           Delay(10000000000);
 
      // Receiver | Router
