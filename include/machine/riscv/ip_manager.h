@@ -15,14 +15,16 @@ struct INFO
     unsigned int num_fragments = 0;
     unsigned int total_length;
     Simple_List<IP::Fragment>  * fragments;
+    Alarm * timer;
+    // Mutex mtx;
 
 };
 
 struct IPTableEntry 
 {
-        unsigned char destination[4];
-        unsigned char gateway[4];
-        unsigned char genmask[4];
+    unsigned char destination[4];
+    unsigned char gateway[4];
+    unsigned char genmask[4];
 
 };
 
@@ -48,6 +50,7 @@ public:
     void add_entry(unsigned char* dst, unsigned char* gateway, unsigned char* genmask);
     void populate_routing_table();
     void routing(unsigned char * ip, unsigned int total_length, unsigned char * data);
+    static void timeout_handler(INFO * dt_info);
 
 
 public:

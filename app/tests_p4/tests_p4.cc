@@ -130,50 +130,27 @@ struct Teste {
      char b;
 };
 
-void funcao_teste(Teste* t) {
-     cout << "Olá mundo! com parâmetro t" << endl;
-     cout << t->a << endl;
-     cout << t->b << endl;
-}
-
-void funcao_teste1() {
-     cout << "Olá mundo! sem parâmetros" << endl;
-}
-
 int main()
 {
      SiFiveU_NIC * sifiveu_nic = SiFiveU_NIC::_device;          
      cout << "  MAC: " << sifiveu_nic->address << "\n" << endl;
 
-     Teste* struct_teste = new Teste();
-     struct_teste->a = 'a';
-     struct_teste->b = 'b';
-
-     Functor_Handler<Teste> functor = Functor_Handler<Teste>(&funcao_teste, struct_teste);
-     Function_Handler handler = Function_Handler(funcao_teste1);
-     
-     Second seconds(4);
-     Second seconds2(2);
-     Microsecond time(seconds);
-     Microsecond time2(seconds2);
-
      // Sender
      if(sifiveu_nic->address[5] % 2 ) {
           cout << "Sender" << endl;
-          Alarm *alarm1 = new Alarm(time, &functor, 1); // Dá pra colocar um número diretamente em time
-          Delay(2000000);
-          cout << "Passaram dois segundos" << endl;
-          alarm1->reset();
-          Delay(2000000);
-          cout << "Passaram dois segundos" << endl;
-          alarm1->reset();
-          Delay(2000000);
-          cout << "Passaram dois segundos" << endl;
-          delete alarm1;
+          // Alarm *alarm1 = new Alarm(time, &functor, 1); // Dá pra colocar um número diretamente em time
+          // Delay(2000000);
+          // cout << "Passaram dois segundos" << endl;
+          // alarm1->reset();
+          // Delay(2000000);
+          // cout << "Passaram dois segundos" << endl;
+          // alarm1->reset();
+          // Delay(2000000);
+          // cout << "Passaram dois segundos" << endl;
+          // delete alarm1;
 
-          //cout << alarm1->times() << endl;
-          // test_localhost();
-          // Delay(5000000);
+          test_localhost();
+          Delay(5000000);
 
           // test_same_network();     
           // Delay(5000000);
@@ -184,7 +161,6 @@ int main()
      // Receiver | Router
      } else {
           cout << "Receiver" << endl;
-          Alarm alarm(time, &handler, 4); // Dá pra colocar um número diretamente em time
 
           Delay (100000000000000);
      }

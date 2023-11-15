@@ -30,10 +30,10 @@ bool IP_Manager::is_localhost(unsigned char * dst_ip) {
         subnetwork1[i] = dst_ip[i] & submask[i];
         subnetwork2[i] = dst_table[i] & submask[i];
 
-        db<ARP_Manager>(TRC) << "is_my_network::submask[" << i << "]: " << static_cast<int>(submask[i]) << endl;
-        db<ARP_Manager>(TRC) << "is_my_network::dst_table[" << i << "]: " << static_cast<int>(dst_table[i]) << endl;
-        db<ARP_Manager>(TRC) << "is_my_network::subnetwork1[" << i << "]: " << static_cast<int>(subnetwork1[i]) << endl;
-        db<ARP_Manager>(TRC) << "is_my_network::subnetwork2[" << i << "]: " << static_cast<int>(subnetwork2[i]) << endl;
+        db<IP_Manager>(TRC) << "is_my_network::submask[" << i << "]: " << static_cast<int>(submask[i]) << endl;
+        db<IP_Manager>(TRC) << "is_my_network::dst_table[" << i << "]: " << static_cast<int>(dst_table[i]) << endl;
+        db<IP_Manager>(TRC) << "is_my_network::subnetwork1[" << i << "]: " << static_cast<int>(subnetwork1[i]) << endl;
+        db<IP_Manager>(TRC) << "is_my_network::subnetwork2[" << i << "]: " << static_cast<int>(subnetwork2[i]) << endl;
 
         if (subnetwork1[i] != subnetwork2[i]) {
             return false;
@@ -62,8 +62,8 @@ bool IP_Manager::is_my_network(unsigned char * dst_ip) {
         subnetwork1[i] = dst_ip[i] & submask[i];
         subnetwork2[i] = dst_table[i] & submask[i];
 
-        db<ARP_Manager>(TRC) << "is_my_network::submask1[" << i << "]: " << static_cast<int>(subnetwork1[i]) << endl;
-        db<ARP_Manager>(TRC) << "is_my_network::submask2[" << i << "]: " << static_cast<int>(subnetwork2[i]) << endl;
+        db<IP_Manager>(TRC) << "is_my_network::submask1[" << i << "]: " << static_cast<int>(subnetwork1[i]) << endl;
+        db<IP_Manager>(TRC) << "is_my_network::submask2[" << i << "]: " << static_cast<int>(subnetwork2[i]) << endl;
 
         if (subnetwork1[i] != subnetwork2[i]) {
             return false;
@@ -140,20 +140,20 @@ void IP_Manager::populate_routing_table() {
     IP_Element * e;
     for (e = routing_table->head(); e; e = e->next()) {
 
-        db<ARP_Manager>(TRC) << "destination(=" << static_cast<int>(e->object()->destination[0]) << ".";
-        db<ARP_Manager>(TRC) << static_cast<int>(e->object()->destination[1]) << ".";
-        db<ARP_Manager>(TRC) << static_cast<int>(e->object()->destination[2]) << ".";
-        db<ARP_Manager>(TRC) << static_cast<int>(e->object()->destination[3]) << ")\n" <<endl;
+        db<IP_Manager>(TRC) << "destination(=" << static_cast<int>(e->object()->destination[0]) << ".";
+        db<IP_Manager>(TRC) << static_cast<int>(e->object()->destination[1]) << ".";
+        db<IP_Manager>(TRC) << static_cast<int>(e->object()->destination[2]) << ".";
+        db<IP_Manager>(TRC) << static_cast<int>(e->object()->destination[3]) << ")\n" <<endl;
 
-        db<ARP_Manager>(TRC) << "gateway(=" << static_cast<int>(e->object()->gateway[0]) << ".";
-        db<ARP_Manager>(TRC) << static_cast<int>(e->object()->gateway[1]) << ".";
-        db<ARP_Manager>(TRC) << static_cast<int>(e->object()->gateway[2]) << ".";
-        db<ARP_Manager>(TRC) << static_cast<int>(e->object()->gateway[3]) << ")\n" <<endl;
+        db<IP_Manager>(TRC) << "gateway(=" << static_cast<int>(e->object()->gateway[0]) << ".";
+        db<IP_Manager>(TRC) << static_cast<int>(e->object()->gateway[1]) << ".";
+        db<IP_Manager>(TRC) << static_cast<int>(e->object()->gateway[2]) << ".";
+        db<IP_Manager>(TRC) << static_cast<int>(e->object()->gateway[3]) << ")\n" <<endl;
 
-        db<ARP_Manager>(TRC) << "genmask(=" << static_cast<int>(e->object()->genmask[0]) << ".";
-        db<ARP_Manager>(TRC) << static_cast<int>(e->object()->genmask[1]) << ".";
-        db<ARP_Manager>(TRC) << static_cast<int>(e->object()->genmask[2]) << ".";
-        db<ARP_Manager>(TRC) << static_cast<int>(e->object()->genmask[3]) << ")\n" <<endl;
+        db<IP_Manager>(TRC) << "genmask(=" << static_cast<int>(e->object()->genmask[0]) << ".";
+        db<IP_Manager>(TRC) << static_cast<int>(e->object()->genmask[1]) << ".";
+        db<IP_Manager>(TRC) << static_cast<int>(e->object()->genmask[2]) << ".";
+        db<IP_Manager>(TRC) << static_cast<int>(e->object()->genmask[3]) << ")\n" <<endl;
     }
 
 }
@@ -305,8 +305,20 @@ void IP_Manager::receive(void* data, bool retransmit) {
         
         // Criando uma nova estrutura para frames do mesmo datagrama
         Simple_List<Fragment>*  fragments = new Simple_List<Fragment>();
+
+        INFO * datagram_info = new INFO;
+
+        // Alarme
+        Functor_Handler<INFO> functor = Functor_Handler<INFO>(&timeout_handler, datagram_info);
+        Alarm * timer = new Alarm(Microsecond(Second(4)), &functor, 1);
+
+        datagram_info->fragments = fragments;
+        datagram_info->id = identification;
+        datagram_info->num_fragments = 0;
+        datagram_info->total_length = 0;
+        datagram_info->timer = timer;
         
-        INFO * datagram_info = new INFO{identification, 0, 0, fragments};
+        // INFO * datagram_info = new INFO{identification, 0, 0, fragments, timer};
         Element * link2 = new Element(datagram_info);
         
         // Adicionana na lista de datagramas
@@ -392,8 +404,15 @@ void IP_Manager::receive(void* data, bool retransmit) {
         } else {
             db<IP_Manager>(WRN) << "Sou o destino final deste datagrama" << endl;
         }
+
     }
 
+
+    while (true)
+    {
+        db<IP_Manager>(TRC) << "Espera ocupada" << endl;
+    }
+    
 }
 
 IP_Manager::Address * IP_Manager::find_mac(unsigned char* dst_ip)
@@ -441,10 +460,10 @@ IP_Manager::Address * IP_Manager::find_mac(unsigned char* dst_ip)
 
         unsigned char* gateway = e->object()->gateway;
 
-        db<ARP_Manager>(TRC) << "gateway (IP=" << static_cast<int>(gateway[0]) << ".";
-        db<ARP_Manager>(TRC) << static_cast<int>(gateway[1]) << ".";
-        db<ARP_Manager>(TRC) << static_cast<int>(gateway[2]) << ".";
-        db<ARP_Manager>(TRC) << static_cast<int>(gateway[3]) << ")" <<endl;
+        db<IP_Manager>(TRC) << "gateway (IP=" << static_cast<int>(gateway[0]) << ".";
+        db<IP_Manager>(TRC) << static_cast<int>(gateway[1]) << ".";
+        db<IP_Manager>(TRC) << static_cast<int>(gateway[2]) << ".";
+        db<IP_Manager>(TRC) << static_cast<int>(gateway[3]) << ")" <<endl;
 
         
         // ii. Pega o ip vindo de 'a' ou 'b'
@@ -456,6 +475,12 @@ IP_Manager::Address * IP_Manager::find_mac(unsigned char* dst_ip)
     }
 
     return nullptr;
+
+}
+
+void IP_Manager::timeout_handler(INFO * dt_info) {
+
+    db<IP_Manager>(WRN) << "id " <<endl;
 
 }
 
