@@ -152,7 +152,7 @@ int main()
           // test_localhost();
           // Delay(5000000);
 
-          test_same_network();     
+          // test_same_network();     
           Delay(5000000);
           
           //test_external_network();

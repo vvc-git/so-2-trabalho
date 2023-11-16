@@ -7,6 +7,9 @@ IP_Manager* IP_Manager::_ip_mng;
 void IP_Manager::init() {
     db<IP_Manager>(TRC) << "IP_Manager::init()"<< endl;
     _ip_mng = new (SYSTEM) IP_Manager();
+    _ip_mng->attach(UDP_Manager::udp_mng);
+    char teste = 'a';
+    _ip_mng->notify(&teste);
 }
 
 
@@ -247,7 +250,7 @@ void IP_Manager::send(unsigned char* data, unsigned int data_size, unsigned char
             memset(data_pointer, '9', frag_data_size - last_size);
         }
 
-        if (i == 1) continue;
+        // if (i == 1) continue;
         SiFiveU_NIC::_device->send(dst, (void*) &fragment, nic_mtu, 0x0800);
         Delay (1000000);
 

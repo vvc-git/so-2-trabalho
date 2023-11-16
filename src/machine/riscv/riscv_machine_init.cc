@@ -31,6 +31,7 @@ void Machine::init()
     Network_buffer::init();
 
     ARP_Manager::init();
+    UDP_Manager::init();
     IP_Manager::init();
 
     if(Traits<SiFiveU_NIC>::enabled)

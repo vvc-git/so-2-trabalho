@@ -6,6 +6,8 @@
 #include <machine/riscv/riscv_nic.h>
 #include <utility/string.h>
 #include <synchronizer.h>
+#include <utility/observer.h>
+#include <machine/riscv/udp_manager.h>
 
 __BEGIN_SYS
 
@@ -29,7 +31,7 @@ struct IPTableEntry
 
 };
 
-class IP_Manager {
+class IP_Manager: public Data_Observed<char, void> {
 
     typedef CPU::Reg8 Reg8;
     typedef CPU::Reg16 Reg16;
@@ -53,6 +55,7 @@ public:
     void routing(unsigned char * ip, unsigned int total_length, unsigned char * data);
     void clear_dt_info(INFO * dt_info);
     static void timeout_handler(INFO * dt_info);
+    // void attach(Data_Observer<char, void> *o) { Data_Observed<char, void>::attach(o); };
 
 
 public:

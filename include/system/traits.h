@@ -84,6 +84,7 @@ class ARP_Manager;
 // class Network_buffer;
 class IEEE802_15_4_NIC;
 class Ethernet_NIC;
+class UDP_Manager;
 
 // Transducer Mediators (i.e. sensors and actuators)
 class Transducers;
