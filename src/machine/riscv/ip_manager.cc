@@ -364,18 +364,7 @@ void IP_Manager::receive(void* data, bool retransmit) {
  
     // Quando todos os framentos chegaram, remonta.
     if (total_frame == dt_info->num_fragments) {
-
-        db<IP_Manager>(WRN) << "Objeto removido "<< e->object()->id << endl;
         complete->insert(dt_list->remove(e));
-        defragmentation(dt_info, retransmit); 
-
-        List::Element * d;
-        // Varredura na lista de informações de datagramas
-        for (d = complete->head(); d; d = d->next()) {
-            db<IP_Manager>(WRN) << "Objeto inserido " << d->object()->id << endl;
-
-        }   
-
 
     } else {
         dt_info->timer->reset();
@@ -471,7 +460,6 @@ void IP_Manager::clear_dt_info(INFO * dt_info) {
 
     }
 
-
     db<IP_Manager>(TRC) << "Deletando timer " << endl;
     delete dt_info->timer;
     delete dt_info->timeout_handler;
@@ -485,7 +473,7 @@ void IP_Manager::clear_dt_info(INFO * dt_info) {
 
 void IP_Manager::defragmentation(INFO * dt_info, bool retransmit) {
 
-    db<IP_Manager>(TRC) << "Remontagem" << endl;
+    db<IP_Manager>(WRN) << "Remontagem" << endl;
         
         // Capturando o 1° fragmento 
         Simple_List<Fragment>::Element * h = dt_info->fragments->head();
@@ -521,11 +509,13 @@ void IP_Manager::defragmentation(INFO * dt_info, bool retransmit) {
         }
         db<IP_Manager>(WRN) << endl;
 
-        if (retransmit) {
-            routing(h->object()->DST_ADDR, dt_info->total_length, reinterpret_cast<unsigned char*>(base));
-        } else {
-            db<IP_Manager>(WRN) << "Sou o destino final deste datagrama" << endl;
-        }
+
+        // TODO: Refazer a retransmissao fora (No handler da thread)
+        // if (retransmit) {
+        //     routing(h->object()->DST_ADDR, dt_info->total_length, reinterpret_cast<unsigned char*>(base));
+        // } else {
+        //     db<IP_Manager>(WRN) << "Sou o destino final deste datagrama" << endl;
+        // }
 
 
         // TODO: Mover para outro lugar
@@ -534,7 +524,24 @@ void IP_Manager::defragmentation(INFO * dt_info, bool retransmit) {
 }
 
 int IP_Manager::handler() {
+       
+    db<IP_Manager>(WRN) << "Chegou na thread" << endl;
+    while (true) {
+        
+        List * complete = IP_Manager::_ip_mng->complete;
+        List::Element * e;
+        // Varredura na lista de informações de datagramas
+        for (e = complete->head(); e; e = e->next()) {
+            db<IP_Manager>(WRN) << "Objeto inserido " << e->object()->id << endl;
+            // TODO: Retransmissão hardcoded
+            IP_Manager::_ip_mng->defragmentation(e->object(), true); 
 
+            // TODO: A desfragmentação deveria retornar um datagrama completo (data + ip header)
+            // TODO: IP header não está vindo (Colocar antes da base-> Refatorar)
+            // TODO: Decidir se o datagrama montado vai para udp ou retransmitido
+        }   
+
+    }
     return 0;   
 }
 
