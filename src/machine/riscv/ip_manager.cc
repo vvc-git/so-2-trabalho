@@ -366,14 +366,12 @@ void IP_Manager::receive(void* data, bool retransmit) {
     if (total_frame == dt_info->num_fragments) {
 
         db<IP_Manager>(WRN) << "Objeto removido "<< e->object()->id << endl;
-
         complete->insert(dt_list->remove(e));
         defragmentation(dt_info, retransmit); 
 
         List::Element * d;
         // Varredura na lista de informações de datagramas
-        for (d = complete->head(); d && d->object()->id; d = d->next()) {
-
+        for (d = complete->head(); d; d = d->next()) {
             db<IP_Manager>(WRN) << "Objeto inserido " << d->object()->id << endl;
 
         }   
@@ -529,7 +527,9 @@ void IP_Manager::defragmentation(INFO * dt_info, bool retransmit) {
             db<IP_Manager>(WRN) << "Sou o destino final deste datagrama" << endl;
         }
 
-        clear_dt_info(dt_info);
+
+        // TODO: Mover para outro lugar
+        // clear_dt_info(dt_info);
 
 }
 
