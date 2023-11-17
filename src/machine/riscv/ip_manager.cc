@@ -193,8 +193,8 @@ void IP_Manager::send(unsigned char* data, unsigned int data_size, unsigned char
     // Irá avançar sobre data para fazer o memcpy
     unsigned char * data_pointer;
 
-    unsigned int header_size = 20;
-    unsigned int nic_mtu = 1500;
+    unsigned int header_size = sizeof(IP::Header);
+    unsigned int nic_mtu = Ethernet::MTU;
     unsigned int frag_data_size = nic_mtu - header_size;
     unsigned int iter = (data_size/frag_data_size) + 1;
     unsigned int last_size = data_size  % frag_data_size;
@@ -244,14 +244,14 @@ void IP_Manager::send(unsigned char* data, unsigned int data_size, unsigned char
 
         // Preenchimento do último fragmento e Seta total length
         if (i == iter - 1) {
-            db<IP_Manager>(TRC) << "Last_siz " << last_size << endl;
+            db<IP_Manager>(TRC) << "Last_size " << last_size << endl;
             fragment.Total_Length = CPU_Common::htons(last_size + header_size);
-            data_pointer = fragment.data + last_size;   
-            memset(data_pointer, '9', frag_data_size - last_size);
+            // data_pointer = fragment.data + last_size;   
+            // memset(data_pointer, '9', frag_data_size - last_size);
         }
 
         // if (i == 1) continue;
-        SiFiveU_NIC::_device->send(dst, (void*) &fragment, nic_mtu, 0x0800);
+        SiFiveU_NIC::_device->send(dst, (void*) &fragment, size + header_size, 0x0800);
         Delay (1000000);
 
         // Print para verificar o header
@@ -269,17 +269,17 @@ void IP_Manager::receive(void* data, bool retransmit) {
  
     
     // Cria um novo ponteiro para adicionar na lista de fragmentos que estão chegando
-    char * content = new char[1500];
-    memcpy(content, data, 1500);
+    // char * content = new char[Ethernet::MTU];
+    // memcpy(content, data, Ethernet::MTU);
 
-    Fragment * fragment = reinterpret_cast<Fragment*>(content);
+    Fragment * fragment = reinterpret_cast<Fragment*>(data);
 
     db<IP_Manager>(TRC) << "---------------------"<< endl;
     db<IP_Manager>(TRC) << "IP_Manager::IP_receive\n"<< endl;
-
     
     // Capturando os valores do fragmento
-    unsigned int length = CPU_Common::ntohs(fragment->Total_Length) - 20;
+    short unsigned int header_length = (fragment->Version_IHL & GET_IHL)*4;
+    unsigned int data_length = CPU_Common::ntohs(fragment->Total_Length) - header_length;
     short unsigned int identification = CPU_Common::ntohs(fragment->Identification);
     short unsigned int offset = (CPU_Common::ntohs(fragment->Flags_Offset) & GET_OFFSET) * 8;
     short unsigned int more_frags = (CPU_Common::ntohs(fragment->Flags_Offset) & MORE_FRAGS);
@@ -287,7 +287,8 @@ void IP_Manager::receive(void* data, bool retransmit) {
     
     
     // Verificação se os valores estão certos
-    db<IP_Manager>(TRC) << "length: " << hex << length << endl;
+    db<IP_Manager>(TRC) << "header_length: " << header_length << endl;
+    db<IP_Manager>(TRC) << "data_length: "  << data_length << endl;
     db<IP_Manager>(TRC) << "identification: " << hex << identification << endl;
     db<IP_Manager>(TRC) << "offset: " << offset << endl;
     db<IP_Manager>(TRC) << "flags: " << flags << endl;
@@ -351,11 +352,11 @@ void IP_Manager::receive(void* data, bool retransmit) {
     if (!more_frags) {
         
         // Salva o tamanho total do datagrama
-        dt_info->total_length = offset + length;
+        dt_info->total_length = offset + data_length;
         
         // Salva quantos frames vão ter no datagrama
-        total_frame = dt_info->total_length / 1480;
-        if (length < 1480) total_frame++;
+        total_frame = dt_info->total_length / (IP::MTU);
+        if (data_length < (IP::MTU)) total_frame++;
         
         db<IP_Manager>(TRC) << "Total length: " << dt_info->total_length << endl;
         db<IP_Manager>(TRC) << "Total frame:  " << total_frame << endl;
@@ -479,8 +480,12 @@ void IP_Manager::defragmentation(INFO * dt_info, bool retransmit) {
         // Capturando o 1° fragmento 
         Simple_List<Fragment>::Element * h = dt_info->fragments->head();
 
-        // Aloca um espaço na heap para o datagrama
+        // Aloca um espaço no buffer não contíguo (heap) para o datagrama
         void * base = Network_buffer::net_buffer->dt->alloc(dt_info->total_length);
+
+        // Tamanho do cabeçalho IP
+        short unsigned int header_length = (h->object()->Version_IHL & GET_IHL)*4;
+        db<IP_Manager>(TRC) << "Header Length: " << header_length << endl;
         
         // Percorre a lista de fragmentos para a remontagem
         for (; h; h = h->next()) {
@@ -492,7 +497,7 @@ void IP_Manager::defragmentation(INFO * dt_info, bool retransmit) {
             short unsigned int offset = (CPU_Common::ntohs(f->Flags_Offset) & GET_OFFSET) * 8;
             
             // Tamanho do fragmento
-            unsigned int size = CPU_Common::ntohs(f->Total_Length) - 20;
+            unsigned int size = CPU_Common::ntohs(f->Total_Length) - header_length;
 
             db<IP_Manager>(TRC) << "Size " << size << endl;
             db<IP_Manager>(TRC) << "Offset do frame " << offset <<endl;
@@ -531,17 +536,22 @@ int IP_Manager::handler() {
         db<IP_Manager>(WRN) << "Requisitando semáforo" << endl;
         IP_Manager::_ip_mng->sem_th->p();
         db<IP_Manager>(WRN) << "Semáforo concedido" << endl;
+
+        // Lista de datagramas com todos os fragmentos
         List * complete_dtgs = IP_Manager::_ip_mng->complete_dtgs;
         List::Element * e;
+
         // Varredura na lista de informações de datagramas
         for (e = complete_dtgs->head(); e; e = e->next()) {
-            db<IP_Manager>(WRN) << "Objeto inserido " << e->object()->id << endl;
+            db<IP_Manager>(TRC) << "Objeto inserido " << hex << e->object()->id << endl;
             // TODO: Retransmissão hardcoded
             IP_Manager::_ip_mng->defragmentation(e->object(), true); 
 
             // TODO: A desfragmentação deveria retornar um datagrama completo (data + ip header)
             // TODO: IP header não está vindo (Colocar antes da base-> Refatorar)
             // TODO: Decidir se o datagrama montado vai para udp ou retransmitido
+            complete_dtgs->remove(e);
+            // TODO: limpar memória (clean) do INFO remontado
         }   
 
     }

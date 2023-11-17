@@ -68,6 +68,7 @@ public:
         LAST_FRAG = 0X1FFF,
         GET_OFFSET = 0x1fff,
         GET_FLAGS = 0xe000, 
+        GET_IHL = 0x0F,
     };
 
 public:

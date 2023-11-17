@@ -186,18 +186,24 @@ int Network_buffer::copy() {
                     }
 
                 }      
+
+                unsigned int crc = 4;
+
+                // Cria um novo ponteiro para adicionar na lista de fragmentos que estão chegando
+                char * content = new char[frame_size - crc];
+                memcpy(content, reinterpret_cast<void*>(desc->address), frame_size - crc);
                 
-                // Faz a copia do buffer rx para data
-                char  payload[frame_size - 4];
-                // net_buffer->buf->get_data_frame(payload);
-                memcpy(payload, reinterpret_cast<void*>(desc->address), frame_size - 4);
+                // // Faz a copia do buffer rx para data
+                // char  payload[frame_size - 4];
+                // // net_buffer->buf->get_data_frame(payload);
+                // memcpy(payload, reinterpret_cast<void*>(desc->address), frame_size - 4);
                 
                 // Setando os 2 ultimos bits da word[0]
                 // (O wrap bit caso seja necessário)
                 desc->set_rx_own_wrap(idx == ( net_buffer->SLOTS_BUFFER - 1));
 
                 db<Network_buffer>(TRC) << "Retransmit " << retransmit << endl;
-                IP_Manager::_ip_mng->receive((void *)(payload + 14), retransmit);
+                IP_Manager::_ip_mng->receive((void *)(content + sizeof(Ethernet::Header)), retransmit);
             }
         }
         
