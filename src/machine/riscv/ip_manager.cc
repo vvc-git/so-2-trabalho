@@ -8,8 +8,6 @@ void IP_Manager::init() {
     db<IP_Manager>(TRC) << "IP_Manager::init()"<< endl;
     _ip_mng = new (SYSTEM) IP_Manager();
     _ip_mng->attach(UDP_Manager::udp_mng);
-    char teste = 'a';
-    _ip_mng->notify(&teste);
 }
 
 
@@ -562,10 +560,10 @@ int IP_Manager::handler() {
         // Varredura na lista de informações de datagramas
         for (e = complete_dtgs->head(); e; e = e->next()) {
             db<IP_Manager>(TRC) << "Objeto inserido " << hex << e->object()->id << endl;
-            // TODO: Retransmissão hardcoded
             void* datagram = IP_Manager::_ip_mng->defragmentation(e->object()); 
 
             IP::Header* header = reinterpret_cast<IP::Header*>(datagram);
+            // unsigned int header_length = (header->Version_IHL & GET_IHL);
 
             bool retransmit = false;
             for (int i = 0; (!retransmit) && i < 4; i++) {
@@ -576,11 +574,11 @@ int IP_Manager::handler() {
 
             if (retransmit) {
                 IP_Manager::_ip_mng->routing(datagram);
+            } else {
+                db<IP_Manager>(WRN) << "Notificando UDP" << endl;
+                IP_Manager::_ip_mng->notify(reinterpret_cast<unsigned char*>(datagram));
             }
 
-            // TODO: A desfragmentação deveria retornar um datagrama completo (data + ip header)
-            // TODO: IP header não está vindo (Colocar antes da base-> Refatorar)
-            // TODO: Decidir se o datagrama montado vai para udp ou retransmitido
             complete_dtgs->remove(e);
             // TODO: limpar memória (clean) do INFO remontado
         }   

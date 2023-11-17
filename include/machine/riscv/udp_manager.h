@@ -10,11 +10,11 @@
 
 __BEGIN_SYS
 
-class UDP_Manager: public Data_Observer<char, void> {
+class UDP_Manager: public Data_Observer<unsigned char, void> {
 public:
     static void init();
     void hello();
-    void update(Data_Observed<char, void> * o, char * d);
+    void update(Data_Observed<unsigned char, void> * o, unsigned char * d);
 
 public:
     static UDP_Manager* udp_mng;    

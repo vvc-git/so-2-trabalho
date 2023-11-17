@@ -32,7 +32,7 @@ struct IPTableEntry
 
 };
 
-class IP_Manager: public Data_Observed<char, void> {
+class IP_Manager: public Data_Observed<unsigned char, void> {
 
     typedef CPU::Reg8 Reg8;
     typedef CPU::Reg16 Reg16;
