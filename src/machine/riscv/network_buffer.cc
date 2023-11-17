@@ -6,7 +6,6 @@ Network_buffer* Network_buffer::net_buffer;
 
 void Network_buffer::init() {
     net_buffer = new (SYSTEM) Network_buffer();
-
 }
 
 Network_buffer::Network_buffer() {

@@ -533,6 +533,10 @@ void IP_Manager::defragmentation(INFO * dt_info, bool retransmit) {
 
 }
 
+int IP_Manager::handler() {
+
+    return 0;   
+}
 
 
 __END_SYS

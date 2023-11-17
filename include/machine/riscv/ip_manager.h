@@ -57,6 +57,7 @@ public:
     void clear_dt_info(INFO * dt_info);
     static void timeout_handler(INFO * dt_info);
     void defragmentation(INFO * dt_info, bool retransmit);
+    static int handler();
     // void attach(Data_Observer<char, void> *o) { Data_Observed<char, void>::attach(o); };
 
 
@@ -85,6 +86,9 @@ public:
     // Lista de infos dos datagramas em construção
     IP_Table * routing_table = new IP_Table;
 
+    // Thread que vai desfragmentar os pacotes e decidir se passa para camada de cima ou 
+    // roteia
+    // static Thread * _ip_thread;
     
     IP_Element * default_router;
     IP_Element * localhost;

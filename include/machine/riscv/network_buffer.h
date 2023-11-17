@@ -72,7 +72,6 @@ public:
     
     // Método estático de acesso para a nic
     static Network_buffer* net_buffer;
-    Thread * thread;
     Semaphore * sem;
     CT_Buffer * buf;
 
