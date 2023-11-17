@@ -48,6 +48,7 @@ public:
     public:
         Fragment() {db<Fragment>(TRC) << "IP::Fragment"<< endl;};
         Header * header() { return this; }
+        void header(Header * header) {memcpy(this, header, sizeof(Header));}
 
         unsigned char data[1480];
 

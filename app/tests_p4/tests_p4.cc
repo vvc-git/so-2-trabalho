@@ -21,37 +21,37 @@ using namespace EPOS;
 
 OStream cout;
 
-void test_localhost() {
+// void test_localhost() {
 
-     unsigned char ip[4];
-     ip[0] = 127; // 127.0.0.1     
-     ip[1] = 0;
-     ip[2] = 0;
-     ip[3] = 1;
+//      unsigned char ip[4];
+//      ip[0] = 127; // 127.0.0.1     
+//      ip[1] = 0;
+//      ip[2] = 0;
+//      ip[3] = 1;
 
-     cout << "\nTeste Localhost" << endl;
+//      cout << "\nTeste Localhost" << endl;
 
-     // Envio para localhost
-     cout << "Quem tem o mac do IP  " << static_cast<int>(ip[0]) << ".";
-     cout << static_cast<int>(ip[1]) << ".";
-     cout << static_cast<int>(ip[2]) << ".";
-     cout << static_cast<int>(ip[3]) << "?" <<endl;
+//      // Envio para localhost
+//      cout << "Quem tem o mac do IP  " << static_cast<int>(ip[0]) << ".";
+//      cout << static_cast<int>(ip[1]) << ".";
+//      cout << static_cast<int>(ip[2]) << ".";
+//      cout << static_cast<int>(ip[3]) << "?" <<endl;
 
-     NIC_Common::Address<6> * mac =  IP_Manager::_ip_mng->find_mac(ip);
-     if (mac)
-          cout << "MAC encontrado: " << *mac << endl;
+//      NIC_Common::Address<6> * mac =  IP_Manager::_ip_mng->find_mac(ip);
+//      if (mac)
+//           cout << "MAC encontrado: " << *mac << endl;
 
-     cout << "Iniciando envio de dados IP" << endl;
+//      cout << "Iniciando envio de dados IP" << endl;
 
-     unsigned int data_size = 1480;
-     unsigned char data_first[data_size];
-     for(unsigned int i = 0; i < data_size; i++) {
-          data_first[i] = '3';
-     }
+//      unsigned int data_size = 1480;
+//      unsigned char data_first[data_size];
+//      for(unsigned int i = 0; i < data_size; i++) {
+//           data_first[i] = '3';
+//      }
+// // 
+//      // IP_Manager::_ip_mng->send(data_first, data_size, ip, mac);
 
-     IP_Manager::_ip_mng->send(data_first, data_size, ip, mac);
-
-}
+// }
 
 void test_same_network() {
 
@@ -85,8 +85,11 @@ void test_same_network() {
           else data_second[i] = 'U';
      }
 
-     // db<Network_buffer>(WRN) << "Datagrama enviado: " << data_second << endl;
-     IP_Manager::_ip_mng->send(data_second, data_size, ip, mac);
+     IP::Header * header = new IP::Header;
+     IP_Manager::default_header(header);
+
+     db<Network_buffer>(WRN) << "Datagrama enviado: " << data_second << endl;
+     IP_Manager::_ip_mng->send(header, data_second, data_size, ip, mac);
 
 }
 
@@ -125,38 +128,55 @@ void test_external_network() {
           else data_third[i] = 'C';
      }
 
-     // db<Network_buffer>(WRN) << "Datagrama enviado: " << data_second << endl;
-     IP_Manager::_ip_mng->send(data_third, data_size, ip, mac);
+     IP::Header * header = new IP::Header;
+     IP_Manager::default_header(header);
+
+     db<Network_buffer>(WRN) << "Datagrama enviado: " << data_third << endl;
+     IP_Manager::_ip_mng->send(header, data_third, data_size, ip, mac);
      
 }
 
 
-void test_icmp() {
+// void test_icmp() {
 
-     // IP destino fora da minha rede
-     unsigned char ip[4];
-     ip[0] = 150;        
-     ip[1] = 162;
-     ip[2] = 60;
-     ip[3] = 2;
+//      // IP destino fora da minha rede
+//      unsigned char ip[4];
+//      ip[0] = 150;        
+//      ip[1] = 162;
+//      ip[2] = 60;
+//      ip[3] = 2;
 
-     cout << "\nTeste rede externa" << endl;
+//      cout << "\nTeste rede externa" << endl;
 
-     // Envio para host na rede externa (E não temos na tabela de roteamento -> vai para default)
-     cout << "Quem tem o mac do IP  " << static_cast<int>(ip[0]) << ".";
-     cout << static_cast<int>(ip[1]) << ".";
-     cout << static_cast<int>(ip[2]) << ".";
-     cout << static_cast<int>(ip[3]) << "?" << endl;
+//      // Envio para host na rede externa (E não temos na tabela de roteamento -> vai para default)
+//      cout << "Quem tem o mac do IP  " << static_cast<int>(ip[0]) << ".";
+//      cout << static_cast<int>(ip[1]) << ".";
+//      cout << static_cast<int>(ip[2]) << ".";
+//      cout << static_cast<int>(ip[3]) << "?" << endl;
 
 
-     NIC_Common::Address<6> * mac = IP_Manager::_ip_mng->find_mac(ip);
-     if (mac)
-          cout << "MAC do gateway default: " << *mac << endl;
+//      NIC_Common::Address<6> * mac = IP_Manager::_ip_mng->find_mac(ip);
+//      if (mac)
+//           cout << "MAC do gateway default: " << *mac << endl;
 
-     cout << "Iniciando envio de dados IP" << endl;
+//      cout << "Iniciando envio de dados IP" << endl;
      
-     // db<Network_buffer>(WRN) << "Datagrama enviado: " << data_second << endl;
-     ICMP_Manager::_icmp_mng->send(ip, mac);
+//      // db<Network_buffer>(WRN) << "Datagrama enviado: " << data_second << endl;
+//      ICMP_Manager::_icmp_mng->send(ip, mac);
+
+// }
+
+void test_default_header() {
+
+     IP::Header * header = new IP::Header;
+     IP_Manager::default_header(header);
+
+
+     // cout << "Version e header length" << header->Version_IHL << endl;
+     // cout << "Type Service" << header->Type_Service << endl;
+     // cout << "TTL" << header->TTL << endl;
+     // cout << "Protocol" << header->Protocol << endl;
+
 
 }
 struct Teste {
@@ -190,8 +210,11 @@ int main()
           // test_icmp();
           // Delay(5000000);
 
-          test_same_network();     
-          // test_icmp();
+          // test_same_network();     
+          // // test_icmp();
+
+          // test_default_header();
+          test_external_network();
           Delay(5000000);
           
           // test_external_network();

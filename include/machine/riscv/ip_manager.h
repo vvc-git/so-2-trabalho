@@ -42,11 +42,13 @@ class IP_Manager: public Data_Observed<unsigned char, void> {
     typedef typename List::Element Element;
     typedef Simple_List<IPTableEntry> IP_Table;
     typedef typename IP_Table::Element IP_Element;
+    typedef IP::Header Header;
+
 
 
 public:
     static void init();
-    void send(unsigned char* data, unsigned int data_size, unsigned char * dst_ip, Address * dst_mac);
+    void send(Header * header, void* data, unsigned int size, unsigned char * ip, Address * mac);
     void receive(void* data);
     Address * find_mac(unsigned char* dst_ip);
     bool is_my_network(unsigned char * dst_ip);
@@ -58,6 +60,7 @@ public:
     static void timeout_handler(INFO * dt_info);
     void* defragmentation(INFO * dt_info);
     static int handler();
+    static void default_header(IP::Header * header);
     // void attach(Data_Observer<char, void> *o) { Data_Observed<char, void>::attach(o); };
 
 

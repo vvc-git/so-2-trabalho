@@ -183,17 +183,17 @@ void IP_Manager::routing(void * datagram) {
     db<IP_Manager>(WRN) << "header length: " << header_length << endl;
     db<IP_Manager>(WRN) << "MAC do próximo gateway: " << *mac_next_hop << endl;
     db<IP_Manager>(WRN) << "Iniciando envio de dados IP" << endl;
-    send(reinterpret_cast<unsigned char*>(datagram) + header_length, total_length, ip_final, mac_next_hop);
+
+    // IP::Header * header = new IP::Header;
+    // IP_Manager::default_header(header);
+    send(header, reinterpret_cast<unsigned char*>(datagram) + header_length, total_length, ip_final, mac_next_hop);
     db<IP_Manager>(TRC) << "Retransmitiu" << endl;
 
 }
 
 
-void IP_Manager::send(unsigned char* data, unsigned int data_size, unsigned char * dst_ip, Address * dst_mac) {
-    db<IP_Manager>(TRC) << "IP_Manager::IP_send inicio"<< endl;
-
-    // Setando MAC de destino
-    Address dst = *dst_mac;
+void IP_Manager::send(Header * header, void* data, unsigned int size, unsigned char * ip, Address * mac) {
+    db<IP_Manager>(WRN) << "IP_Manager::IP_send inicio"<< endl;
     
     // Irá avançar sobre data para fazer o memcpy
     unsigned char * data_pointer;
@@ -201,29 +201,35 @@ void IP_Manager::send(unsigned char* data, unsigned int data_size, unsigned char
     unsigned int header_size = sizeof(IP::Header);
     unsigned int nic_mtu = Ethernet::MTU;
     unsigned int frag_data_size = nic_mtu - header_size;
-    unsigned int iter = (data_size/frag_data_size) + 1;
-    unsigned int last_size = data_size  % frag_data_size;
+    unsigned int iter = (size / frag_data_size) + 1;
+    unsigned int last_size = size  % frag_data_size;
 
     unsigned int id = 0x1230 + id_send;
     id_send++;
 
-    Fragment fragment = Fragment();
-    Reg8 version = 4 << 4;
-    Reg8 IHL = (header_size/4);
-    fragment.Version_IHL = (version | IHL);
-    fragment.Type_Service = 0;
-    fragment.Total_Length = CPU_Common::htons(nic_mtu);
-    fragment.Identification = CPU_Common::htons(id);
-    fragment.TTL = 64;
-    fragment.Protocol = 253;
-    // fragment_Checksum = 0;
+    Fragment * fragment = new Fragment;
+    fragment->header(header); 
 
+    db<IP_Manager>(WRN) << "Version e header length: " << fragment->Version_IHL << endl;
+    db<IP_Manager>(WRN) << "Type Service: " << fragment->Type_Service << endl;
+    db<IP_Manager>(WRN) << "TTL: " << fragment->TTL << endl;
+    db<IP_Manager>(WRN) << "Protocol: " << fragment->Protocol << endl;
+
+    // Tamanho padrão de cada fragmento
+    fragment->Total_Length = CPU_Common::htons(Ethernet::MTU);
+
+    // Campos específico da fragmentação (Identification, Flags, Fragment Offset)
+    fragment->Identification = CPU_Common::htons(id);
+
+
+
+    // TODO: Fazer memcpy
     for (int i = 0; i < 4; i++) {
-        fragment.SRC_ADDR[i] = ARP_Manager::_arp_mng->IP_ADDR[i];
-        fragment.DST_ADDR[i] = dst_ip[i];
+        fragment->SRC_ADDR[i] = ARP_Manager::_arp_mng->IP_ADDR[i];
+        fragment->DST_ADDR[i] = ip[i];
     }
 
-    db<IP_Manager>(TRC) << "Identification: " << hex << CPU_Common::htons(fragment.Identification) << endl;
+    db<IP_Manager>(TRC) << "Identification: " << hex << CPU_Common::htons(fragment->Identification) << endl;
     for (unsigned int i = 0; i < iter; i++) {
         if (i == iter - 1 && !last_size) break; // fragmentação já realizada
         db<IP_Manager>(TRC) << i << "° fragmento " << endl;
@@ -238,32 +244,32 @@ void IP_Manager::send(unsigned char* data, unsigned int data_size, unsigned char
             // Existem mais fragmentos
             flag_off = (offset | MORE_FRAGS);
         }
-        fragment.Flags_Offset = CPU_Common::htons(flag_off);
+        fragment->Flags_Offset = CPU_Common::htons(flag_off);
 
         // Setando o ponteiro para o endereco especifico em data
-        data_pointer = data + i*frag_data_size;
+        data_pointer = reinterpret_cast<unsigned char*>(data) + i * frag_data_size;
 
         // Copiando os dados para o fragment que sera enviado
         unsigned int size = (i == iter - 1) ? last_size : frag_data_size;
-        memcpy(fragment.data, data_pointer, size);
+        memcpy(fragment->data, data_pointer, size);
 
         // Preenchimento do último fragmento e Seta total length
         if (i == iter - 1) {
             db<IP_Manager>(TRC) << "Last_size " << last_size << endl;
-            fragment.Total_Length = CPU_Common::htons(last_size + header_size);
-            // data_pointer = fragment.data + last_size;   
+            fragment->Total_Length = CPU_Common::htons(last_size + header_size);
+            // data_pointer = fragment->data + last_size;   
             // memset(data_pointer, '9', frag_data_size - last_size);
         }
 
         // if (i == 1) continue;
-        SiFiveU_NIC::_device->send(dst, (void*) &fragment, size + header_size, 0x0800);
+        SiFiveU_NIC::_device->send(*mac, (void*) &fragment, size + header_size, 0x0800);
         Delay (1000000);
 
         // Print para verificar o header
-        db<IP_Manager>(TRC) << "Total_Length original " << CPU_Common::ntohs(fragment.Total_Length)<< endl;
-        db<IP_Manager>(TRC) << "Total_Length sem o size: " << (CPU_Common::ntohs(fragment.Total_Length) * 8) - header_size << endl;
-        db<IP_Manager>(TRC) << "Identification: " << hex << CPU_Common::htons(fragment.Identification) << endl;
-        db<IP_Manager>(TRC) << "Offset: " << (CPU_Common::htons(fragment.Flags_Offset) & GET_OFFSET)*8 << endl;
+        db<IP_Manager>(TRC) << "Total_Length original " << CPU_Common::ntohs(fragment->Total_Length)<< endl;
+        db<IP_Manager>(TRC) << "Total_Length sem o size: " << (CPU_Common::ntohs(fragment->Total_Length) * 8) - header_size << endl;
+        db<IP_Manager>(TRC) << "Identification: " << hex << CPU_Common::htons(fragment->Identification) << endl;
+        db<IP_Manager>(TRC) << "Offset: " << (CPU_Common::htons(fragment->Flags_Offset) & GET_OFFSET)*8 << endl;
     }
     
     db<IP_Manager>(TRC) << "---------------------"<< endl;
@@ -587,5 +593,20 @@ int IP_Manager::handler() {
     return 0;   
 }
 
+ void IP_Manager::default_header(IP::Header * header) {
+
+    // Internet Protocol Version (IPV4)   
+    Reg8 version = 4 << 4;
+
+    // Internet Header length (in words)
+    Reg8 IHL = (sizeof(IP::Header) / 4);
+
+    // Default values
+    header->Version_IHL = (version | IHL);
+    header->Type_Service = 0; 
+    header->TTL = 64;
+    header->Protocol = 253;
+    // header->fragment_Checksum = 0;
+ }
 
 __END_SYS
