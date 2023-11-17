@@ -170,10 +170,7 @@ int Network_buffer::copy() {
             // Caso negativo, eh preciso retransmitir
             Fragment::Header * header = (reinterpret_cast<Fragment::Header*>(desc->address + 14));
 
-            // Vefica se não é um ICMP
-            Echo * eheader = (reinterpret_cast<Echo*>(desc->address + 14));
-
-            if (eheader->Type == 8) {
+            if (header->Protocol == 1) {
                 db<Network_buffer>(WRN) << "Echo Message " << endl;
 
                 // Faz a copia do buffer rx para data

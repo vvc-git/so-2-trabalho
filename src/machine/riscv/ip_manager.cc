@@ -294,6 +294,7 @@ void IP_Manager::receive(void* data, bool retransmit) {
 
 
     List::Element * e;
+    // Varredura na lista de informações de datagramas
     for (e = dt_list->head(); e && e->object()->id != identification; e = e->next()) {}   
 
     // Verifica se já temos informações do fragmento que chegou
@@ -334,11 +335,11 @@ void IP_Manager::receive(void* data, bool retransmit) {
     dt_info->sem->p();
 
     // Lista de fragmentos  de um mesmo datagram
-    Simple_List<Fragment> * dt_list = e->object()->fragments; 
+    Simple_List<Fragment> * fragments = e->object()->fragments; 
 
     // Inserindo na lista de fragmentos
     Simple_List<Fragment>::Element * link1 = new  Simple_List<Fragment>::Element(fragment);
-    dt_list->insert(link1);
+    fragments->insert(link1);
     
     // Incrementa o contador de fragmentos
     dt_info->num_fragments++;
@@ -363,52 +364,20 @@ void IP_Manager::receive(void* data, bool retransmit) {
  
     // Quando todos os framentos chegaram, remonta.
     if (total_frame == dt_info->num_fragments) {
-        
-        db<IP_Manager>(TRC) << "Remontagem" << endl;
-        
-        // Capturando o 1° fragmento 
-        Simple_List<Fragment>::Element * h = e->object()->fragments->head();
-        db<IP_Manager>(TRC) << "head " << dt_list->head()->object()->data <<endl;
-        
-        // Aloca um espaço na heap para o datagrama
-        void * base = Network_buffer::net_buffer->dt->alloc(dt_info->total_length);
-        
-        // Percorre a lista de fragmentos para a remontagem
-        for (; h; h = h->next()) {
 
-            // Fragmento que será colocado no datagrama
-            Fragment * f = h->object();
+        db<IP_Manager>(WRN) << "Objeto removido "<< e->object()->id << endl;
 
-            // Offset do fragmento
-            short unsigned int offset = (CPU_Common::ntohs(f->Flags_Offset) & GET_OFFSET) * 8;
-            
-            // Tamanho do fragmento
-            unsigned int size = CPU_Common::ntohs(f->Total_Length) - 20;
+        complete->insert(dt_list->remove(e));
+        defragmentation(dt_info, retransmit); 
 
-            db<IP_Manager>(TRC) << "Size " << size << endl;
-            db<IP_Manager>(TRC) << "Offset do frame " << offset <<endl;
-            db<IP_Manager>(TRC) << "Data " << f->data << endl;
+        List::Element * d;
+        // Varredura na lista de informações de datagramas
+        for (d = complete->head(); d && d->object()->id; d = d->next()) {
 
-            // Remontagem do fragmento na heap
-            char * next = reinterpret_cast<char*>(base) + offset;
-            memcpy(next, f->data,  size);
+            db<IP_Manager>(WRN) << "Objeto inserido " << d->object()->id << endl;
 
-        }  
+        }   
 
-        db<IP_Manager>(WRN) << "\nRecebido datagrama:" << endl;
-        for (unsigned int i = 0; i < dt_info->total_length; i++) {
-            db<IP_Manager>(WRN) << reinterpret_cast<char*>(base)[i];
-        }
-        db<IP_Manager>(WRN) << endl;
-
-        if (retransmit) {
-            routing(fragment->DST_ADDR, dt_info->total_length, reinterpret_cast<unsigned char*>(base));
-        } else {
-            db<IP_Manager>(WRN) << "Sou o destino final deste datagrama" << endl;
-
-        }
-
-        clear_dt_info(dt_info);
 
     } else {
         dt_info->timer->reset();
@@ -514,6 +483,54 @@ void IP_Manager::clear_dt_info(INFO * dt_info) {
     dt_info->sem->v();
     delete dt_info->sem;
     delete dt_info;
+}
+
+void IP_Manager::defragmentation(INFO * dt_info, bool retransmit) {
+
+    db<IP_Manager>(TRC) << "Remontagem" << endl;
+        
+        // Capturando o 1° fragmento 
+        Simple_List<Fragment>::Element * h = dt_info->fragments->head();
+
+        // Aloca um espaço na heap para o datagrama
+        void * base = Network_buffer::net_buffer->dt->alloc(dt_info->total_length);
+        
+        // Percorre a lista de fragmentos para a remontagem
+        for (; h; h = h->next()) {
+
+            // Fragmento que será colocado no datagrama
+            Fragment * f = h->object();
+
+            // Offset do fragmento
+            short unsigned int offset = (CPU_Common::ntohs(f->Flags_Offset) & GET_OFFSET) * 8;
+            
+            // Tamanho do fragmento
+            unsigned int size = CPU_Common::ntohs(f->Total_Length) - 20;
+
+            db<IP_Manager>(TRC) << "Size " << size << endl;
+            db<IP_Manager>(TRC) << "Offset do frame " << offset <<endl;
+            db<IP_Manager>(TRC) << "Data " << f->data << endl;
+
+            // Remontagem do fragmento na heap
+            char * next = reinterpret_cast<char*>(base) + offset;
+            memcpy(next, f->data,  size);
+
+        }  
+
+        db<IP_Manager>(WRN) << "\nRecebido datagrama:" << endl;
+        for (unsigned int i = 0; i < dt_info->total_length; i++) {
+            db<IP_Manager>(WRN) << reinterpret_cast<char*>(base)[i];
+        }
+        db<IP_Manager>(WRN) << endl;
+
+        if (retransmit) {
+            routing(h->object()->DST_ADDR, dt_info->total_length, reinterpret_cast<unsigned char*>(base));
+        } else {
+            db<IP_Manager>(WRN) << "Sou o destino final deste datagrama" << endl;
+        }
+
+        clear_dt_info(dt_info);
+
 }
 
 

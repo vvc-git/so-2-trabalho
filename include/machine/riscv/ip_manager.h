@@ -17,6 +17,7 @@ struct INFO
     unsigned int id;
     unsigned int num_fragments = 0;
     unsigned int total_length;
+    // Lista ordenada de fragmentos por offset
     Simple_List<IP::Fragment>  * fragments;
     Alarm * timer;
     Functor_Handler<INFO> * timeout_handler;
@@ -55,6 +56,7 @@ public:
     void routing(unsigned char * ip, unsigned int total_length, unsigned char * data);
     void clear_dt_info(INFO * dt_info);
     static void timeout_handler(INFO * dt_info);
+    void defragmentation(INFO * dt_info, bool retransmit);
     // void attach(Data_Observer<char, void> *o) { Data_Observed<char, void>::attach(o); };
 
 
@@ -74,13 +76,16 @@ public:
     // Datagrama counter
     unsigned int id_send = 1;
     
-    // Lista de infos dos datagramas em construção
+    // Lista de infos dos datagramas em construção (Incompletos)
     List * dt_list = new List;
+
+    // Lista de infos dos datagramas construidos (Completos)
+    List * complete = new List;
 
     // Lista de infos dos datagramas em construção
     IP_Table * routing_table = new IP_Table;
 
-    //
+    
     IP_Element * default_router;
     IP_Element * localhost;
     IP_Element * internal;

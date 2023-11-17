@@ -61,7 +61,7 @@ void ICMP_Manager::receive(void* request) {
         reply->DST_ADDR[i] = echo->SRC_ADDR[i];
     }
     db<ICMP_Manager>(WRN) << "Preencheu o IP" << sizeof(reply) + sizeof(Echo::Header) << endl;
-    SiFiveU_NIC::_device->send(frame->dst(), (void*)reply, sizeof(IP::Header) + sizeof(IP::Echo), 0x0800);
+    SiFiveU_NIC::_device->send(frame->src(), (void*)reply, sizeof(IP::Header) + sizeof(IP::Echo), 0x0800);
 
 
     // Verificação se os valores estão certos
