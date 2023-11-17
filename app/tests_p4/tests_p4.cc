@@ -5,13 +5,17 @@
 #include <network/ethernet.h>
 #include <time.h>
 #include <process.h>
-#include <machine/riscv/arp_manager.h>
+
 
 // Para o delay e alarm
 #include <time.h>
 #include <utility/handler.h>
 #include <system/types.h>
 
+
+// Gerenciadores de rede
+#include <machine/riscv/icmp_manager.h>
+#include <machine/riscv/arp_manager.h>
 
 using namespace EPOS;
 
@@ -88,7 +92,7 @@ void test_same_network() {
 
 void test_external_network() {
 
-     unsigned int frag_data_size = 1480;
+     
 
      // IP destino fora da minha rede
      unsigned char ip[4];
@@ -112,6 +116,7 @@ void test_external_network() {
 
      cout << "Iniciando envio de dados IP" << endl;
      
+     unsigned int frag_data_size = 1480;
      unsigned int data_size = 1480;
      unsigned char data_third[data_size];
      for(unsigned int i = 0; i < data_size; i++) {
@@ -125,6 +130,44 @@ void test_external_network() {
      
 }
 
+
+void test_icmp() {
+
+     // IP destino fora da minha rede
+     unsigned char ip[4];
+     ip[0] = 150;        
+     ip[1] = 162;
+     ip[2] = 60;
+     ip[3] = 2;
+
+     cout << "\nTeste rede externa" << endl;
+
+     // Envio para host na rede externa (E não temos na tabela de roteamento -> vai para default)
+     cout << "Quem tem o mac do IP  " << static_cast<int>(ip[0]) << ".";
+     cout << static_cast<int>(ip[1]) << ".";
+     cout << static_cast<int>(ip[2]) << ".";
+     cout << static_cast<int>(ip[3]) << "?" << endl;
+
+
+     NIC_Common::Address<6> * mac = IP_Manager::_ip_mng->find_mac(ip);
+     if (mac)
+          cout << "MAC do gateway default: " << *mac << endl;
+
+     unsigned int frag_data_size = 1480;
+     unsigned int data_size = 1480;
+     unsigned char data_third[data_size];
+     for(unsigned int i = 0; i < data_size; i++) {
+          if (i < frag_data_size) data_third[i] = 'A';
+          else if (i < frag_data_size*2) data_third[i] = 'B';
+          else data_third[i] = 'C';
+     }
+
+     cout << "Iniciando envio de dados IP" << endl;
+     
+     // db<Network_buffer>(WRN) << "Datagrama enviado: " << data_second << endl;
+     ICMP_Manager::_icmp_mng->send(data_third, data_size, ip, mac);
+
+}
 struct Teste {
      char a;
      char b;
@@ -153,6 +196,7 @@ int main()
           // Delay(5000000);
 
           // test_same_network();     
+          test_icmp();
           Delay(5000000);
           
           //test_external_network();

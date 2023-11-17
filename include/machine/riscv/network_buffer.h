@@ -22,7 +22,7 @@
 #include <machine/riscv/arp_manager.h>
 #include <machine/riscv/ip_manager.h>
 #include <machine/riscv/udp_manager.h>
-
+#include <machine/riscv/icmp_manager.h>
 
 
 
@@ -48,6 +48,7 @@ Network_buffer :  public Observer// , Data_Observed<DT_Buffer, void>
     typedef NIC_Common::Address<6> Address;
     typedef Ethernet::Frame Frame;
     typedef IP::Fragment Fragment;
+    typedef IP::Echo Echo;
 
 public:
     

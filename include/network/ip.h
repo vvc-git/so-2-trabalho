@@ -8,8 +8,7 @@
 
 __BEGIN_SYS
 
-class 
-IP
+class IP
 {
 
     typedef CPU::Reg8 Reg8;
@@ -47,12 +46,30 @@ public:
     class Fragment: public Header
     {
     public:
-        Fragment() {db<Fragment>(TRC) << "ARP::Packet"<< endl;};
+        Fragment() {db<Fragment>(TRC) << "IP::Fragment"<< endl;};
         Header * header() { return this; }
 
+        Reg8 Type;
+        Reg8 Code;
+        Reg16 Checksum;
+        Reg16 Identifer;
+        Reg16 Sequence_Number;
         unsigned char data[1480];
 
     } __attribute__((packed));
+
+    class Echo: public Header
+    {
+    public:
+        Echo() {db<Echo>(TRC) << "ICMP::Echo Message"<< endl;};
+        Reg8 Type;
+        Reg8 Code;
+        Reg16 Checksum;
+        Reg16 Identifer;
+        Reg16 Sequence_Number;
+        unsigned char data[1480] = {'E', 'N', 'D'};
+
+    }__attribute__((packed));
 
 };
 

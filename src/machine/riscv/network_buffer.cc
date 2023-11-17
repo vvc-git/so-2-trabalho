@@ -169,26 +169,40 @@ int Network_buffer::copy() {
             // Verifica se eu sou o ip
             // Caso negativo, eh preciso retransmitir
             Fragment::Header * header = (reinterpret_cast<Fragment::Header*>(desc->address + 14));
-            
-            bool retransmit = false;
-            for (int i = 0; (!retransmit) && i < 4; i++) {
-                if ((ARP_Manager::_arp_mng->IP_ADDR[i] != header->DST_ADDR[i]) && (header->DST_ADDR[i] !=  IP_Manager::_ip_mng->localhost->object()->destination[i])) {
-                    retransmit = true;
-                }
 
-            }      
-            
-            // Faz a copia do buffer rx para data
-            char  payload[frame_size - 4];
-            // net_buffer->buf->get_data_frame(payload);
-            memcpy(payload, reinterpret_cast<void*>(desc->address), frame_size - 4);
-            
-            // Setando os 2 ultimos bits da word[0]
-            // (O wrap bit caso seja necessário)
-            desc->set_rx_own_wrap(idx == ( net_buffer->SLOTS_BUFFER - 1));
+            // Vefica se não é um ICMP
+            Echo * eheader = (reinterpret_cast<Echo*>(desc->address + 14));
 
-            db<Network_buffer>(TRC) << "Retransmit " << retransmit << endl;
-            IP_Manager::_ip_mng->receive((void *)(payload + 14), retransmit);
+            if (eheader->Type == 8) {
+                db<Network_buffer>(WRN) << "Echo Message " << endl;
+
+                // Faz a copia do buffer rx para data
+                char  payload[frame_size-4];
+                memcpy(payload, reinterpret_cast<void*>(desc->address), frame_size-4);
+                ICMP_Manager::_icmp_mng->receive((void *)(payload));
+            
+            } else {
+            
+                bool retransmit = false;
+                for (int i = 0; (!retransmit) && i < 4; i++) {
+                    if ((ARP_Manager::_arp_mng->IP_ADDR[i] != header->DST_ADDR[i]) && (header->DST_ADDR[i] !=  IP_Manager::_ip_mng->localhost->object()->destination[i])) {
+                        retransmit = true;
+                    }
+
+                }      
+                
+                // Faz a copia do buffer rx para data
+                char  payload[frame_size - 4];
+                // net_buffer->buf->get_data_frame(payload);
+                memcpy(payload, reinterpret_cast<void*>(desc->address), frame_size - 4);
+                
+                // Setando os 2 ultimos bits da word[0]
+                // (O wrap bit caso seja necessário)
+                desc->set_rx_own_wrap(idx == ( net_buffer->SLOTS_BUFFER - 1));
+
+                db<Network_buffer>(TRC) << "Retransmit " << retransmit << endl;
+                IP_Manager::_ip_mng->receive((void *)(payload + 14), retransmit);
+            }
         }
         
     }

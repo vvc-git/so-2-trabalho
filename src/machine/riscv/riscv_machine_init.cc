@@ -4,6 +4,7 @@
 #include <machine/riscv/riscv_nic.h>
 #include <machine/riscv/network_buffer.h>
 #include <machine/riscv/arp_manager.h>
+#include <machine/riscv/icmp_manager.h>
 
 
 __BEGIN_SYS
@@ -33,6 +34,7 @@ void Machine::init()
     ARP_Manager::init();
     UDP_Manager::init();
     IP_Manager::init();
+    ICMP_Manager::init();
 
     if(Traits<SiFiveU_NIC>::enabled)
         SiFiveU_NIC::init();
