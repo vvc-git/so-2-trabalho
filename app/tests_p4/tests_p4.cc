@@ -117,7 +117,7 @@ void test_external_network() {
      cout << "Iniciando envio de dados IP" << endl;
      
      unsigned int frag_data_size = 1480;
-     unsigned int data_size = 1480;
+     unsigned int data_size = 3000;
      unsigned char data_third[data_size];
      for(unsigned int i = 0; i < data_size; i++) {
           if (i < frag_data_size) data_third[i] = 'A';
@@ -186,15 +186,15 @@ int main()
           // test_localhost();
           // Delay(5000000);
 
-          test_same_network();     
+          // test_same_network();     
           // test_icmp();
           Delay(5000000);
 
-          test_same_network();     
+          // test_same_network();     
           // test_icmp();
           Delay(5000000);
           
-          //test_external_network();
+          test_external_network();
           Delay(10000000000);
 
      // Receiver | Router

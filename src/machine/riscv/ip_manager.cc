@@ -161,11 +161,14 @@ void IP_Manager::populate_routing_table() {
 
 }
 
-void IP_Manager::routing(unsigned char * ip, unsigned int total_length, unsigned char * data) {
+void IP_Manager::routing(void * datagram) {
+
+    IP::Header* header = reinterpret_cast<IP::Header*>(datagram); 
+    db<IP_Manager>(TRC) << "Total Length " << hex << ntohs(header->Total_Length) << endl;
 
     unsigned char ip_final[4];
     for (int i=0; i < 4; i++) {
-        ip_final[i] = ip[i];
+        ip_final[i] = header->DST_ADDR[i];
     }
 
     db<ARP_Manager>(WRN) << "\nRetransmissao para: " << static_cast<int>(ip_final[0]) << ".";
@@ -175,10 +178,14 @@ void IP_Manager::routing(unsigned char * ip, unsigned int total_length, unsigned
 
     Address * mac_next_hop = find_mac(ip_final);
 
-    db<IP_Manager>(TRC) << "total length" << total_length << endl;
+    unsigned int total_length = ntohs(header->Total_Length);
+    unsigned int header_length = (header->Version_IHL & GET_IHL)*4;
+
+    db<IP_Manager>(WRN) << "total length" << total_length << endl;
+    db<IP_Manager>(WRN) << "header length: " << header_length << endl;
     db<IP_Manager>(WRN) << "MAC do próximo gateway: " << *mac_next_hop << endl;
     db<IP_Manager>(WRN) << "Iniciando envio de dados IP" << endl;
-    send(data, total_length, ip_final, mac_next_hop);
+    send(reinterpret_cast<unsigned char*>(datagram) + header_length, total_length, ip_final, mac_next_hop);
     db<IP_Manager>(TRC) << "Retransmitiu" << endl;
 
 }
@@ -265,7 +272,7 @@ void IP_Manager::send(unsigned char* data, unsigned int data_size, unsigned char
     db<IP_Manager>(TRC) << "IP_Manager::IP_send fim"<< endl;
 }
 
-void IP_Manager::receive(void* data, bool retransmit) {
+void IP_Manager::receive(void* data) {
  
     
     // Cria um novo ponteiro para adicionar na lista de fragmentos que estão chegando
@@ -473,19 +480,29 @@ void IP_Manager::clear_dt_info(INFO * dt_info) {
     delete dt_info;
 }
 
-void IP_Manager::defragmentation(INFO * dt_info, bool retransmit) {
+void* IP_Manager::defragmentation(INFO * dt_info) {
 
     db<IP_Manager>(WRN) << "Remontagem" << endl;
         
         // Capturando o 1° fragmento 
         Simple_List<Fragment>::Element * h = dt_info->fragments->head();
 
-        // Aloca um espaço no buffer não contíguo (heap) para o datagrama
-        void * base = Network_buffer::net_buffer->dt->alloc(dt_info->total_length);
-
         // Tamanho do cabeçalho IP
         short unsigned int header_length = (h->object()->Version_IHL & GET_IHL)*4;
         db<IP_Manager>(TRC) << "Header Length: " << header_length << endl;
+
+        // unsigned int total_length = dt_info->total_length
+
+        // Aloca um espaço no buffer não contíguo (heap) para o datagrama
+        void * base = Network_buffer::net_buffer->dt->alloc(dt_info->total_length + header_length);
+
+        // Copiando header
+        h->object()->Total_Length = htons(dt_info->total_length);
+
+        memcpy(base, reinterpret_cast<void*>(h->object()), header_length);
+
+        IP::Header* header = reinterpret_cast<IP::Header*>(base); 
+        db<IP_Manager>(TRC) << "Identification " << hex << ntohs(header->Identification) << endl;
         
         // Percorre a lista de fragmentos para a remontagem
         for (; h; h = h->next()) {
@@ -504,17 +521,18 @@ void IP_Manager::defragmentation(INFO * dt_info, bool retransmit) {
             db<IP_Manager>(TRC) << "Data " << f->data << endl;
 
             // Remontagem do fragmento na heap
-            char * next = reinterpret_cast<char*>(base) + offset;
+            char * next = reinterpret_cast<char*>(base) + offset + header_length;
             memcpy(next, f->data,  size);
 
         }  
 
         db<IP_Manager>(WRN) << "\nRecebido datagrama:" << endl;
-        for (unsigned int i = 0; i < dt_info->total_length; i++) {
+        for (unsigned int i = 20; i < dt_info->total_length; i++) {
             db<IP_Manager>(WRN) << reinterpret_cast<char*>(base)[i];
         }
         db<IP_Manager>(WRN) << endl;
 
+        return base;
 
         // TODO: Refazer a retransmissao fora (No handler da thread)
         // if (retransmit) {
@@ -545,7 +563,20 @@ int IP_Manager::handler() {
         for (e = complete_dtgs->head(); e; e = e->next()) {
             db<IP_Manager>(TRC) << "Objeto inserido " << hex << e->object()->id << endl;
             // TODO: Retransmissão hardcoded
-            IP_Manager::_ip_mng->defragmentation(e->object(), true); 
+            void* datagram = IP_Manager::_ip_mng->defragmentation(e->object()); 
+
+            IP::Header* header = reinterpret_cast<IP::Header*>(datagram);
+
+            bool retransmit = false;
+            for (int i = 0; (!retransmit) && i < 4; i++) {
+                if ((ARP_Manager::_arp_mng->IP_ADDR[i] != header->DST_ADDR[i]) && (header->DST_ADDR[i] !=  IP_Manager::_ip_mng->localhost->object()->destination[i])) {
+                    retransmit = true;
+                }
+            }
+
+            if (retransmit) {
+                IP_Manager::_ip_mng->routing(datagram);
+            }
 
             // TODO: A desfragmentação deveria retornar um datagrama completo (data + ip header)
             // TODO: IP header não está vindo (Colocar antes da base-> Refatorar)

@@ -179,14 +179,6 @@ int Network_buffer::copy() {
             
             } else {
             
-                bool retransmit = false;
-                for (int i = 0; (!retransmit) && i < 4; i++) {
-                    if ((ARP_Manager::_arp_mng->IP_ADDR[i] != header->DST_ADDR[i]) && (header->DST_ADDR[i] !=  IP_Manager::_ip_mng->localhost->object()->destination[i])) {
-                        retransmit = true;
-                    }
-
-                }      
-
                 unsigned int crc = 4;
 
                 // Cria um novo ponteiro para adicionar na lista de fragmentos que estão chegando
@@ -202,8 +194,7 @@ int Network_buffer::copy() {
                 // (O wrap bit caso seja necessário)
                 desc->set_rx_own_wrap(idx == ( net_buffer->SLOTS_BUFFER - 1));
 
-                db<Network_buffer>(TRC) << "Retransmit " << retransmit << endl;
-                IP_Manager::_ip_mng->receive((void *)(content + sizeof(Ethernet::Header)), retransmit);
+                IP_Manager::_ip_mng->receive((void *)(content + sizeof(Ethernet::Header)));
             }
         }
         

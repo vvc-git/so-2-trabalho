@@ -49,11 +49,6 @@ public:
         Fragment() {db<Fragment>(TRC) << "IP::Fragment"<< endl;};
         Header * header() { return this; }
 
-        // Reg8 Type;
-        // Reg8 Code;
-        // Reg16 Checksum;
-        // Reg16 Identifer;
-        // Reg16 Sequence_Number;
         unsigned char data[1480];
 
     } __attribute__((packed));

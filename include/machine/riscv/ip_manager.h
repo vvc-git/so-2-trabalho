@@ -47,16 +47,16 @@ class IP_Manager: public Data_Observed<char, void> {
 public:
     static void init();
     void send(unsigned char* data, unsigned int data_size, unsigned char * dst_ip, Address * dst_mac);
-    void receive(void* data, bool retransmit);
+    void receive(void* data);
     Address * find_mac(unsigned char* dst_ip);
     bool is_my_network(unsigned char * dst_ip);
     bool is_localhost(unsigned char * dst_ip);
     void add_entry(unsigned char* dst, unsigned char* gateway, unsigned char* genmask);
     void populate_routing_table();
-    void routing(unsigned char * ip, unsigned int total_length, unsigned char * data);
+    void routing(void * datagram);
     void clear_dt_info(INFO * dt_info);
     static void timeout_handler(INFO * dt_info);
-    void defragmentation(INFO * dt_info, bool retransmit);
+    void* defragmentation(INFO * dt_info);
     static int handler();
     // void attach(Data_Observer<char, void> *o) { Data_Observed<char, void>::attach(o); };
 
