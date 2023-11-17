@@ -25,7 +25,7 @@ private:
 
 public:
     static void init();
-    void send(unsigned char* data, unsigned int data_size, unsigned char * dst_ip, Address * dst_mac);
+    void send(unsigned char * dst_ip, Address * dst_mac);
     void receive(void* request);
 
 

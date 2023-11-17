@@ -9,15 +9,13 @@ void ICMP_Manager::init() {
     _icmp_mng = new (SYSTEM) ICMP_Manager();
 }
 
-void ICMP_Manager::send(unsigned char* data, unsigned int data_size, unsigned char * dst_ip, Address * dst_mac) {
+void ICMP_Manager::send(unsigned char * dst_ip, Address * dst_mac) {
     db<ICMP_Manager>(TRC) << "ICMP_Manager::IP_send inicio"<< endl;
 
     unsigned int mtu = 1500;
 
     Echo * echo = new Echo;
     set_header(echo, true);
-
-    memcpy(echo->data, data, data_size); 
 
     // Source and Destination IP
     for (int i = 0; i < 4; i++) {
@@ -89,7 +87,7 @@ void ICMP_Manager::set_header(Echo * echo, bool request) {
     echo->Version_IHL = (version | IHL);
     echo->Type_Service = 0;
     echo->TTL = 64;
-    echo->Total_Length = 1500;
+    echo->Total_Length = CPU_Common::htons(sizeof(IP::Echo));
 
     // ICMP 
     echo->Protocol = 1;

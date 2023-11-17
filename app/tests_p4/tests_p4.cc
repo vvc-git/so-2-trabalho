@@ -153,19 +153,10 @@ void test_icmp() {
      if (mac)
           cout << "MAC do gateway default: " << *mac << endl;
 
-     unsigned int frag_data_size = 1480;
-     unsigned int data_size = 1480;
-     unsigned char data_third[data_size];
-     for(unsigned int i = 0; i < data_size; i++) {
-          if (i < frag_data_size) data_third[i] = '3';
-          else if (i < frag_data_size*2) data_third[i] = 'D';
-          else data_third[i] = 'U';
-     }
-
      cout << "Iniciando envio de dados IP" << endl;
      
      // db<Network_buffer>(WRN) << "Datagrama enviado: " << data_second << endl;
-     ICMP_Manager::_icmp_mng->send(data_third, data_size, ip, mac);
+     ICMP_Manager::_icmp_mng->send(ip, mac);
 
 }
 struct Teste {
