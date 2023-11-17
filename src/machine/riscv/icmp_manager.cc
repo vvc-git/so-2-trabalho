@@ -11,9 +11,7 @@ void ICMP_Manager::init() {
 
 void ICMP_Manager::send(unsigned char * dst_ip, Address * dst_mac) {
     db<ICMP_Manager>(TRC) << "ICMP_Manager::IP_send inicio"<< endl;
-
-    unsigned int mtu = 1500;
-
+    
     Echo * echo = new Echo;
     set_header(echo, true);
 
@@ -23,7 +21,7 @@ void ICMP_Manager::send(unsigned char * dst_ip, Address * dst_mac) {
         echo->DST_ADDR[i] = dst_ip[i];
     }
 
-    SiFiveU_NIC::_device->send(*dst_mac, (void*)echo, mtu, 0x0800);
+    SiFiveU_NIC::_device->send(*dst_mac, (void*)echo, sizeof(IP::Header) + sizeof(IP::Echo), 0x0800);
 
 
     // Print para verificar o header
@@ -57,15 +55,13 @@ void ICMP_Manager::receive(void* request) {
     set_header(reply, false);
     db<ICMP_Manager>(WRN) << "Fez o set header" << endl;
 
-    unsigned int mtu = 1500;
-
     // Source and Destination IP
     for (int i = 0; i < 4; i++) {
         reply->SRC_ADDR[i] = echo->DST_ADDR[i];
         reply->DST_ADDR[i] = echo->SRC_ADDR[i];
     }
     db<ICMP_Manager>(WRN) << "Preencheu o IP" << sizeof(reply) + sizeof(Echo::Header) << endl;
-    SiFiveU_NIC::_device->send(frame->dst(), (void*)reply, mtu, 0x0800);
+    SiFiveU_NIC::_device->send(frame->dst(), (void*)reply, sizeof(IP::Header) + sizeof(IP::Echo), 0x0800);
 
 
     // Verificação se os valores estão certos

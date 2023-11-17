@@ -67,7 +67,6 @@ public:
         Reg16 Checksum;
         Reg16 Identifer;
         Reg16 Sequence_Number;
-        // unsigned char data[1480] = {'E', 'N', 'D'};
 
     }__attribute__((packed));
 
