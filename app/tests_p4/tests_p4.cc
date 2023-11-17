@@ -157,9 +157,9 @@ void test_icmp() {
      unsigned int data_size = 1480;
      unsigned char data_third[data_size];
      for(unsigned int i = 0; i < data_size; i++) {
-          if (i < frag_data_size) data_third[i] = 'A';
-          else if (i < frag_data_size*2) data_third[i] = 'B';
-          else data_third[i] = 'C';
+          if (i < frag_data_size) data_third[i] = '3';
+          else if (i < frag_data_size*2) data_third[i] = 'D';
+          else data_third[i] = 'U';
      }
 
      cout << "Iniciando envio de dados IP" << endl;

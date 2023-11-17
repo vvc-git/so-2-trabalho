@@ -17,6 +17,8 @@ void ICMP_Manager::send(unsigned char* data, unsigned int data_size, unsigned ch
     Echo * echo = new Echo;
     set_header(echo, true);
 
+    memcpy(echo->data, data, data_size); 
+
     // Source and Destination IP
     for (int i = 0; i < 4; i++) {
         echo->SRC_ADDR[i] = ARP_Manager::_arp_mng->IP_ADDR[i];
@@ -87,6 +89,7 @@ void ICMP_Manager::set_header(Echo * echo, bool request) {
     echo->Version_IHL = (version | IHL);
     echo->Type_Service = 0;
     echo->TTL = 64;
+    echo->Total_Length = 1500;
 
     // ICMP 
     echo->Protocol = 1;
