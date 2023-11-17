@@ -81,10 +81,13 @@ public:
     List * dt_list = new List;
 
     // Lista de infos dos datagramas construidos (Completos)
-    List * complete = new List;
+    List * complete_dtgs = new List;
 
     // Lista de infos dos datagramas em construção
     IP_Table * routing_table = new IP_Table;
+
+    // Semáforo para controlar acesso da Thread que remonta os datagramas
+    Semaphore * sem_th = new Semaphore(0);
 
     // Thread que vai desfragmentar os pacotes e decidir se passa para camada de cima ou 
     // roteia

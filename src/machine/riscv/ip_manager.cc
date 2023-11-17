@@ -364,7 +364,8 @@ void IP_Manager::receive(void* data, bool retransmit) {
  
     // Quando todos os framentos chegaram, remonta.
     if (total_frame == dt_info->num_fragments) {
-        complete->insert(dt_list->remove(e));
+        complete_dtgs->insert(dt_list->remove(e));
+        sem_th->v();
 
     } else {
         dt_info->timer->reset();
@@ -527,11 +528,13 @@ int IP_Manager::handler() {
        
     db<IP_Manager>(WRN) << "Chegou na thread" << endl;
     while (true) {
-        
-        List * complete = IP_Manager::_ip_mng->complete;
+        db<IP_Manager>(WRN) << "Requisitando semáforo" << endl;
+        IP_Manager::_ip_mng->sem_th->p();
+        db<IP_Manager>(WRN) << "Semáforo concedido" << endl;
+        List * complete_dtgs = IP_Manager::_ip_mng->complete_dtgs;
         List::Element * e;
         // Varredura na lista de informações de datagramas
-        for (e = complete->head(); e; e = e->next()) {
+        for (e = complete_dtgs->head(); e; e = e->next()) {
             db<IP_Manager>(WRN) << "Objeto inserido " << e->object()->id << endl;
             // TODO: Retransmissão hardcoded
             IP_Manager::_ip_mng->defragmentation(e->object(), true); 
