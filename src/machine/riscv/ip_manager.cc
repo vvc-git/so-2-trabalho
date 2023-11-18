@@ -240,9 +240,14 @@ void IP_Manager::send(Header * header, void* data, unsigned int size,  Address m
     }
 
     FList::Element * e = fragments->head();
-    for (; e; e = e->next() ){
-        db<IP_Manager>(TRC) << "IP_Manager:: chegou na lista "<< endl;
+    for (; e; e = e->next() ) {
+        db<IP_Manager>(WRN) << "IP_Manager:: chegou na lista id: " << hex << ntohs(e->object()->Identification) << endl;
+        unsigned int offset = ntohs(e->object()->Flags_Offset) & GET_OFFSET;
+        db<IP_Manager>(WRN) << "IP_Manager:: offset: " << offset << endl;
+        db<IP_Manager>(WRN) << "IP_Manager:: Identification: " << hex << ntohs(e->object()->Identification) << endl;
+        if (ntohs(e->object()->Identification) != 0x1231 && offset >= 185) continue;
         SiFiveU_NIC::_device->send(mac, (void*)e->object(),  ntohs(e->object()->Total_Length), 0x800);
+        Delay(1000000);
     }
 }
 
@@ -256,7 +261,7 @@ void IP_Manager::receive(void* data) {
     Fragment * fragment = reinterpret_cast<Fragment*>(data);
 
     db<IP_Manager>(TRC) << "---------------------"<< endl;
-    db<IP_Manager>(TRC) << "IP_Manager::IP_receive\n"<< endl;
+    db<IP_Manager>(WRN) << "IP_Manager::IP_receive\n"<< endl;
     
     // Capturando os valores do fragmento
     short unsigned int header_length = (fragment->Version_IHL & GET_IHL)*4;
@@ -270,7 +275,7 @@ void IP_Manager::receive(void* data) {
     // Verificação se os valores estão certos
     db<IP_Manager>(TRC) << "header_length: " << header_length << endl;
     db<IP_Manager>(TRC) << "data_length: "  << data_length << endl;
-    db<IP_Manager>(TRC) << "identification: " << hex << identification << endl;
+    db<IP_Manager>(WRN) << "identification: " << hex << identification << endl;
     db<IP_Manager>(TRC) << "offset: " << offset << endl;
     db<IP_Manager>(TRC) << "flags: " << flags << endl;
 
@@ -291,7 +296,7 @@ void IP_Manager::receive(void* data) {
 
         // Alarme
         Functor_Handler<INFO> * functor = new Functor_Handler<INFO>(&timeout_handler, datagram_info);
-        Alarm * timer = new Alarm(Microsecond(Second(600)), functor, 1);
+        Alarm * timer = new Alarm(Microsecond(Second(10)), functor, 1);
 
         datagram_info->fragments = fragments;
         datagram_info->id = identification;
@@ -346,7 +351,9 @@ void IP_Manager::receive(void* data) {
  
     // Quando todos os framentos chegaram, remonta.
     if (total_frame == dt_info->num_fragments) {
+        db<IP_Manager>(WRN) << "Inserir datagrama completo e liberar thread 2" << endl;
         complete_dtgs->insert(dt_list->remove(e));
+        delete dt_info->timer;
         sem_th->v();
 
     } else {
@@ -422,7 +429,7 @@ IP_Manager::Address * IP_Manager::find_mac(unsigned char* dst_ip)
 
 void IP_Manager::timeout_handler(INFO * dt_info) {
 
-    db<IP_Manager>(WRN) << "Timeout handler id: " << dt_info->id <<endl;
+    db<IP_Manager>(WRN) << "Timeout handler id: " << hex << dt_info->id <<endl;
     dt_info->sem->p();
     IP_Manager::_ip_mng->clear_dt_info(dt_info);
 
@@ -444,13 +451,13 @@ void IP_Manager::clear_dt_info(INFO * dt_info) {
     }
 
     db<IP_Manager>(WRN) << "Deletando timer " << endl;
-    delete dt_info->timer;
+    if (dt_info->timer) delete dt_info->timer;
     delete dt_info->timeout_handler;
 
     db<IP_Manager>(WRN) << "Deletando Elemento linkagem, INFO e semaforo " << endl;
     List::Element * d = dt_list->search(dt_info);
     complete_dtgs->remove(d);
-    // dt_info->sem->v();
+    dt_info->sem->v();
     delete dt_info->sem;
     delete dt_info;
 }
