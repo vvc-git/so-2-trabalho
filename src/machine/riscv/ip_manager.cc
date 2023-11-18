@@ -164,6 +164,10 @@ void IP_Manager::routing(void * datagram) {
 
     IP::Header* header = reinterpret_cast<IP::Header*>(datagram); 
 
+    // Decrementando o TTL
+    if (header->TTL) header->TTL--;
+    db<IP_Manager>(WRN) << "TTL" << header->TTL << endl; 
+
     unsigned char ip_final[4];
     for (int i=0; i < 4; i++) {
         ip_final[i] = header->DST_ADDR[i];
