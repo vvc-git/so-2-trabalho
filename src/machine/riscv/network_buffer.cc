@@ -107,7 +107,7 @@ int Network_buffer::copy() {
     while (true)
     {
         net_buffer->sem->p();
-        db<Network_buffer>(WRN) << "Thread: " << endl;
+        db<Network_buffer>(TRC) << "Network_buffer - Thread Copy: " << endl;
 
         for (int i = 0; !(desc->is_cpu_owned()); i=(i+1)%net_buffer->SLOTS_BUFFER) {
             
