@@ -564,7 +564,7 @@ IP_Manager::FList * IP_Manager::fragmentation(void * datagram, unsigned int size
 
     // Dado do datagrama
     unsigned char data[size];
-    memcpy(data, reinterpret_cast<unsigned *>(datagram) + sizeof(IP::Header), size);
+    memcpy(data, reinterpret_cast<unsigned char*>(datagram) + sizeof(IP::Header), size);
 
     // Ponteiro que irá avançar sobre datagrama para fazer o memcpy
     unsigned char * next;
@@ -582,7 +582,7 @@ IP_Manager::FList * IP_Manager::fragmentation(void * datagram, unsigned int size
 
     // Numero de fragmentos
     // (Soma 1 quando são numeros quebrados, pois é pego o menor)
-    unsigned int num_fragments = exact ? (size / frag_data_size) : (size / frag_data_size) - 1;
+    unsigned int num_fragments = exact ? (size / frag_data_size) + 1 : (size / frag_data_size);
     db<IP_Manager>(TRC) << "num_fragments " << num_fragments << endl;
 
     // ** ASSUMINDO QUE NUM_FRAGRMENTS É MAIOR QUE 1 (SIZE > 1480)
@@ -605,7 +605,21 @@ IP_Manager::FList * IP_Manager::fragmentation(void * datagram, unsigned int size
         fragment->Flags_Offset = CPU_Common::htons(flag_off);
 
         //  Setando o ponteiro para o proximo endereço fragmentado
-        next = data + i * frag_data_size;
+        next = data + i * frag_data_size ;
+
+
+        // Quando for o utlimo
+        if (i == (num_fragments-1)) {
+            db<IP_Manager>(WRN) << "Ultimo" << endl;
+            // Restante de bytes mais o Header
+            frag_data_size = size  % frag_data_size;
+            fragment->Total_Length = CPU_Common::htons(frag_data_size + sizeof(IP::Header));
+
+            // Flags e Fragment offset
+            flag_off = (offset & LAST_FRAG);
+            fragment->Flags_Offset = CPU_Common::htons(flag_off);
+
+        }
 
         // Copiando para a area de dados do fragmento
         memcpy(fragment->data, next, frag_data_size);
@@ -613,34 +627,22 @@ IP_Manager::FList * IP_Manager::fragmentation(void * datagram, unsigned int size
         // Inserindo na lista de fragmentos
         FList::Element * link = new FList::Element(fragment);
         fragments->insert(link);
-        db<IP_Manager>(WRN) << "Adicionou " << fragment->Identification << "na lista: ";
+        db<IP_Manager>(WRN) << "Adicionou " << fragment->Identification << " na lista: ";
 
         // Teste
         db<IP_Manager>(WRN) << fragment->data[0] << endl;
     
     }
 
-    Fragment * last = fragments->tail()->object();
-    
-    // Restante de bytes mais o Header
-    unsigned int last_size = size  % frag_data_size;
-    last->Total_Length = CPU_Common::htons(last_size + sizeof(IP::Header));
-
-    // Flags e Fragment offset
-    flag_off = (offset & LAST_FRAG);
-    last->Flags_Offset = CPU_Common::htons(flag_off);
-
-    db<IP_Manager>(TRC) << "Last_size " << last_size << endl;
-
     FList::Element * e = fragments->head();
-    long unsigned int j = 0;
     for (; e; e = e->next() ){
         db<IP_Manager>(WRN) << "e->object()->identification" << e->object()->Identification << endl;
-        db<IP_Manager>(WRN) << "frame[" << j << "]" << endl;
-        for (; j <  (CPU_Common::ntohs(e->object()->Total_Length) - sizeof(IP::Header)); j++) {
+        db<IP_Manager>(WRN) << "frame[]" << endl;
+        db<IP_Manager>(WRN) << "Total length " <<  (CPU_Common::ntohs(e->object()->Total_Length) - sizeof(IP::Header)) << endl;
+        for (long unsigned j = 0; j <  (CPU_Common::ntohs(e->object()->Total_Length) - sizeof(IP::Header)); j++) {
             db<IP_Manager>(WRN) << e->object()->data[j];
         }
-        db<IP_Manager>(TRC) << endl;
+        db<IP_Manager>(WRN) << endl;
     }
     
     return fragments;
