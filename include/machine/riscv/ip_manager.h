@@ -49,7 +49,7 @@ class IP_Manager: public Data_Observed<unsigned char, void> {
 
 public:
     static void init();
-    void send(Header * header, void* data, unsigned int size, unsigned char * ip, Address * mac);
+    void send(Header * header, void* data, unsigned int size, Address mac);
     void receive(void* data);
     Address * find_mac(unsigned char* dst_ip);
     bool is_my_network(unsigned char * dst_ip);

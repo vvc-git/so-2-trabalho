@@ -49,7 +49,7 @@ OStream cout;
 //           data_first[i] = '3';
 //      }
 // // 
-//      // IP_Manager::_ip_mng->send(data_first, data_size, ip, mac);
+//      // IP_Manager::_ip_mng->send(data_first, data_size, *mac);
 
 // }
 
@@ -89,13 +89,11 @@ void test_same_network() {
      IP_Manager::default_header(header);
 
      db<Network_buffer>(WRN) << "Datagrama enviado: " << data_second << endl;
-     IP_Manager::_ip_mng->send(header, data_second, data_size, ip, mac);
+     IP_Manager::_ip_mng->send(header, data_second, data_size, *mac);
 
 }
 
 void test_external_network() {
-
-     
 
      // IP destino fora da minha rede
      unsigned char ip[4];
@@ -120,7 +118,7 @@ void test_external_network() {
      cout << "Iniciando envio de dados IP" << endl;
      
      unsigned int frag_data_size = 1480;
-     unsigned int data_size = 2000;
+     unsigned int data_size = 1300;
      unsigned char data_third[data_size];
      for(unsigned int i = 0; i < data_size; i++) {
           if (i < frag_data_size) data_third[i] = 'A';
@@ -132,7 +130,7 @@ void test_external_network() {
      IP_Manager::default_header(header);
 
      db<Network_buffer>(WRN) << "Datagrama enviado: " << data_third << endl;
-     IP_Manager::_ip_mng->send(header, data_third, data_size, ip, mac);
+     IP_Manager::_ip_mng->send(header, data_third, data_size, *mac);
      
 }
 
@@ -162,7 +160,7 @@ void test_external_network() {
 //      cout << "Iniciando envio de dados IP" << endl;
      
 //      // db<Network_buffer>(WRN) << "Datagrama enviado: " << data_second << endl;
-//      ICMP_Manager::_icmp_mng->send(ip, mac);
+//      ICMP_Manager::_icmp_mng->send(*mac);
 
 // }
 
@@ -214,7 +212,7 @@ int main()
           // // test_icmp();
 
           // test_default_header();
-          test_external_network();
+          test_same_network();
           Delay(5000000);
           
           // test_external_network();
