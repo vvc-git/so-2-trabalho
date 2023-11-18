@@ -27,7 +27,7 @@ class ARP_Manager {
         void arp_receive(ARP_Packet* packet);
         Address * search_ARP_cache(const unsigned char * ip);
         static void init();
-        void set_own_IP();
+        void populate_arp_table();
 
     public:
         static ARP_Manager* _arp_mng;

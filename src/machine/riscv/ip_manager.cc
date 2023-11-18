@@ -555,7 +555,7 @@ int IP_Manager::handler() {
         // Verifica se é necessário retransmitir (IP é meu)
         bool retransmit = false;
         for (int i = 0; (!retransmit) && i < 4; i++) {
-            if ((ARP_Manager::_arp_mng->IP_ADDR[i] != header->DST_ADDR[i]) && (header->DST_ADDR[i] !=  IP_Manager::_ip_mng->localhost->object()->destination[i])) {
+            if ((IP_Manager::_ip_mng->my_ip[i] != header->DST_ADDR[i]) && (header->DST_ADDR[i] !=  IP_Manager::_ip_mng->localhost->object()->destination[i])) {
                 retransmit = true;
             }
         }
@@ -682,6 +682,14 @@ IP_Manager::FList * IP_Manager::fragmentation(void * datagram, unsigned int size
     }
 
     return fragments;
+}
+
+void IP_Manager::set_own_IP() {
+    // Setando o proprio endereco IP a partir do MAC definido no makefile 150, 162, 60, 0
+    my_ip[0] = 150;      
+    my_ip[1] = 162;
+    my_ip[2] = 60;
+    my_ip[3] = SiFiveU_NIC::_device->address[5];
 }
 
 __END_SYS

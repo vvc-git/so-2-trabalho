@@ -63,6 +63,7 @@ public:
     void* defragmentation(INFO * dt_info);
     static int handler();
     static void default_header(IP::Header * header);
+    void set_own_IP();
     // void attach(Data_Observer<char, void> *o) { Data_Observed<char, void>::attach(o); };
 
 
@@ -98,6 +99,8 @@ public:
     // Thread que vai desfragmentar os pacotes e decidir se passa para camada de cima ou 
     // roteia
     // static Thread * _ip_thread;
+
+    unsigned char my_ip[4];
     
     IP_Element * default_router;
     IP_Element * localhost;

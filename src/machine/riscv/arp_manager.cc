@@ -39,7 +39,7 @@ bool ARP_Manager::arp_send_request(unsigned char * dst_ip) {
     dst[5] = 0x00;
 
     for (int i = 0; i < 4; i++) {
-        packet->_sender_prot[i] = IP_ADDR[i];
+        packet->_sender_prot[i] = IP_Manager::_ip_mng->my_ip[i];
         packet->_target_prot[i] = dst_ip[i]; 
     }
 
@@ -76,10 +76,10 @@ void ARP_Manager::arp_send_reply(ARP_Packet* requester_packet) {
     dst = requester_packet->_sender_hw;
 
     // IP origem (proprio)
-    packet->_sender_prot[0] = IP_ADDR[0]; // 127.0.0.2      
-    packet->_sender_prot[1] = IP_ADDR[1];
-    packet->_sender_prot[2] = IP_ADDR[2];
-    packet->_sender_prot[3] = IP_ADDR[3];
+    packet->_sender_prot[0] = IP_Manager::_ip_mng->my_ip[0]; // 127.0.0.2      
+    packet->_sender_prot[1] = IP_Manager::_ip_mng->my_ip[1];
+    packet->_sender_prot[2] = IP_Manager::_ip_mng->my_ip[2];
+    packet->_sender_prot[3] = IP_Manager::_ip_mng->my_ip[3];
 
     // IP destino (hardcoded por enquanto)
     packet->_target_prot[0] = static_cast<int>(requester_packet->_sender_prot[0]); // 127.0.0.1       
@@ -138,14 +138,8 @@ void ARP_Manager::arp_receive(ARP_Packet* packet) {
     
 }
 
-void ARP_Manager::set_own_IP() {
-    db<ARP_Manager>(TRC) << "ARP_Manager::set_own_IP()"<< endl;
-
-    // Setando o proprio endereco IP a partir do MAC definido no makefile 150, 162, 60, 0
-    IP_ADDR[0] = 150;      
-    IP_ADDR[1] = 162;
-    IP_ADDR[2] = 60;
-    IP_ADDR[3] = SiFiveU_NIC::_device->address[5];
+void ARP_Manager::populate_arp_table() {
+    db<ARP_Manager>(TRC) << "ARP_Manager::populate_arp_table()"<< endl;
 
     // Capturando o mac
     Address mac = SiFiveU_NIC::_device->address;
@@ -163,7 +157,7 @@ void ARP_Manager::set_own_IP() {
     external[2] = 100;
     external[3] = 2;
     add_ip(localhost, mac);
-    add_ip(IP_ADDR, mac);
+    add_ip(IP_Manager::_ip_mng->my_ip, mac);
 
     // Para simular uma rede externa conhecida
     Address external_mac;
@@ -215,10 +209,10 @@ bool ARP_Manager::is_my_ip(unsigned char * ip) {
 
     for (int i = 0; i < 4; i++) {
 
-        db<ARP_Manager>(TRC) << "is_my_network::IP_ADDR[" << i << "]: " << static_cast<int>(IP_ADDR[i]) << endl;
+        db<ARP_Manager>(TRC) << "is_my_network::IP_Manager::_ip_mng->my_ip[" << i << "]: " << static_cast<int>(IP_Manager::_ip_mng->my_ip[i]) << endl;
         db<ARP_Manager>(TRC) << "is_my_network::submask2[" << i << "]: " << static_cast<int>(ip[i]) << endl;
 
-        if (ip[i] != IP_ADDR[i]) {
+        if (ip[i] != IP_Manager::_ip_mng->my_ip[i]) {
             return false;
         }
     }

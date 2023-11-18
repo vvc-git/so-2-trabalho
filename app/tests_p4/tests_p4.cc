@@ -88,7 +88,7 @@ void test_same_network() {
      IP::Header * header = new IP::Header;
      IP_Manager::default_header(header);
 
-     memcpy(header->SRC_ADDR, ARP_Manager::_arp_mng->IP_ADDR, 4);
+     memcpy(header->SRC_ADDR, IP_Manager::_ip_mng->my_ip, 4);
      memcpy(header->DST_ADDR, ip, 4);
 
      cout << "IP DST " << static_cast<int>(header->DST_ADDR[0]) << ".";
@@ -142,7 +142,7 @@ void test_external_network() {
      IP::Header * header = new IP::Header;
      IP_Manager::default_header(header);
 
-     memcpy(header->SRC_ADDR, ARP_Manager::_arp_mng->IP_ADDR, 4);
+     memcpy(header->SRC_ADDR, IP_Manager::_ip_mng->my_ip, 4);
      memcpy(header->DST_ADDR, ip, 4);
 
      cout << "IP DST " << static_cast<int>(header->DST_ADDR[0]) << ".";
