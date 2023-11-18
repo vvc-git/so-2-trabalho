@@ -169,20 +169,20 @@ void IP_Manager::routing(void * datagram) {
         ip_final[i] = header->DST_ADDR[i];
     }
 
-    db<ARP_Manager>(WRN) << "\nRetransmissao para: " << static_cast<int>(ip_final[0]) << ".";
-    db<ARP_Manager>(WRN) << static_cast<int>(ip_final[1]) << ".";
-    db<ARP_Manager>(WRN) << static_cast<int>(ip_final[2]) << ".";
-    db<ARP_Manager>(WRN) << static_cast<int>(ip_final[3]) <<  endl;
+    db<ARP_Manager>(TRC) << "\nRetransmissao para: " << static_cast<int>(ip_final[0]) << ".";
+    db<ARP_Manager>(TRC) << static_cast<int>(ip_final[1]) << ".";
+    db<ARP_Manager>(TRC) << static_cast<int>(ip_final[2]) << ".";
+    db<ARP_Manager>(TRC) << static_cast<int>(ip_final[3]) <<  endl;
 
     Address * mac_next_hop = find_mac(ip_final);
 
     unsigned int total_length = ntohs(header->Total_Length);
     unsigned int header_length = (header->Version_IHL & GET_IHL)*4;
 
-    db<IP_Manager>(WRN) << "total length" << total_length << endl;
-    db<IP_Manager>(WRN) << "header length: " << header_length << endl;
-    db<IP_Manager>(WRN) << "MAC do próximo gateway: " << *mac_next_hop << endl;
-    db<IP_Manager>(WRN) << "Iniciando envio de dados IP" << endl;
+    db<IP_Manager>(TRC) << "total length" << total_length << endl;
+    db<IP_Manager>(TRC) << "header length: " << header_length << endl;
+    db<IP_Manager>(TRC) << "MAC do próximo gateway: " << *mac_next_hop << endl;
+    db<IP_Manager>(TRC) << "Iniciando envio de dados IP" << endl;
 
     // IP::Header * header = new IP::Header;
     // IP_Manager::default_header(header);
@@ -195,85 +195,26 @@ void IP_Manager::routing(void * datagram) {
 void IP_Manager::send(Header * header, void* data, unsigned int size, unsigned char * ip, Address * mac) {
     db<IP_Manager>(WRN) << "IP_Manager::IP_send inicio"<< endl;
     
-    // Irá avançar sobre data para fazer o memcpy
-    unsigned char * data_pointer;
+    
+    unsigned char datagram[sizeof(IP::Header) + size];
 
-    unsigned int header_size = sizeof(IP::Header);
-    unsigned int nic_mtu = Ethernet::MTU;
-    unsigned int frag_data_size = nic_mtu - header_size;
-    unsigned int iter = (size / frag_data_size) + 1;
-    unsigned int last_size = size  % frag_data_size;
+    memcpy(datagram, header, sizeof(IP::Header));
+    memcpy(datagram + sizeof(IP::Header), data, size);
 
-    unsigned int id = 0x1230 + id_send;
-    id_send++;
-
-    Fragment * fragment = new Fragment;
-    fragment->header(header); 
-
-    db<IP_Manager>(WRN) << "Version e header length: " << fragment->Version_IHL << endl;
-    db<IP_Manager>(WRN) << "Type Service: " << fragment->Type_Service << endl;
-    db<IP_Manager>(WRN) << "TTL: " << fragment->TTL << endl;
-    db<IP_Manager>(WRN) << "Protocol: " << fragment->Protocol << endl;
-
-    // Tamanho padrão de cada fragmento
-    fragment->Total_Length = CPU_Common::htons(Ethernet::MTU);
-
-    // Campos específico da fragmentação (Identification, Flags, Fragment Offset)
-    fragment->Identification = CPU_Common::htons(id);
-
-
+    // Size é o tamanho do datagrama sem o header
+    fragmentation(datagram, size);
 
     // TODO: Fazer memcpy
-    for (int i = 0; i < 4; i++) {
-        fragment->SRC_ADDR[i] = ARP_Manager::_arp_mng->IP_ADDR[i];
-        fragment->DST_ADDR[i] = ip[i];
-    }
+    // for (int i = 0; i < 4; i++) {
+    //     fragment->SRC_ADDR[i] = ARP_Manager::_arp_mng->IP_ADDR[i];
+    //     fragment->DST_ADDR[i] = ip[i];
+    // }
 
-    db<IP_Manager>(TRC) << "Identification: " << hex << CPU_Common::htons(fragment->Identification) << endl;
-    for (unsigned int i = 0; i < iter; i++) {
-        if (i == iter - 1 && !last_size) break; // fragmentação já realizada
-        db<IP_Manager>(TRC) << i << "° fragmento " << endl;
-
-        // Flags e Offset
-        unsigned int offset = (i*frag_data_size)/8;
-        Reg16 flag_off = 0;
-        if ((i == iter - 1) || (i == iter - 2 && last_size == 0)) {
-            // Último fragmento
-            flag_off = (offset & LAST_FRAG);
-        } else {
-            // Existem mais fragmentos
-            flag_off = (offset | MORE_FRAGS);
-        }
-        fragment->Flags_Offset = CPU_Common::htons(flag_off);
-
-        // Setando o ponteiro para o endereco especifico em data
-        data_pointer = reinterpret_cast<unsigned char*>(data) + i * frag_data_size;
-
-        // Copiando os dados para o fragment que sera enviado
-        unsigned int size = (i == iter - 1) ? last_size : frag_data_size;
-        memcpy(fragment->data, data_pointer, size);
-
-        // Preenchimento do último fragmento e Seta total length
-        if (i == iter - 1) {
-            db<IP_Manager>(TRC) << "Last_size " << last_size << endl;
-            fragment->Total_Length = CPU_Common::htons(last_size + header_size);
-            // data_pointer = fragment->data + last_size;   
-            // memset(data_pointer, '9', frag_data_size - last_size);
-        }
-
-        // if (i == 1) continue;
-        SiFiveU_NIC::_device->send(*mac, (void*) &fragment, size + header_size, 0x0800);
-        Delay (1000000);
-
-        // Print para verificar o header
-        db<IP_Manager>(TRC) << "Total_Length original " << CPU_Common::ntohs(fragment->Total_Length)<< endl;
-        db<IP_Manager>(TRC) << "Total_Length sem o size: " << (CPU_Common::ntohs(fragment->Total_Length) * 8) - header_size << endl;
-        db<IP_Manager>(TRC) << "Identification: " << hex << CPU_Common::htons(fragment->Identification) << endl;
-        db<IP_Manager>(TRC) << "Offset: " << (CPU_Common::htons(fragment->Flags_Offset) & GET_OFFSET)*8 << endl;
-    }
+    // db<IP_Manager>(TRC) << "Identification: " << hex << CPU_Common::htons(fragment->Identification) << endl;
     
-    db<IP_Manager>(TRC) << "---------------------"<< endl;
-    db<IP_Manager>(TRC) << "IP_Manager::IP_send fim"<< endl;
+    
+    // db<IP_Manager>(TRC) << "---------------------"<< endl;
+    // db<IP_Manager>(TRC) << "IP_Manager::IP_send fim"<< endl;
 }
 
 void IP_Manager::receive(void* data) {
@@ -339,7 +280,7 @@ void IP_Manager::receive(void* data) {
         e = link2; 
         
     }
-    db<IP_Manager>(WRN) << "setando fragmento: " << endl;
+    db<IP_Manager>(TRC) << "setando fragmento: " << endl;
     
     // Informações do datagrama em que o frgamentos que chegou se encontra
     INFO * dt_info = e->object();
@@ -452,7 +393,7 @@ IP_Manager::Address * IP_Manager::find_mac(unsigned char* dst_ip)
 
 void IP_Manager::timeout_handler(INFO * dt_info) {
 
-    db<IP_Manager>(WRN) << "Timeout handler" <<endl;
+    db<IP_Manager>(TRC) << "Timeout handler" <<endl;
     dt_info->sem->p();
     IP_Manager::_ip_mng->clear_dt_info(dt_info);
 
@@ -460,7 +401,7 @@ void IP_Manager::timeout_handler(INFO * dt_info) {
 
 void IP_Manager::clear_dt_info(INFO * dt_info) {
 
-    db<IP_Manager>(WRN) << "Clear dt_info" <<endl;
+    db<IP_Manager>(TRC) << "Clear dt_info" <<endl;
 
     db<IP_Manager>(TRC) << "Deletando fragmentos " << endl;
     unsigned long size = dt_info->fragments->size();
@@ -486,7 +427,7 @@ void IP_Manager::clear_dt_info(INFO * dt_info) {
 
 void* IP_Manager::defragmentation(INFO * dt_info) {
 
-    db<IP_Manager>(WRN) << "Remontagem" << endl;
+    db<IP_Manager>(TRC) << "Remontagem" << endl;
         
         // Capturando o 1° fragmento 
         Simple_List<Fragment>::Element * h = dt_info->fragments->head();
@@ -530,11 +471,11 @@ void* IP_Manager::defragmentation(INFO * dt_info) {
 
         }  
 
-        db<IP_Manager>(WRN) << "\nRecebido datagrama:" << endl;
+        db<IP_Manager>(TRC) << "\nRecebido datagrama:" << endl;
         for (unsigned int i = 20; i < dt_info->total_length; i++) {
-            db<IP_Manager>(WRN) << reinterpret_cast<char*>(base)[i];
+            db<IP_Manager>(TRC) << reinterpret_cast<char*>(base)[i];
         }
-        db<IP_Manager>(WRN) << endl;
+        db<IP_Manager>(TRC) << endl;
 
         return base;
 
@@ -542,7 +483,7 @@ void* IP_Manager::defragmentation(INFO * dt_info) {
         // if (retransmit) {
         //     routing(h->object()->DST_ADDR, dt_info->total_length, reinterpret_cast<unsigned char*>(base));
         // } else {
-        //     db<IP_Manager>(WRN) << "Sou o destino final deste datagrama" << endl;
+        //     db<IP_Manager>(TRC) << "Sou o destino final deste datagrama" << endl;
         // }
 
 
@@ -553,11 +494,11 @@ void* IP_Manager::defragmentation(INFO * dt_info) {
 
 int IP_Manager::handler() {
        
-    db<IP_Manager>(WRN) << "Chegou na thread" << endl;
+    db<IP_Manager>(TRC) << "Chegou na thread" << endl;
     while (true) {
-        db<IP_Manager>(WRN) << "Requisitando semáforo" << endl;
+        db<IP_Manager>(TRC) << "Requisitando semáforo" << endl;
         IP_Manager::_ip_mng->sem_th->p();
-        db<IP_Manager>(WRN) << "Semáforo concedido" << endl;
+        db<IP_Manager>(TRC) << "Semáforo concedido" << endl;
 
         // Lista de datagramas com todos os fragmentos
         List * complete_dtgs = IP_Manager::_ip_mng->complete_dtgs;
@@ -581,7 +522,7 @@ int IP_Manager::handler() {
             if (retransmit) {
                 IP_Manager::_ip_mng->routing(datagram);
             } else {
-                db<IP_Manager>(WRN) << "Notificando UDP" << endl;
+                db<IP_Manager>(TRC) << "Notificando UDP" << endl;
                 IP_Manager::_ip_mng->notify(reinterpret_cast<unsigned char*>(datagram));
             }
 
@@ -606,7 +547,103 @@ int IP_Manager::handler() {
     header->Type_Service = 0; 
     header->TTL = 64;
     header->Protocol = 253;
+    
+    // Tamanho padrão de cada fragmento
+    header->Total_Length = CPU_Common::htons(Ethernet::MTU);
+    
     // header->fragment_Checksum = 0;
  }
+
+IP_Manager::FList * IP_Manager::fragmentation(void * datagram, unsigned int size) {
+
+    FList * fragments = new FList;
+
+    // Header do datagrama
+    IP::Header * header = new IP::Header;
+    memcpy(header, datagram, sizeof(IP::Header));
+
+    // Dado do datagrama
+    unsigned char data[size];
+    memcpy(data, reinterpret_cast<unsigned *>(datagram) + sizeof(IP::Header), size);
+
+    // Ponteiro que irá avançar sobre datagrama para fazer o memcpy
+    unsigned char * next;
+
+    // Tamanho do fragmento sem o cabeçalho
+    unsigned int frag_data_size = Ethernet::MTU - sizeof(IP::Header);
+    db<IP_Manager>(WRN) << "frag_data_size" << frag_data_size << endl;
+
+    // Identificador de cada fragmento
+    unsigned int id = 0x1230 + id_send;
+
+    // A divisão de fragmentos é exata ou não
+    unsigned int exact = size  % frag_data_size;
+    db<IP_Manager>(WRN) << "exact " << exact << endl;
+
+    // Numero de fragmentos
+    // (Soma 1 quando são numeros quebrados, pois é pego o menor)
+    unsigned int num_fragments = exact ? (size / frag_data_size) : (size / frag_data_size) - 1;
+    db<IP_Manager>(TRC) << "num_fragments " << num_fragments << endl;
+
+    // ** ASSUMINDO QUE NUM_FRAGRMENTS É MAIOR QUE 1 (SIZE > 1480)
+    unsigned offset = 0;
+    unsigned i = 0;
+    Reg16 flag_off = 0;
+    for (; i < num_fragments; i++) {
+        db<IP_Manager>(WRN) << "Entrou no for" << endl;
+
+        Fragment * fragment = new Fragment;
+        fragment->header(header); 
+
+        // Campos específico da fragmentação (Identification, Flags, Fragment Offset)
+        fragment->Identification = CPU_Common::htons(id);
+        id_send++;
+
+        // Flags e Fragment ofsset
+        offset = (i * frag_data_size) / 8;
+        flag_off = (offset | MORE_FRAGS);
+        fragment->Flags_Offset = CPU_Common::htons(flag_off);
+
+        //  Setando o ponteiro para o proximo endereço fragmentado
+        next = data + i * frag_data_size;
+
+        // Copiando para a area de dados do fragmento
+        memcpy(fragment->data, next, frag_data_size);
+
+        // Inserindo na lista de fragmentos
+        FList::Element * link = new FList::Element(fragment);
+        fragments->insert(link);
+        db<IP_Manager>(WRN) << "Adicionou " << fragment->Identification << "na lista: ";
+
+        // Teste
+        db<IP_Manager>(WRN) << fragment->data[0] << endl;
+    
+    }
+
+    Fragment * last = fragments->tail()->object();
+    
+    // Restante de bytes mais o Header
+    unsigned int last_size = size  % frag_data_size;
+    last->Total_Length = CPU_Common::htons(last_size + sizeof(IP::Header));
+
+    // Flags e Fragment offset
+    flag_off = (offset & LAST_FRAG);
+    last->Flags_Offset = CPU_Common::htons(flag_off);
+
+    db<IP_Manager>(TRC) << "Last_size " << last_size << endl;
+
+    FList::Element * e = fragments->head();
+    long unsigned int j = 0;
+    for (; e; e = e->next() ){
+        db<IP_Manager>(WRN) << "e->object()->identification" << e->object()->Identification << endl;
+        db<IP_Manager>(WRN) << "frame[" << j << "]" << endl;
+        for (; j <  (CPU_Common::ntohs(e->object()->Total_Length) - sizeof(IP::Header)); j++) {
+            db<IP_Manager>(WRN) << e->object()->data[j];
+        }
+        db<IP_Manager>(TRC) << endl;
+    }
+    
+    return fragments;
+}
 
 __END_SYS

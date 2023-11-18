@@ -120,11 +120,11 @@ void test_external_network() {
      cout << "Iniciando envio de dados IP" << endl;
      
      unsigned int frag_data_size = 1480;
-     unsigned int data_size = 3000;
+     unsigned int data_size = 2000;
      unsigned char data_third[data_size];
      for(unsigned int i = 0; i < data_size; i++) {
           if (i < frag_data_size) data_third[i] = 'A';
-          else if (i < frag_data_size*2) data_third[i] = 'B';
+          else if (i < frag_data_size * 2) data_third[i] = 'B';
           else data_third[i] = 'C';
      }
 

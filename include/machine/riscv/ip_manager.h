@@ -43,6 +43,7 @@ class IP_Manager: public Data_Observed<unsigned char, void> {
     typedef Simple_List<IPTableEntry> IP_Table;
     typedef typename IP_Table::Element IP_Element;
     typedef IP::Header Header;
+    typedef Simple_List<IP::Fragment> FList;
 
 
 
@@ -58,6 +59,7 @@ public:
     void routing(void * datagram);
     void clear_dt_info(INFO * dt_info);
     static void timeout_handler(INFO * dt_info);
+    FList * fragmentation(void * datagram, unsigned int size);
     void* defragmentation(INFO * dt_info);
     static int handler();
     static void default_header(IP::Header * header);
