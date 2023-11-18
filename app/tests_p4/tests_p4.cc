@@ -77,7 +77,7 @@ void test_same_network() {
 
      cout << "Iniciando envio de dados IP" << endl;
 
-     unsigned int data_size = 1480;
+     unsigned int data_size = 2000;
      unsigned char data_second[data_size];
      for(unsigned int i = 0; i < data_size; i++) {
           if (i < frag_data_size) data_second[i] = '3';
@@ -87,6 +87,19 @@ void test_same_network() {
 
      IP::Header * header = new IP::Header;
      IP_Manager::default_header(header);
+
+     memcpy(header->SRC_ADDR, ARP_Manager::_arp_mng->IP_ADDR, 4);
+     memcpy(header->DST_ADDR, ip, 4);
+
+     cout << "IP DST " << static_cast<int>(header->DST_ADDR[0]) << ".";
+     cout << static_cast<int>(header->DST_ADDR[1]) << ".";
+     cout << static_cast<int>(header->DST_ADDR[2]) << ".";
+     cout << static_cast<int>(header->DST_ADDR[3]) << "?" << endl;
+
+     cout << "IP SRC " << static_cast<int>(header->SRC_ADDR[0]) << ".";
+     cout << static_cast<int>(header->SRC_ADDR[1]) << ".";
+     cout << static_cast<int>(header->SRC_ADDR[2]) << ".";
+     cout << static_cast<int>(header->SRC_ADDR[3]) << "?" << endl;
 
      db<Network_buffer>(WRN) << "Datagrama enviado: " << data_second << endl;
      IP_Manager::_ip_mng->send(header, data_second, data_size, *mac);
@@ -118,7 +131,7 @@ void test_external_network() {
      cout << "Iniciando envio de dados IP" << endl;
      
      unsigned int frag_data_size = 1480;
-     unsigned int data_size = 1300;
+     unsigned int data_size = 2000;
      unsigned char data_third[data_size];
      for(unsigned int i = 0; i < data_size; i++) {
           if (i < frag_data_size) data_third[i] = 'A';
@@ -128,6 +141,19 @@ void test_external_network() {
 
      IP::Header * header = new IP::Header;
      IP_Manager::default_header(header);
+
+     memcpy(header->SRC_ADDR, ARP_Manager::_arp_mng->IP_ADDR, 4);
+     memcpy(header->DST_ADDR, ip, 4);
+
+     cout << "IP DST " << static_cast<int>(header->DST_ADDR[0]) << ".";
+     cout << static_cast<int>(header->DST_ADDR[1]) << ".";
+     cout << static_cast<int>(header->DST_ADDR[2]) << ".";
+     cout << static_cast<int>(header->DST_ADDR[3]) << "" << endl;
+
+     cout << "IP SRC " << static_cast<int>(header->SRC_ADDR[0]) << ".";
+     cout << static_cast<int>(header->SRC_ADDR[1]) << ".";
+     cout << static_cast<int>(header->SRC_ADDR[2]) << ".";
+     cout << static_cast<int>(header->SRC_ADDR[3]) << "" << endl;
 
      db<Network_buffer>(WRN) << "Datagrama enviado: " << data_third << endl;
      IP_Manager::_ip_mng->send(header, data_third, data_size, *mac);
@@ -212,10 +238,10 @@ int main()
           // // test_icmp();
 
           // test_default_header();
-          test_same_network();
-          Delay(5000000);
+          // test_same_network();
+          // Delay(5000000);
           
-          // test_external_network();
+          test_external_network();
           Delay(10000000000);
 
      // Receiver | Router

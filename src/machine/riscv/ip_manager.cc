@@ -160,9 +160,9 @@ void IP_Manager::populate_routing_table() {
 }
 
 void IP_Manager::routing(void * datagram) {
+    db<IP_Manager>(WRN) << "Routing " << endl;
 
     IP::Header* header = reinterpret_cast<IP::Header*>(datagram); 
-    db<IP_Manager>(TRC) << "Total Length " << hex << ntohs(header->Total_Length) << endl;
 
     unsigned char ip_final[4];
     for (int i=0; i < 4; i++) {
@@ -186,7 +186,7 @@ void IP_Manager::routing(void * datagram) {
 
     // IP::Header * header = new IP::Header;
     // IP_Manager::default_header(header);
-    send(header, reinterpret_cast<unsigned char*>(datagram) + header_length, total_length, *mac_next_hop);
+    send(header, reinterpret_cast<unsigned char*>(datagram) + header_length, total_length - header_length, *mac_next_hop);
     db<IP_Manager>(TRC) << "Retransmitiu" << endl;
 
 }
@@ -207,6 +207,17 @@ void IP_Manager::send(Header * header, void* data, unsigned int size,  Address m
 
         // Fragmentação
         fragments =  fragmentation(datagram, size);
+
+        // ** Teste
+        FList::Element * e = fragments->head();
+        for (; e; e = e->next() ){
+            db<IP_Manager>(WRN) << "Frame[]"<< endl;
+            for (long unsigned i = 0; i < ntohs(e->object()->Total_Length)-sizeof(IP::Header); i++) {
+                db<IP_Manager>(WRN) <<e->object()->data[i];
+            }
+            db<IP_Manager>(WRN) << endl;
+            
+        }
     
     } else {
 
@@ -230,7 +241,7 @@ void IP_Manager::send(Header * header, void* data, unsigned int size,  Address m
     FList::Element * e = fragments->head();
     for (; e; e = e->next() ){
         db<IP_Manager>(WRN) << "IP_Manager:: chegou na lista "<< endl;
-        SiFiveU_NIC::_device->send(mac, (void*)e->object(), size + sizeof(IP::Header), 0x800);
+        SiFiveU_NIC::_device->send(mac, (void*)e->object(),  ntohs(e->object()->Total_Length), 0x800);
     }
 }
 
@@ -244,7 +255,7 @@ void IP_Manager::receive(void* data) {
     Fragment * fragment = reinterpret_cast<Fragment*>(data);
 
     db<IP_Manager>(TRC) << "---------------------"<< endl;
-    db<IP_Manager>(TRC) << "IP_Manager::IP_receive\n"<< endl;
+    db<IP_Manager>(WRN) << "IP_Manager::IP_receive\n"<< endl;
     
     // Capturando os valores do fragmento
     short unsigned int header_length = (fragment->Version_IHL & GET_IHL)*4;
@@ -256,11 +267,11 @@ void IP_Manager::receive(void* data) {
     
     
     // Verificação se os valores estão certos
-    db<IP_Manager>(TRC) << "header_length: " << header_length << endl;
-    db<IP_Manager>(TRC) << "data_length: "  << data_length << endl;
-    db<IP_Manager>(TRC) << "identification: " << hex << identification << endl;
-    db<IP_Manager>(TRC) << "offset: " << offset << endl;
-    db<IP_Manager>(TRC) << "flags: " << flags << endl;
+    db<IP_Manager>(WRN) << "header_length: " << header_length << endl;
+    db<IP_Manager>(WRN) << "data_length: "  << data_length << endl;
+    db<IP_Manager>(WRN) << "identification: " << hex << identification << endl;
+    db<IP_Manager>(WRN) << "offset: " << offset << endl;
+    db<IP_Manager>(WRN) << "flags: " << flags << endl;
 
 
     List::Element * e;
@@ -279,7 +290,7 @@ void IP_Manager::receive(void* data) {
 
         // Alarme
         Functor_Handler<INFO> * functor = new Functor_Handler<INFO>(&timeout_handler, datagram_info);
-        Alarm * timer = new Alarm(Microsecond(Second(20)), functor, 1);
+        Alarm * timer = new Alarm(Microsecond(Second(600)), functor, 1);
 
         datagram_info->fragments = fragments;
         datagram_info->id = identification;
@@ -410,7 +421,7 @@ IP_Manager::Address * IP_Manager::find_mac(unsigned char* dst_ip)
 
 void IP_Manager::timeout_handler(INFO * dt_info) {
 
-    db<IP_Manager>(TRC) << "Timeout handler" <<endl;
+    db<IP_Manager>(WRN) << "Timeout handler" <<endl;
     dt_info->sem->p();
     IP_Manager::_ip_mng->clear_dt_info(dt_info);
 
@@ -444,78 +455,78 @@ void IP_Manager::clear_dt_info(INFO * dt_info) {
 
 void* IP_Manager::defragmentation(INFO * dt_info) {
 
-    db<IP_Manager>(TRC) << "Remontagem" << endl;
+    db<IP_Manager>(WRN) << "Remontagem" << endl;
         
-        // Capturando o 1° fragmento 
-        Simple_List<Fragment>::Element * h = dt_info->fragments->head();
+    // Capturando o 1° fragmento 
+    Simple_List<Fragment>::Element * h = dt_info->fragments->head();
 
-        // Tamanho do cabeçalho IP
-        short unsigned int header_length = (h->object()->Version_IHL & GET_IHL)*4;
-        db<IP_Manager>(TRC) << "Header Length: " << header_length << endl;
+    // Tamanho do cabeçalho IP
+    short unsigned int header_length = (h->object()->Version_IHL & GET_IHL)*4;
+    db<IP_Manager>(TRC) << "Header Length: " << header_length << endl;
 
-        // unsigned int total_length = dt_info->total_length
+    // unsigned int total_length = dt_info->total_length
 
-        // Aloca um espaço no buffer não contíguo (heap) para o datagrama
-        void * base = Network_buffer::net_buffer->dt->alloc(dt_info->total_length + header_length);
+    // Aloca um espaço no buffer não contíguo (heap) para o datagrama
+    void * base = Network_buffer::net_buffer->dt->alloc(dt_info->total_length + header_length);
 
-        // Copiando header
-        h->object()->Total_Length = htons(dt_info->total_length);
+    // Copiando header
+    memcpy(base, reinterpret_cast<void*>(h->object()), header_length);
+    
+    // Percorre a lista de fragmentos para a remontagem
+    for (; h; h = h->next()) {
 
-        memcpy(base, reinterpret_cast<void*>(h->object()), header_length);
+        // Fragmento que será colocado no datagrama
+        Fragment * f = h->object();
 
-        IP::Header* header = reinterpret_cast<IP::Header*>(base); 
-        db<IP_Manager>(TRC) << "Identification " << hex << ntohs(header->Identification) << endl;
+        // Offset do fragmento
+        short unsigned int offset = (CPU_Common::ntohs(f->Flags_Offset) & GET_OFFSET) * 8;
         
-        // Percorre a lista de fragmentos para a remontagem
-        for (; h; h = h->next()) {
+        // Tamanho do fragmento
+        unsigned int size = CPU_Common::ntohs(f->Total_Length) - header_length;
 
-            // Fragmento que será colocado no datagrama
-            Fragment * f = h->object();
+        db<IP_Manager>(WRN) << "Size " << size << endl;
+        db<IP_Manager>(TRC) << "Offset do frame " << offset <<endl;
+        db<IP_Manager>(TRC) << "Data " << f->data << endl;
 
-            // Offset do fragmento
-            short unsigned int offset = (CPU_Common::ntohs(f->Flags_Offset) & GET_OFFSET) * 8;
-            
-            // Tamanho do fragmento
-            unsigned int size = CPU_Common::ntohs(f->Total_Length) - header_length;
+        // Remontagem do fragmento na heap
+        char * next = reinterpret_cast<char*>(base) + offset + header_length;
+        memcpy(next, f->data,  size);
 
-            db<IP_Manager>(TRC) << "Size " << size << endl;
-            db<IP_Manager>(TRC) << "Offset do frame " << offset <<endl;
-            db<IP_Manager>(TRC) << "Data " << f->data << endl;
+    }  
 
-            // Remontagem do fragmento na heap
-            char * next = reinterpret_cast<char*>(base) + offset + header_length;
-            memcpy(next, f->data,  size);
+    // Setando Total Length como tamanho de todo o datagrama e não de um fragmento individual
+    IP::Header* header = reinterpret_cast<IP::Header*>(base);
+    header->Total_Length = htons(dt_info->total_length + header_length);
+    db<IP_Manager>(WRN) << "Total Length: " << htons(header->Total_Length) << endl;
 
-        }  
+    db<IP_Manager>(WRN) << "\nRecebido datagrama:" << endl;
+    for (unsigned int i = 20; i < dt_info->total_length; i++) {
+        db<IP_Manager>(WRN) << reinterpret_cast<unsigned char*>(base)[i];
+    }
+    db<IP_Manager>(WRN) << endl;
 
-        db<IP_Manager>(WRN) << "\nRecebido datagrama:" << endl;
-        for (unsigned int i = 20; i < dt_info->total_length; i++) {
-            db<IP_Manager>(WRN) << reinterpret_cast<char*>(base)[i];
-        }
-        db<IP_Manager>(WRN) << endl;
+    return base;
 
-        return base;
-
-        // TODO: Refazer a retransmissao fora (No handler da thread)
-        // if (retransmit) {
-        //     routing(h->object()->DST_ADDR, dt_info->total_length, reinterpret_cast<unsigned char*>(base));
-        // } else {
-        //     db<IP_Manager>(TRC) << "Sou o destino final deste datagrama" << endl;
-        // }
+    // TODO: Refazer a retransmissao fora (No handler da thread)
+    // if (retransmit) {
+    //     routing(h->object()->DST_ADDR, dt_info->total_length, reinterpret_cast<unsigned char*>(base));
+    // } else {
+    //     db<IP_Manager>(TRC) << "Sou o destino final deste datagrama" << endl;
+    // }
 
 
-        // TODO: Mover para outro lugar
-        // clear_dt_info(dt_info);
+    // TODO: Mover para outro lugar
+    // clear_dt_info(dt_info);
 
 }
 
 int IP_Manager::handler() {
        
-    db<IP_Manager>(TRC) << "Chegou na thread" << endl;
+    db<IP_Manager>(WRN) << "Chegou na thread" << endl;
     while (true) {
-        db<IP_Manager>(TRC) << "Requisitando semáforo" << endl;
+        db<IP_Manager>(WRN) << "Requisitando semáforo" << endl;
         IP_Manager::_ip_mng->sem_th->p();
-        db<IP_Manager>(TRC) << "Semáforo concedido" << endl;
+        db<IP_Manager>(WRN) << "Semáforo concedido" << endl;
 
         // Lista de datagramas com todos os fragmentos
         List * complete_dtgs = IP_Manager::_ip_mng->complete_dtgs;
@@ -539,7 +550,7 @@ int IP_Manager::handler() {
             if (retransmit) {
                 IP_Manager::_ip_mng->routing(datagram);
             } else {
-                db<IP_Manager>(TRC) << "Notificando UDP" << endl;
+                db<IP_Manager>(WRN) << "Notificando UDP" << endl;
                 IP_Manager::_ip_mng->notify(reinterpret_cast<unsigned char*>(datagram));
             }
 
@@ -628,13 +639,16 @@ IP_Manager::FList * IP_Manager::fragmentation(void * datagram, unsigned int size
         flag_off = (offset | MORE_FRAGS);
         fragment->Flags_Offset = CPU_Common::htons(flag_off);
 
+        // Setando total_length
+        fragment->Total_Length = CPU_Common::htons(frag_data_size + sizeof(IP::Header));
+
         //  Setando o ponteiro para o proximo endereço fragmentado
         next = data + i * frag_data_size ;
 
         // Quando for o utlimo
         if (i == (num_fragments-1)) {
             // Restante de bytes mais o Header
-            frag_data_size = size  % frag_data_size;
+            frag_data_size = size  % frag_data_size; // last_size
             fragment->Total_Length = CPU_Common::htons(frag_data_size + sizeof(IP::Header));
 
             // Flags e Fragment offset
