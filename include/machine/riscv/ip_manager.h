@@ -60,8 +60,8 @@ public:
     void clear_dt_info(INFO * dt_info);
     static void timeout_handler(INFO * dt_info);
     FList * fragmentation(void * datagram, unsigned int size);
-    void* defragmentation(INFO * dt_info);
-    static int handler();
+    void* reassembly(INFO * dt_info);
+    static int ip_foward();
     static void default_header(IP::Header * header);
     void set_own_IP();
     // void attach(Data_Observer<char, void> *o) { Data_Observed<char, void>::attach(o); };

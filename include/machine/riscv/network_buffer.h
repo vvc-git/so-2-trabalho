@@ -66,7 +66,7 @@ public:
     Desc * get_free_tx_desc();
 
    // Função de execução da thread
-   static int copy();
+   static int ethernet_forward();
 
 public:
     

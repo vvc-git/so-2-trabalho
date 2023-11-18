@@ -98,7 +98,7 @@ void Network_buffer::configure_tx_rx() {
     Cadence_GEM::set_transmiter_ptr(tx_desc_phy);
 }
 
-int Network_buffer::copy() {
+int Network_buffer::ethernet_forward() {
 
     Desc *desc = net_buffer->rx_desc_phy;
     unsigned int idx = 0;

@@ -41,8 +41,8 @@ public:
 
 
         // Inicializando thread que copia os dados do buffer rx
-        new (SYSTEM) Thread(Thread::Configuration(Thread::READY, Thread::HIGH), &Network_buffer::copy);
-        new (SYSTEM) Thread(Thread::Configuration(Thread::READY, Thread::HIGH), &IP_Manager::handler);
+        new (SYSTEM) Thread(Thread::Configuration(Thread::READY, Thread::HIGH), &Network_buffer::ethernet_forward);
+        new (SYSTEM) Thread(Thread::Configuration(Thread::READY, Thread::HIGH), &IP_Manager::ip_foward);
         
         first->_context->load();
     }

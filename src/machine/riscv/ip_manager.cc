@@ -457,12 +457,11 @@ void IP_Manager::clear_dt_info(INFO * dt_info) {
     db<IP_Manager>(WRN) << "Deletando Elemento linkagem, INFO e semaforo " << endl;
     List::Element * d = dt_list->search(dt_info);
     complete_dtgs->remove(d);
-    dt_info->sem->v();
     delete dt_info->sem;
     delete dt_info;
 }
 
-void* IP_Manager::defragmentation(INFO * dt_info) {
+void* IP_Manager::reassembly(INFO * dt_info) {
 
     db<IP_Manager>(WRN) << "Remontagem" << endl;
         
@@ -514,20 +513,9 @@ void* IP_Manager::defragmentation(INFO * dt_info) {
 
     return base;
 
-    // TODO: Refazer a retransmissao fora (No handler da thread)
-    // if (retransmit) {
-    //     routing(h->object()->DST_ADDR, dt_info->total_length, reinterpret_cast<unsigned char*>(base));
-    // } else {
-    //     db<IP_Manager>(TRC) << "Sou o destino final deste datagrama" << endl;
-    // }
-
-
-    // TODO: Mover para outro lugar
-    // clear_dt_info(dt_info);
-
 }
 
-int IP_Manager::handler() {
+int IP_Manager::ip_foward() {
        
     db<IP_Manager>(WRN) << "Chegou na thread" << endl;
     while (true) {
@@ -541,14 +529,14 @@ int IP_Manager::handler() {
         List::Element * e = complete_dtgs->head();
         
         if (!e) {
-            db<IP_Manager>(WRN) << "head() é nullptr" << endl;
+            db<IP_Manager>(TRC) << "head() é nullptr" << endl;
             continue;
         }
 
         db<IP_Manager>(WRN) << "Objeto inserido " << hex << e->object()->id << endl;
         
         // Inicia a remontagem dos fragmentos (completos) que chegaram
-        void* datagram = IP_Manager::_ip_mng->defragmentation(e->object()); 
+        void* datagram = IP_Manager::_ip_mng->reassembly(e->object()); 
 
         IP::Header* header = reinterpret_cast<IP::Header*>(datagram);
 
