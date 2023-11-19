@@ -72,11 +72,13 @@ void ICMP_Manager::send_reply(unsigned char * dst_ip, Address dst_mac) {
 
 }
 
-void ICMP_Manager::receive(void* request) {
+void ICMP_Manager::receive(void* icmp_msg, unsigned int size) {
     db<ICMP_Manager>(WRN) << "ICMP_Manager::receive" << endl;
     // Cria um novo ponteiro para adicionar na lista de fragmentos que estão chegando
-    char * r = new char[1500];
-    memcpy(r, request, 1500);
+    // char * r = new char[size];
+    // memcpy(r, request, Eth);
+
+    unsigned char * r = reinterpret_cast<unsigned char *>(icmp_msg);
 
     // Ethernet frame
     Frame * frame = reinterpret_cast<Frame*>(r);

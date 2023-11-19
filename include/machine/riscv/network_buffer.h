@@ -49,6 +49,7 @@ Network_buffer :  public Observer// , Data_Observed<DT_Buffer, void>
     typedef Ethernet::Frame Frame;
     typedef IP::Fragment Fragment;
     typedef IP::Echo Echo;
+    typedef Ethernet::CRC CRC;
 
 public:
     

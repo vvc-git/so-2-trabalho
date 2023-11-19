@@ -129,11 +129,8 @@ int Network_buffer::ethernet_forward() {
         short int protocol = ntohs(*(reinterpret_cast<short int *>(data) + 6));
 
         // Frame size
-        unsigned int frame_size = (desc->control & Cadence_GEM::GET_FRAME_LENGTH); //- sizeof(Ethernet::CRC32) - sizeof(Ethernet::Header);
-        db<Network_buffer>(TRC) << "Header: " <<  sizeof(Ethernet::Header)  << endl;
-        db<Network_buffer>(TRC) << "CRC: " <<  sizeof(Ethernet::CRC)  << endl;
-        db<Network_buffer>(TRC) << "Frame size: " << frame_size << endl;
-
+        unsigned int frame_size = (desc->control & Cadence_GEM::GET_FRAME_LENGTH) - sizeof(CRC); //- sizeof(Ethernet::CRC32) - sizeof(Ethernet::Header);
+        
 
         if  (protocol == 0x0806) {
             db<Network_buffer>(TRC) << "copy(): Pacote ARP"<< endl;
@@ -165,30 +162,20 @@ int Network_buffer::ethernet_forward() {
                 continue;
             }
 
-            // Verifica se eu sou o ip
-            // Caso negativo, eh preciso retransmitir
-            Fragment::Header * header = (reinterpret_cast<Fragment::Header*>(desc->address + 14));
-
+            Fragment::Header * header = (reinterpret_cast<Fragment::Header*>(desc->address + sizeof(Ethernet::Header)));
             if (header->Protocol == 1) {
-                db<Network_buffer>(WRN) << "Echo Message " << endl;
+                db<Network_buffer>(TRC) << "ICMP Message" << endl;
 
                 // Faz a copia do buffer rx para data
-                char  payload[frame_size-4];
-                memcpy(payload, reinterpret_cast<void*>(desc->address), frame_size-4);
-                ICMP_Manager::_icmp_mng->receive((void *)(payload));
+                char  payload[frame_size];
+                memcpy(payload, reinterpret_cast<void*>(desc->address),  frame_size);
+                ICMP_Manager::_icmp_mng->receive((void *)(payload),  frame_size);
             
             } else {
-            
-                unsigned int crc = 4;
 
                 // Cria um novo ponteiro para adicionar na lista de fragmentos que estão chegando
-                char * content = new char[frame_size - crc];
-                memcpy(content, reinterpret_cast<void*>(desc->address), frame_size - crc);
-                
-                // // Faz a copia do buffer rx para data
-                // char  payload[frame_size - 4];
-                // // net_buffer->buf->get_data_frame(payload);
-                // memcpy(payload, reinterpret_cast<void*>(desc->address), frame_size - 4);
+                char * content = new char[frame_size];
+                memcpy(content, reinterpret_cast<void*>(desc->address), frame_size);
                 
                 // Setando os 2 ultimos bits da word[0]
                 // (O wrap bit caso seja necessário)

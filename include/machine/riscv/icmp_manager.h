@@ -29,7 +29,7 @@ public:
     static void init();
     void send_request(unsigned char * dst_ip, Address dst_mac);
     void send_reply(unsigned char * dst_ip, Address dst_mac);
-    void receive(void* request);
+    void receive(void* icmp_msg, unsigned int size);
     void send_tem(Address dst_mac, IP::Header* header, unsigned char* data);
 
 

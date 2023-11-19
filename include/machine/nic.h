@@ -139,7 +139,8 @@ public:
 
     // NIC CRCs
     typedef unsigned short CRC16;
-    typedef unsigned long CRC32;
+    typedef unsigned int CRC32;
+    typedef unsigned long CRC64;
 
     // Configuration parameters 
     struct Configuration
