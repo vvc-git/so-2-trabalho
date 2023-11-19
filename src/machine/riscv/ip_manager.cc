@@ -258,15 +258,9 @@ void IP_Manager::send(Header * header, void* data, unsigned int size,  Address m
 void IP_Manager::receive(void* data) {
 
     Frame *frame = reinterpret_cast<Frame*>(data);
- 
-    // Cria um novo ponteiro para adicionar na lista de fragmentos que estão chegando
-    // char * content = new char[Ethernet::MTU];
-    // memcpy(content, data, Ethernet::MTU);
-
     Fragment * fragment = reinterpret_cast<Fragment*>(reinterpret_cast<char*>(data) + sizeof(Ethernet::Header));
 
-    db<IP_Manager>(TRC) << "---------------------"<< endl;
-    db<IP_Manager>(WRN) << "IP_Manager::IP_receive\n"<< endl;
+    db<IP_Manager>(WRN) << "IP_Manager::IP_receive"<< endl;
     
     // Capturando os valores do fragmento
     short unsigned int header_length = (fragment->Version_IHL & GET_IHL)*4;
@@ -280,7 +274,7 @@ void IP_Manager::receive(void* data) {
     // Verificação se os valores estão certos
     db<IP_Manager>(TRC) << "header_length: " << header_length << endl;
     db<IP_Manager>(TRC) << "data_length: "  << data_length << endl;
-    db<IP_Manager>(WRN) << "identification: " << hex << identification << endl;
+    db<IP_Manager>(TRC) << "identification: " << hex << identification << endl;
     db<IP_Manager>(TRC) << "offset: " << offset << endl;
     db<IP_Manager>(TRC) << "flags: " << flags << endl;
 
@@ -301,7 +295,7 @@ void IP_Manager::receive(void* data) {
 
         // Alarme
         Functor_Handler<INFO> * functor = new Functor_Handler<INFO>(&timeout_handler, datagram_info);
-        Alarm * timer = new Alarm(Microsecond(Second(10)), functor, 1);
+        Alarm * timer = new Alarm(Microsecond(Second(30)), functor, 1);
 
         datagram_info->fragments = fragments;
         datagram_info->id = identification;
@@ -320,13 +314,11 @@ void IP_Manager::receive(void* data) {
         e = link2; 
         
     }
-    db<IP_Manager>(WRN) << "setando fragmento: " << endl;
     
     // Informações do datagrama em que o frgamentos que chegou se encontra
     INFO * dt_info = e->object();
 
-    db<IP_Manager>(WRN) << "Address: " << dt_info->src_address << endl;
-
+    // Semáforo para impedir o timeout enquanto o fragmento está sendo tratado
     dt_info->sem->p();
 
     // Lista de fragmentos  de um mesmo datagram
@@ -361,7 +353,12 @@ void IP_Manager::receive(void* data) {
     if (total_frame == dt_info->num_fragments) {
         db<IP_Manager>(WRN) << "Inserir datagrama completo e liberar thread 2" << endl;
         complete_dtgs->insert(incomplete_dtgs->remove(e));
+        Delay(30000000);
+        db<IP_Manager>(WRN) << "Deletando alarme" << endl;
         delete dt_info->timer;
+        // Semáfor para liberar a thread IP_Foward para 
+        // (I) Remontar
+        // (II) Encaminhar para UDP ou roteamento
         sem_th->v();
 
     } else {
@@ -437,28 +434,34 @@ IP_Manager::Address * IP_Manager::find_mac(unsigned char* dst_ip)
 
 void IP_Manager::timeout_handler(INFO * dt_info) {
 
+    // Tratador 
     db<IP_Manager>(WRN) << "Timeout handler id: " << hex << dt_info->id <<endl;
+    
+    // Semáforo para bloquear a thread Ethernet_foward 
+    // de adicionar novos fragmentos na incomplete_dtgs
     dt_info->sem->p();
+    db<IP_Manager>(WRN) << "Timeout handler liberado após p(): " <<endl;
+    
+    if (!dt_info) return; 
+    db<IP_Manager>(WRN) << "Timeout handler passou (!dt_info) " <<endl;
+
+    // Cópia dos primeiros 8 bytes (64bits) de um datagrama incompleto
     unsigned char data[8];
     memcpy(data, dt_info->fragments->head()->object()->data, 8);
-    // unsigned char * copy = dt_info->fragments->head()->object()->data;
-
-    // for (int i =0; i < 8;i++ ) {
-    //     db<IP_Manager>(WRN) <<  data[i];
-    // }
-    // db<IP_Manager>(WRN) << endl;
-
     IP::Header *header = reinterpret_cast<IP::Header*>(dt_info->fragments->head()->object());
+
+    // Envia uma mensagem ICMP do tip Time Exceeded Message para host origem
     ICMP_Manager::_icmp_mng->send_tem(dt_info->src_address, header, data);
+
+    // Limpa todos os dados relacionados com datagrama incompleto
     IP_Manager::_ip_mng->clear_dt_info(dt_info);
 
 } 
 
 void IP_Manager::clear_dt_info(INFO * dt_info) {
 
-    db<IP_Manager>(WRN) << "Clear dt_info id: " << hex << dt_info->id <<endl;
-
-    db<IP_Manager>(WRN) << "Deletando fragmentos " << endl;
+    db<IP_Manager>(TRC) << "Clear dt_info id: " << hex << dt_info->id <<endl;
+    db<IP_Manager>(TRC) << "Deletando fragmentos " << endl;
     unsigned long size = dt_info->fragments->size();
     while (size > 0)
     {
@@ -469,11 +472,11 @@ void IP_Manager::clear_dt_info(INFO * dt_info) {
 
     }
 
-    db<IP_Manager>(WRN) << "Deletando timer " << endl;
+    db<IP_Manager>(TRC) << "Deletando timer " << endl;
     if (dt_info->timer) delete dt_info->timer;
     delete dt_info->timeout_handler;
 
-    db<IP_Manager>(WRN) << "Deletando Elemento linkagem, INFO e semaforo " << endl;
+    db<IP_Manager>(TRC) << "Deletando Elemento linkagem, INFO e semaforo " << endl;
     List::Element * d = incomplete_dtgs->search(dt_info);
     complete_dtgs->remove(d);
     delete dt_info->sem;
@@ -482,7 +485,7 @@ void IP_Manager::clear_dt_info(INFO * dt_info) {
 
 void* IP_Manager::reassembly(INFO * dt_info) {
 
-    db<IP_Manager>(WRN) << "Remontagem" << endl;
+    db<IP_Manager>(TRC) << "Remontagem" << endl;
         
     // Capturando o 1° fragmento 
     Simple_List<Fragment>::Element * h = dt_info->fragments->head();
@@ -576,17 +579,13 @@ int IP_Manager::ip_foward() {
 
         IP_Manager::_ip_mng->clear_dt_info(e->object());
 
-        // complete_dtgs->remove(e);
-        // TODO: limpar memória (clean) do INFO remontado
-        
-
     }
     return 0;   
 }
 
  void IP_Manager::default_header(IP::Header * header) {
 
-    db<IP_Manager>(WRN) << "Começo do default " << endl;
+    db<IP_Manager>(TRC) << "IP_Manager::default()" << endl;
 
     // Internet Protocol Version (IPV4)   
     Reg8 version = 4 << 4;
