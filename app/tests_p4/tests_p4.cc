@@ -250,10 +250,11 @@ int main()
           // test_same_network();
           // Delay(5000000);
 
-          // test_same_network();
+          test_same_network();
           Delay(5000000);
-          
-          test_external_network();
+     
+
+          // test_external_network();
           // Delay(10000000000);
 
      // Receiver | Router

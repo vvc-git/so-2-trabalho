@@ -54,11 +54,19 @@ public:
 
     } __attribute__((packed));
 
-    class Echo: public Header
+    class ICMP: public Header
+    {
+    public:
+        ICMP() {db<Echo>(TRC) << "ICMP::"<< endl;};
+        Reg8 Type;
+
+    }__attribute__((packed));
+
+    class Echo: public ICMP
     {
     public:
         Echo() {db<Echo>(TRC) << "ICMP::Echo Message"<< endl;};
-        Reg8 Type;
+        // Reg8 Type;
         Reg8 Code;
         Reg16 Checksum;
         Reg16 Identifer;
@@ -67,15 +75,14 @@ public:
     }__attribute__((packed));
 
     // Time Exceeded Message
-    class TEM: public Header
+    class TEM: public ICMP
     {
     public:
         TEM() {db<TEM>(TRC) << "ICMP::Time Exceeded Message"<< endl;};
-        Reg8 Type;
+        // Reg8 Type;
         Reg8 Code;
         Reg16 Checksum;
         Reg32 Unused;
-
         Header IP_header;
         unsigned char data[8];
 

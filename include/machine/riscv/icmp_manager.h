@@ -17,6 +17,7 @@ class ICMP_Manager
     typedef CPU::Reg16 Reg16;
     typedef IP::Echo Echo;
     typedef IP::TEM TEM;
+    typedef IP::ICMP ICMP;
     typedef Ethernet::Frame Frame;
     typedef NIC_Common::Address<6> Address;
 

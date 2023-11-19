@@ -440,8 +440,15 @@ void IP_Manager::timeout_handler(INFO * dt_info) {
     db<IP_Manager>(WRN) << "Timeout handler id: " << hex << dt_info->id <<endl;
     dt_info->sem->p();
     unsigned char data[8];
-    memcpy(data, dt_info->fragments->head()->object() + sizeof(IP::Header), 8);
-    IP::Header *header = dt_info->fragments->head()->object();
+    memcpy(data, dt_info->fragments->head()->object()->data, 8);
+    // unsigned char * copy = dt_info->fragments->head()->object()->data;
+
+    // for (int i =0; i < 8;i++ ) {
+    //     db<IP_Manager>(WRN) <<  data[i];
+    // }
+    // db<IP_Manager>(WRN) << endl;
+
+    IP::Header *header = reinterpret_cast<IP::Header*>(dt_info->fragments->head()->object());
     ICMP_Manager::_icmp_mng->send_tem(dt_info->src_address, header, data);
     IP_Manager::_ip_mng->clear_dt_info(dt_info);
 

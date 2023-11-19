@@ -80,18 +80,36 @@ void ICMP_Manager::receive(void* request) {
 
     // Ethernet frame
     Frame * frame = reinterpret_cast<Frame*>(r);
-    Echo * echo = reinterpret_cast<Echo*>(r + 14);
+    ICMP * icmp = reinterpret_cast<ICMP*>(r + 14);
+    TEM * tem = reinterpret_cast<TEM*>(r + 14);
 
-    // request
-    if (echo->Type == 8) {
-        db<ICMP_Manager>(WRN) << "Send request -> Enviar reply" << endl;
-        send_reply(echo->SRC_ADDR, frame->src());
-    } else {
+    switch (icmp->Type)
+    {
+    case 0:
         db<ICMP_Manager>(WRN) << "Recebendo um Echo reply" << endl;
         chrono->stop();
         db<ICMP_Manager>(WRN) << "Ping: " << chrono->read() / 1000000 << ",";
         db<ICMP_Manager>(WRN) << chrono->read() % 1000000 << "s" << endl;
+        break;
+    case 8:
+        db<ICMP_Manager>(WRN) << "Recebendo um Echo request" << endl;
+        send_reply(icmp->SRC_ADDR, frame->src());
+        break;
+
+    case 11:
+        db<ICMP_Manager>(WRN) << "Recebendo um Time Message Exceeded" << endl;
+        db<ICMP_Manager>(WRN) << "Datagrama com o identificador [";
+        db<ICMP_Manager>(WRN) << hex << ntohs(tem->IP_header.Identification) << "] = data: ";
+        for (int i=0; i < 8; i++ ) {
+            db<ICMP_Manager>(WRN) << tem->data[i];
+        }
+        db<ICMP_Manager>(WRN) <<" foi perdido" << endl;
+        break;
+    default:
+        db<ICMP_Manager>(WRN) << "Recebendo uma mensagem ICMP não definida" << endl;
+        break;
     }
+
 
 }
 
@@ -101,7 +119,15 @@ void ICMP_Manager::send_tem(Address dst_mac, IP::Header* header, unsigned char* 
     db<ICMP_Manager>(WRN) << "header id: " << ntohs(header->Identification) << endl;
 
     TEM *tem = new TEM;
+
+    // Novo header do ICMP
     tem->header(header);
+
+    db<ICMP_Manager>(WRN) << "ICMP_Manager::Primeira copia funcionando" << endl;
+
+    // Header que do datagrama com erro
+    // memcpy(tem->IP_header, header, sizeof(IP::Header));
+    tem->IP_header.header(header);
 
 
     // Source and Destination IP
@@ -123,11 +149,12 @@ void ICMP_Manager::send_tem(Address dst_mac, IP::Header* header, unsigned char* 
     tem->Code = 1;
     tem->Checksum = 0;
 
+    memcpy(tem->data, data, 8);
 
-    db<ICMP_Manager>(WRN) << "total length: " << ntohs(tem->Total_Length) << endl;
-    for (int i=0; i<8; i++) {
-        tem->data[i] = 'A';
-    }
+    // db<ICMP_Manager>(WRN) << "total length: " << ntohs(tem->Total_Length) << endl;
+    // for (int i=0; i<8; i++) {
+    //     tem->data[i] = 'A';
+    // }
 
     // for (int i=0; i<8; i++) {
     //     db<ICMP_Manager>(WRN) << data[i] ;
