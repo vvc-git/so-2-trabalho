@@ -194,7 +194,7 @@ int Network_buffer::ethernet_forward() {
                 // (O wrap bit caso seja necessário)
                 desc->set_rx_own_wrap(idx == ( net_buffer->SLOTS_BUFFER - 1));
 
-                IP_Manager::_ip_mng->receive((void *)(content + sizeof(Ethernet::Header)));
+                IP_Manager::_ip_mng->receive((void *)(content));
             }
         }
         

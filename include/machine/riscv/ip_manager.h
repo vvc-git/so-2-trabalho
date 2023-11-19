@@ -22,6 +22,7 @@ struct INFO
     Alarm * timer;
     Functor_Handler<INFO> * timeout_handler;
     Semaphore * sem;
+    NIC_Common::Address<6> src_address;
 };
 
 struct IPTableEntry 
@@ -44,6 +45,7 @@ class IP_Manager: public Data_Observed<unsigned char, void> {
     typedef typename IP_Table::Element IP_Element;
     typedef IP::Header Header;
     typedef Simple_List<IP::Fragment> FList;
+    typedef Ethernet::Frame Frame; //  Used for ICMP TEM message
 
 
 

@@ -161,34 +161,34 @@ void test_external_network() {
 }
 
 
-// void test_icmp() {
+void test_icmp() {
 
-//      // IP destino fora da minha rede
-//      unsigned char ip[4];
-//      ip[0] = 150;        
-//      ip[1] = 162;
-//      ip[2] = 60;
-//      ip[3] = 2;
+     // IP destino fora da minha rede
+     unsigned char ip[4];
+     ip[0] = 150;        
+     ip[1] = 162;
+     ip[2] = 60;
+     ip[3] = 2;
 
-//      cout << "\nTeste rede externa" << endl;
+     cout << "\nTeste rede externa" << endl;
 
-//      // Envio para host na rede externa (E não temos na tabela de roteamento -> vai para default)
-//      cout << "Quem tem o mac do IP  " << static_cast<int>(ip[0]) << ".";
-//      cout << static_cast<int>(ip[1]) << ".";
-//      cout << static_cast<int>(ip[2]) << ".";
-//      cout << static_cast<int>(ip[3]) << "?" << endl;
+     // Envio para host na rede externa (E não temos na tabela de roteamento -> vai para default)
+     cout << "Quem tem o mac do IP  " << static_cast<int>(ip[0]) << ".";
+     cout << static_cast<int>(ip[1]) << ".";
+     cout << static_cast<int>(ip[2]) << ".";
+     cout << static_cast<int>(ip[3]) << "?" << endl;
 
 
-//      NIC_Common::Address<6> * mac = IP_Manager::_ip_mng->find_mac(ip);
-//      if (mac)
-//           cout << "MAC do gateway default: " << *mac << endl;
+     NIC_Common::Address<6> * mac = IP_Manager::_ip_mng->find_mac(ip);
+     if (mac)
+          cout << "MAC do gateway default: " << *mac << endl;
 
-//      cout << "Iniciando envio de dados IP" << endl;
+     cout << "Iniciando envio de dados IP - ICMP" << endl;
      
-//      // db<Network_buffer>(WRN) << "Datagrama enviado: " << data_second << endl;
-//      ICMP_Manager::_icmp_mng->send(*mac);
+     // db<Network_buffer>(WRN) << "Datagrama enviado: " << data_second << endl;
+     ICMP_Manager::_icmp_mng->send_request(ip, *mac);
 
-// }
+}
 
 void test_default_header() {
 
@@ -213,6 +213,15 @@ int main()
      SiFiveU_NIC * sifiveu_nic = SiFiveU_NIC::_device;          
      cout << "  MAC: " << sifiveu_nic->address << "\n" << endl;
 
+     TSC_Chronometer *chrono = new TSC_Chronometer;
+     chrono->start();
+     Delay(1000000);
+     chrono->stop();
+
+     cout << chrono->read() / 1000000 << ",";
+     cout << chrono->read() % 1000000 << endl;
+
+
      // Sender
      if(sifiveu_nic->address[5] % 2 ) {
           cout << "Sender" << endl;
@@ -235,14 +244,14 @@ int main()
           // Delay(5000000);
 
           // test_same_network();     
-          // // test_icmp();
+          // test_icmp();
 
           // // test_default_header();
           // test_same_network();
           // Delay(5000000);
 
           // test_same_network();
-          // Delay(5000000);
+          Delay(5000000);
           
           test_external_network();
           // Delay(10000000000);

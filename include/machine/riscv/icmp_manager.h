@@ -16,6 +16,7 @@ class ICMP_Manager
     typedef CPU::Reg8 Reg8;
     typedef CPU::Reg16 Reg16;
     typedef IP::Echo Echo;
+    typedef IP::TEM TEM;
     typedef Ethernet::Frame Frame;
     typedef NIC_Common::Address<6> Address;
 
@@ -25,8 +26,10 @@ private:
 
 public:
     static void init();
-    void send(unsigned char * dst_ip, Address * dst_mac);
+    void send_request(unsigned char * dst_ip, Address dst_mac);
+    void send_reply(unsigned char * dst_ip, Address dst_mac);
     void receive(void* request);
+    void send_tem(Address dst_mac, IP::Header* header, unsigned char* data);
 
 
 public:
@@ -41,6 +44,8 @@ public:
 
     static ICMP_Manager* _icmp_mng;
     int id_send = 0;
+
+    TSC_Chronometer *chrono = new TSC_Chronometer;
 
 };
 __END_SYS

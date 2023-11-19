@@ -23,6 +23,7 @@ public:
     {
     public:
         Header() {}
+        void header(Header * header) {memcpy(this, header, sizeof(Header));}
 
     public:
         Reg8 Version_IHL; // Version and Internet Header Length
@@ -47,8 +48,7 @@ public:
     {
     public:
         Fragment() {db<Fragment>(TRC) << "IP::Fragment"<< endl;};
-        Header * header() { return this; }
-        void header(Header * header) {memcpy(this, header, sizeof(Header));}
+        // Header * header() { return this; }
 
         unsigned char data[1480];
 
@@ -63,6 +63,21 @@ public:
         Reg16 Checksum;
         Reg16 Identifer;
         Reg16 Sequence_Number;
+
+    }__attribute__((packed));
+
+    // Time Exceeded Message
+    class TEM: public Header
+    {
+    public:
+        TEM() {db<TEM>(TRC) << "ICMP::Time Exceeded Message"<< endl;};
+        Reg8 Type;
+        Reg8 Code;
+        Reg16 Checksum;
+        Reg32 Unused;
+
+        Header IP_header;
+        unsigned char data[8];
 
     }__attribute__((packed));
 
