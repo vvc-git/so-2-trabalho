@@ -245,10 +245,10 @@ void IP_Manager::send(Header * header, void* data, unsigned int size,  Address m
 
     FList::Element * e = fragments->head();
     for (; e; e = e->next() ) {
-        db<IP_Manager>(WRN) << "IP_Manager:: chegou na lista id: " << hex << ntohs(e->object()->Identification) << endl;
+        db<IP_Manager>(TRC) << "IP_Manager:: chegou na lista id: " << hex << ntohs(e->object()->Identification) << endl;
         unsigned int offset = ntohs(e->object()->Flags_Offset) & GET_OFFSET;
-        db<IP_Manager>(WRN) << "IP_Manager:: offset: " << offset << endl;
-        db<IP_Manager>(WRN) << "IP_Manager:: Identification: " << hex << ntohs(e->object()->Identification) << endl;
+        db<IP_Manager>(TRC) << "IP_Manager:: offset: " << offset << endl;
+        db<IP_Manager>(TRC) << "IP_Manager:: Identification: " << hex << ntohs(e->object()->Identification) << endl;
         if (ntohs(e->object()->Identification) == 0x1231 && offset >= 185) continue;
         SiFiveU_NIC::_device->send(mac, (void*)e->object(),  ntohs(e->object()->Total_Length), 0x800);
         Delay(1000000);
@@ -287,7 +287,7 @@ void IP_Manager::receive(void* data) {
 
     List::Element * e;
     // Varredura na lista de informações de datagramas
-    for (e = dt_list->head(); e && e->object()->id != identification; e = e->next()) {}   
+    for (e = incomplete_dtgs->head(); e && e->object()->id != identification; e = e->next()) {}   
 
     // Verifica se já temos informações do fragmento que chegou
     // Se não tiver, inicia um datagrama novo
@@ -316,7 +316,7 @@ void IP_Manager::receive(void* data) {
         Element * link2 = new Element(datagram_info);
         
         // Adiciona na lista de datagramas
-        dt_list->insert(link2);
+        incomplete_dtgs->insert(link2);
         e = link2; 
         
     }
@@ -360,7 +360,7 @@ void IP_Manager::receive(void* data) {
     // Quando todos os framentos chegaram, remonta.
     if (total_frame == dt_info->num_fragments) {
         db<IP_Manager>(WRN) << "Inserir datagrama completo e liberar thread 2" << endl;
-        complete_dtgs->insert(dt_list->remove(e));
+        complete_dtgs->insert(incomplete_dtgs->remove(e));
         delete dt_info->timer;
         sem_th->v();
 
@@ -474,7 +474,7 @@ void IP_Manager::clear_dt_info(INFO * dt_info) {
     delete dt_info->timeout_handler;
 
     db<IP_Manager>(WRN) << "Deletando Elemento linkagem, INFO e semaforo " << endl;
-    List::Element * d = dt_list->search(dt_info);
+    List::Element * d = incomplete_dtgs->search(dt_info);
     complete_dtgs->remove(d);
     delete dt_info->sem;
     delete dt_info;
@@ -535,12 +535,14 @@ void* IP_Manager::reassembly(INFO * dt_info) {
 }
 
 int IP_Manager::ip_foward() {
-       
-    db<IP_Manager>(WRN) << "Chegou na thread" << endl;
+
+    // Essa thread encaminha para:
+    // (1) Camada de transporte
+    // (2) Roteamento
+
     while (true) {
-        db<IP_Manager>(WRN) << "Requisitando semáforo" << endl;
+
         IP_Manager::_ip_mng->sem_th->p();
-        db<IP_Manager>(WRN) << "Semáforo concedido" << endl;
 
         // Lista de datagramas com todos os fragmentos
         List * complete_dtgs = IP_Manager::_ip_mng->complete_dtgs;
@@ -551,8 +553,6 @@ int IP_Manager::ip_foward() {
             db<IP_Manager>(TRC) << "head() é nullptr" << endl;
             continue;
         }
-
-        db<IP_Manager>(WRN) << "Objeto inserido " << hex << e->object()->id << endl;
         
         // Inicia a remontagem dos fragmentos (completos) que chegaram
         void* datagram = IP_Manager::_ip_mng->reassembly(e->object()); 

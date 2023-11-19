@@ -24,60 +24,29 @@ void ICMP_Manager::send_request(unsigned char * dst_ip, Address dst_mac) {
     SiFiveU_NIC::_device->send(dst_mac, (void*)echo, sizeof(IP::Header) + sizeof(IP::Echo), 0x0800);
     chrono->start();
 
-    // Print para verificar o header
-    db<ICMP_Manager>(TRC) << "Total_Length original " << CPU_Common::ntohs(echo->Total_Length)<< endl;
-    // db<ICMP_Manager>(TRC) << "Total_Length sem o size: " << (CPU_Common::ntohs(echo->Total_Length) * 8) - hsize << endl;
-    db<ICMP_Manager>(TRC) << "Identification: " << hex << CPU_Common::htons(echo->Identification) << endl;
-    db<ICMP_Manager>(TRC) << "Offset: " << (CPU_Common::htons(echo->Flags_Offset) & IP_Manager::GET_OFFSET)*8 << endl;    
-    db<ICMP_Manager>(TRC) << "---------------------"<< endl;
-    db<ICMP_Manager>(TRC) << "ICMP_Manager::IP_send fim"<< endl;
 }
 
 void ICMP_Manager::send_reply(unsigned char * dst_ip, Address dst_mac) {
-    db<ICMP_Manager>(WRN) << "ICMP_Manager::send_reply" << endl;
-    // Cria um novo ponteiro para adicionar na lista de fragmentos que estão chegando
-    // char * r = new char[1500];
-    // memcpy(r, request, 1500);
 
-    // // Ethernet frame
-    // Frame * frame = reinterpret_cast<Frame*>(r);
-    // Echo * echo = reinterpret_cast<Echo*>(r + 14);
-    
-    // Capturando os valores do fragmento
-    // unsigned int length = CPU_Common::ntohs(echo->Total_Length) - 20;
-    // short unsigned int identification = CPU_Common::ntohs(echo->Identification);
-    // short unsigned int offset = (CPU_Common::ntohs(echo->Flags_Offset) & GET_OFFSET) * 8;
-    // // short unsigned int more_frags = (CPU_Common::ntohs(echo->Flags_Offset) & MORE_FRAGS);
-    // short unsigned int flags = ((CPU_Common::ntohs(echo->Flags_Offset) & GET_FLAGS));
+    db<ICMP_Manager>(WRN) << "ICMP_Manager::send_reply(dst_ip=";
+    for (int i=0; i < 3; i++) {db<ICMP_Manager>(WRN) << dst_ip[i] << ".";}
+    db<ICMP_Manager>(WRN) << dst_ip[4] << ", dst_mac=" << dst_mac << ")";
 
+    // Setando o header default
     Echo * reply = new Echo;
     set_header(reply, false);
-    db<ICMP_Manager>(WRN) << "Fez o set header" << endl;
 
     // Source and Destination IP
     for (int i = 0; i < 4; i++) {
         reply->SRC_ADDR[i] = IP_Manager::_ip_mng->my_ip[i];
         reply->DST_ADDR[i] = dst_ip[i];
     }
-    db<ICMP_Manager>(WRN) << "Preencheu o IP" << sizeof(reply) + sizeof(Echo::Header) << endl;
-    db<ICMP_Manager>(WRN) << "dst_mac " << dst_mac << endl;
     SiFiveU_NIC::_device->send(dst_mac, (void*)reply, sizeof(IP::Header) + sizeof(IP::Echo), 0x0800);
-
-
-    // Verificação se os valores estão certos
-    // db<ICMP_Manager>(WRN) << "length: " << hex << length << endl;
-    // db<ICMP_Manager>(WRN) << "identification: " << hex << identification << endl;
-    // db<ICMP_Manager>(WRN) << "offset: " << offset << endl;
-    // db<ICMP_Manager>(WRN) << "flags: " << flags << endl;
 
 }
 
 void ICMP_Manager::receive(void* icmp_msg, unsigned int size) {
-    db<ICMP_Manager>(WRN) << "ICMP_Manager::receive" << endl;
-    // Cria um novo ponteiro para adicionar na lista de fragmentos que estão chegando
-    // char * r = new char[size];
-    // memcpy(r, request, Eth);
-
+    db<ICMP_Manager>(TRC) << "ICMP_Manager::receive" << endl;
     unsigned char * r = reinterpret_cast<unsigned char *>(icmp_msg);
 
     // Ethernet frame
@@ -116,21 +85,19 @@ void ICMP_Manager::receive(void* icmp_msg, unsigned int size) {
 }
 
 void ICMP_Manager::send_tem(Address dst_mac, IP::Header* header, unsigned char* data) {
-    db<ICMP_Manager>(WRN) << "ICMP_Manager::send_tem" << endl;
-    db<ICMP_Manager>(WRN) << "address: " << dst_mac << endl;
-    db<ICMP_Manager>(WRN) << "header id: " << ntohs(header->Identification) << endl;
 
+
+    db<ICMP_Manager>(WRN) << "Enviando Time Exceeded Message(dst_ip=";
+    for (int i=0; i < 3; i++) {db<ICMP_Manager>(WRN) << header->SRC_ADDR[i] << ".";}
+    db<ICMP_Manager>(WRN) << header->SRC_ADDR[4] << ", dst_mac=" << dst_mac << ")";
+ 
     TEM *tem = new TEM;
 
     // Novo header do ICMP
     tem->header(header);
 
-    db<ICMP_Manager>(WRN) << "ICMP_Manager::Primeira copia funcionando" << endl;
-
     // Header que do datagrama com erro
-    // memcpy(tem->IP_header, header, sizeof(IP::Header));
     tem->IP_header.header(header);
-
 
     // Source and Destination IP
     for (int i = 0; i < 4; i++) {
@@ -152,17 +119,6 @@ void ICMP_Manager::send_tem(Address dst_mac, IP::Header* header, unsigned char* 
     tem->Checksum = 0;
 
     memcpy(tem->data, data, 8);
-
-    // db<ICMP_Manager>(WRN) << "total length: " << ntohs(tem->Total_Length) << endl;
-    // for (int i=0; i<8; i++) {
-    //     tem->data[i] = 'A';
-    // }
-
-    // for (int i=0; i<8; i++) {
-    //     db<ICMP_Manager>(WRN) << data[i] ;
-    // }
-    // db<ICMP_Manager>(WRN) << endl;
-
     SiFiveU_NIC::_device->send(dst_mac, (void*)tem, sizeof(IP::TEM), 0x0800);
 
 

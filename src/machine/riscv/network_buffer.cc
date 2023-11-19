@@ -107,7 +107,7 @@ int Network_buffer::ethernet_forward() {
     while (true)
     {
         net_buffer->sem->p();
-        db<Network_buffer>(WRN) << "Network_buffer - Thread Copy: " << endl;
+        db<Network_buffer>(TRC) << "Network_buffer::Thread Ethernet_forward: " << endl;
 
         for (int i = 0; !(desc->is_cpu_owned()); i=(i+1)%net_buffer->SLOTS_BUFFER) {
             
@@ -132,6 +132,7 @@ int Network_buffer::ethernet_forward() {
         unsigned int frame_size = (desc->control & Cadence_GEM::GET_FRAME_LENGTH) - sizeof(CRC); //- sizeof(Ethernet::CRC32) - sizeof(Ethernet::Header);
         
 
+        // Protocolo ARP
         if  (protocol == 0x0806) {
             db<Network_buffer>(TRC) << "copy(): Pacote ARP"<< endl;
             
@@ -150,27 +151,34 @@ int Network_buffer::ethernet_forward() {
 
         }
         
+        // Protocolo IP
         if (protocol == 0x0800) {
             
-            db<Network_buffer>(TRC) << "copy(): Pacote IP "<< endl;
+            db<Network_buffer>(TRC) << "Ethernet_foward()::Pacote IP "<< endl;
 
-            // Se MAC é igual e IP é diferente do pacote, é preciso retransmitir
             Frame * frame = (reinterpret_cast<Frame*>(desc->address));
-
             if (frame->dst() != SiFiveU_NIC::_device->address) {
                 db<Network_buffer>(TRC) << "copy(): Não é meu MAC"<< frame->dst() << endl;
                 continue;
             }
 
+            // Protocolo ICMP
             Fragment::Header * header = (reinterpret_cast<Fragment::Header*>(desc->address + sizeof(Ethernet::Header)));
             if (header->Protocol == 1) {
                 db<Network_buffer>(TRC) << "ICMP Message" << endl;
 
                 // Faz a copia do buffer rx para data
                 char  payload[frame_size];
-                memcpy(payload, reinterpret_cast<void*>(desc->address),  frame_size);
+                memcpy(payload, reinterpret_cast<void*>(desc->address), frame_size);
+
+                // Liberando a o buffer RX para a NIC, 
+                // Setando os 2 ultimos bits da word[0] (O wrap bit caso seja necessário)
+                desc->set_rx_own_wrap(idx == ( net_buffer->SLOTS_BUFFER - 1));
+
+                // Gerenciador de pacotes ICMP
                 ICMP_Manager::_icmp_mng->receive((void *)(payload),  frame_size);
             
+            // Protocolo IP
             } else {
 
                 // Cria um novo ponteiro para adicionar na lista de fragmentos que estão chegando
@@ -181,6 +189,7 @@ int Network_buffer::ethernet_forward() {
                 // (O wrap bit caso seja necessário)
                 desc->set_rx_own_wrap(idx == ( net_buffer->SLOTS_BUFFER - 1));
 
+                // Gerenciador de pacotes IP
                 IP_Manager::_ip_mng->receive((void *)(content));
             }
         }
