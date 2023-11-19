@@ -31,7 +31,7 @@ class ARP_Manager {
 
     public:
         static ARP_Manager* _arp_mng;
-        unsigned char IP_ADDR[4];
+        // unsigned char IP_ADDR[4];
         // unsigned char localhost[4];
 
         struct ARPTableEntry {

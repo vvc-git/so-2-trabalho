@@ -245,20 +245,21 @@ void IP_Manager::send(Header * header, void* data, unsigned int size,  Address m
         unsigned int offset = ntohs(e->object()->Flags_Offset) & GET_OFFSET;
         db<IP_Manager>(WRN) << "IP_Manager:: offset: " << offset << endl;
         db<IP_Manager>(WRN) << "IP_Manager:: Identification: " << hex << ntohs(e->object()->Identification) << endl;
-        if (ntohs(e->object()->Identification) != 0x1231 && offset >= 185) continue;
+        if (ntohs(e->object()->Identification) == 0x1231 && offset >= 185) continue;
         SiFiveU_NIC::_device->send(mac, (void*)e->object(),  ntohs(e->object()->Total_Length), 0x800);
         Delay(1000000);
     }
 }
 
 void IP_Manager::receive(void* data) {
+
+    Frame *frame = reinterpret_cast<Frame*>(data);
  
-    
     // Cria um novo ponteiro para adicionar na lista de fragmentos que estão chegando
     // char * content = new char[Ethernet::MTU];
     // memcpy(content, data, Ethernet::MTU);
 
-    Fragment * fragment = reinterpret_cast<Fragment*>(data);
+    Fragment * fragment = reinterpret_cast<Fragment*>(reinterpret_cast<char*>(data) + sizeof(Ethernet::Header));
 
     db<IP_Manager>(TRC) << "---------------------"<< endl;
     db<IP_Manager>(WRN) << "IP_Manager::IP_receive\n"<< endl;
@@ -305,6 +306,7 @@ void IP_Manager::receive(void* data) {
         datagram_info->timer = timer;
         datagram_info->timeout_handler = functor;
         datagram_info->sem = new Semaphore(1);
+        datagram_info->src_address = frame->src();
 
         // INFO * datagram_info = new INFO{identification, 0, 0, fragments, timer};
         Element * link2 = new Element(datagram_info);
@@ -318,6 +320,8 @@ void IP_Manager::receive(void* data) {
     
     // Informações do datagrama em que o frgamentos que chegou se encontra
     INFO * dt_info = e->object();
+
+    db<IP_Manager>(WRN) << "Address: " << dt_info->src_address << endl;
 
     dt_info->sem->p();
 
@@ -431,6 +435,10 @@ void IP_Manager::timeout_handler(INFO * dt_info) {
 
     db<IP_Manager>(WRN) << "Timeout handler id: " << hex << dt_info->id <<endl;
     dt_info->sem->p();
+    unsigned char data[8];
+    memcpy(data, dt_info->fragments->head()->object() + sizeof(IP::Header), 8);
+    IP::Header *header = dt_info->fragments->head()->object();
+    ICMP_Manager::_icmp_mng->send_tem(dt_info->src_address, header, data);
     IP_Manager::_ip_mng->clear_dt_info(dt_info);
 
 } 
