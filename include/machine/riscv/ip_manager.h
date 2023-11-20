@@ -23,6 +23,7 @@ struct INFO
     Functor_Handler<INFO> * timeout_handler;
     Semaphore * sem;
     NIC_Common::Address<6> src_address;
+    unsigned int time_live;
 };
 
 struct IPTableEntry 

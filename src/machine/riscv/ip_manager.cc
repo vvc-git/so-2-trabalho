@@ -245,11 +245,6 @@ void IP_Manager::send(Header * header, void* data, unsigned int size,  Address m
 
     FList::Element * e = fragments->head();
     for (; e; e = e->next() ) {
-        db<IP_Manager>(TRC) << "IP_Manager:: chegou na lista id: " << hex << ntohs(e->object()->Identification) << endl;
-        unsigned int offset = ntohs(e->object()->Flags_Offset) & GET_OFFSET;
-        db<IP_Manager>(TRC) << "IP_Manager:: offset: " << offset << endl;
-        db<IP_Manager>(TRC) << "IP_Manager:: Identification: " << hex << ntohs(e->object()->Identification) << endl;
-        if (ntohs(e->object()->Identification) == 0x1231 && offset >= 185) continue;
         SiFiveU_NIC::_device->send(mac, (void*)e->object(),  ntohs(e->object()->Total_Length), 0x800);
         Delay(1000000);
     }
@@ -274,19 +269,40 @@ void IP_Manager::receive(void* data) {
     // Verificação se os valores estão certos
     db<IP_Manager>(TRC) << "header_length: " << header_length << endl;
     db<IP_Manager>(TRC) << "data_length: "  << data_length << endl;
-    db<IP_Manager>(TRC) << "identification: " << hex << identification << endl;
+    db<IP_Manager>(WRN) << "identification: " << hex << identification << endl;
     db<IP_Manager>(TRC) << "offset: " << offset << endl;
     db<IP_Manager>(TRC) << "flags: " << flags << endl;
 
-
-    List::Element * e;
+    List::Element * d = nullptr;
+    List::Element * e = incomplete_dtgs->head();
     // Varredura na lista de informações de datagramas
-    for (e = incomplete_dtgs->head(); e && e->object()->id != identification; e = e->next()) {}   
+    for (; e ; e = e->next()) {
+        db<IP_Manager>(WRN) << "e: " << hex << e << endl;
+        if (e->object()->id == identification) {
+            db<IP_Manager>(WRN) << "d = e" << endl;
+            d = e;
+            // e = e->next();
+        } else {
+            db<IP_Manager>(WRN) << "d != e" << endl;
+            e->object()->time_live--;
+            if (!e->object()->time_live) {
+                List::Element * f = e;
+                // e = e->next();
+                clear_dt_info(f->object());
+                // delete incomplete_dtgs->remove(f);
+                // deletar dt_info
+            }
+        }
+
+
+    }   
+
+    db<IP_Manager>(WRN) << "depois do for" << endl;
 
     // Verifica se já temos informações do fragmento que chegou
     // Se não tiver, inicia um datagrama novo
-    if (!e) {
-        db<SiFiveU_NIC>(TRC) << "Primeiro frame"<<endl;
+    if (!d) {
+        db<SiFiveU_NIC>(WRN) << "Primeiro frame"<<endl;
         
         // Criando uma nova estrutura para frames do mesmo datagrama
         Simple_List<Fragment>*  fragments = new Simple_List<Fragment>();
@@ -295,7 +311,7 @@ void IP_Manager::receive(void* data) {
 
         // Alarme
         Functor_Handler<INFO> * functor = new Functor_Handler<INFO>(&timeout_handler, datagram_info);
-        Alarm * timer = new Alarm(Microsecond(Second(30)), functor, 1);
+        Alarm * timer = new Alarm(Microsecond(Second(1000)), functor, 1);
 
         datagram_info->fragments = fragments;
         datagram_info->id = identification;
@@ -305,24 +321,26 @@ void IP_Manager::receive(void* data) {
         datagram_info->timeout_handler = functor;
         datagram_info->sem = new Semaphore(1);
         datagram_info->src_address = frame->src();
+        datagram_info->time_live = 1;
 
         // INFO * datagram_info = new INFO{identification, 0, 0, fragments, timer};
         Element * link2 = new Element(datagram_info);
         
         // Adiciona na lista de datagramas
         incomplete_dtgs->insert(link2);
-        e = link2; 
+        d = link2; 
         
     }
-    
+    db<IP_Manager>(WRN) << "Setando fragmento" << endl;
+
     // Informações do datagrama em que o frgamentos que chegou se encontra
-    INFO * dt_info = e->object();
+    INFO * dt_info = d->object();
 
     // Semáforo para impedir o timeout enquanto o fragmento está sendo tratado
     dt_info->sem->p();
 
     // Lista de fragmentos  de um mesmo datagram
-    Simple_List<Fragment> * fragments = e->object()->fragments; 
+    Simple_List<Fragment> * fragments = d->object()->fragments; 
 
     // Inserindo na lista de fragmentos
     Simple_List<Fragment>::Element * link1 = new  Simple_List<Fragment>::Element(fragment);
@@ -352,7 +370,7 @@ void IP_Manager::receive(void* data) {
     // Quando todos os framentos chegaram, remonta.
     if (total_frame == dt_info->num_fragments) {
         db<IP_Manager>(WRN) << "Inserir datagrama completo e liberar thread 2" << endl;
-        complete_dtgs->insert(incomplete_dtgs->remove(e));
+        complete_dtgs->insert(incomplete_dtgs->remove(d));
         Delay(30000000);
         db<IP_Manager>(WRN) << "Deletando alarme" << endl;
         delete dt_info->timer;
@@ -458,10 +476,12 @@ void IP_Manager::timeout_handler(INFO * dt_info) {
 
 } 
 
+// Retirar da lista que o dt_info pertence é responsabilidade da 
+// função que chama
 void IP_Manager::clear_dt_info(INFO * dt_info) {
 
-    db<IP_Manager>(TRC) << "Clear dt_info id: " << hex << dt_info->id <<endl;
-    db<IP_Manager>(TRC) << "Deletando fragmentos " << endl;
+    db<IP_Manager>(WRN) << "Clear dt_info id: " << hex << dt_info->id <<endl;
+    db<IP_Manager>(WRN) << "Deletando fragmentos " << endl;
     unsigned long size = dt_info->fragments->size();
     while (size > 0)
     {
@@ -472,15 +492,15 @@ void IP_Manager::clear_dt_info(INFO * dt_info) {
 
     }
 
-    db<IP_Manager>(TRC) << "Deletando timer " << endl;
+    db<IP_Manager>(WRN) << "Deletando timer " << endl;
     if (dt_info->timer) delete dt_info->timer;
     delete dt_info->timeout_handler;
 
-    db<IP_Manager>(TRC) << "Deletando Elemento linkagem, INFO e semaforo " << endl;
-    List::Element * d = incomplete_dtgs->search(dt_info);
-    complete_dtgs->remove(d);
-    delete dt_info->sem;
-    delete dt_info;
+    db<IP_Manager>(WRN) << "Deletando Elemento linkagem, INFO e semaforo " << endl;
+    // List::Element * d = incomplete_dtgs->search(dt_info);
+    // complete_dtgs->remove(d);
+    // delete dt_info->sem;
+    // delete dt_info;
 }
 
 void* IP_Manager::reassembly(INFO * dt_info) {

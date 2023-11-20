@@ -15,7 +15,7 @@ void UDP_Manager::hello() {
 
 void UDP_Manager::update(Data_Observed<unsigned char, void> * o, unsigned char * d) {
     db<UDP_Manager>(WRN) << "UDP_Manager::update()"<< endl;
-    for (unsigned int i = 20; i < 1000; i++) {
+    for (unsigned int i = 20; i < 100; i++) {
         db<UDP_Manager>(WRN) << reinterpret_cast<char*>(d)[i];
     }
     db<UDP_Manager>(WRN) << endl;
