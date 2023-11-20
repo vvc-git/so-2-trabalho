@@ -148,7 +148,7 @@ void ICMP_Manager::set_header(Echo * echo, bool request) {
     // ICMP especific fields
     echo->Type = (request ? 8 : 0);
     echo->Code = 0;
-    echo->Checksum = 0; // TODO: Refactor
+    echo->Checksum = 0;
     echo->Identifer = 0;
     echo->Sequence_Number = 0;
 

@@ -32,16 +32,13 @@ void test_ip_complete() {
      ip[2] = 60;
      ip[3] = 2;
 
-     cout << "\nTeste rede local" << endl;
-
-     // Envio para host na mesma rede local
-     cout << "Quem tem o mac do IP  " << static_cast<int>(ip[0]) << ".";
-     cout << static_cast<int>(ip[1]) << ".";
-     cout << static_cast<int>(ip[2]) << ".";
-     cout << static_cast<int>(ip[3]) << "?" <<endl;
+     cout << "\nTeste datagrama completo" << endl;
 
      NIC_Common::Address<6> * mac =  IP_Manager::_ip_mng->find_mac(ip);
-     if (mac) cout << "MAC encontrado: " << *mac << endl;
+     if (!mac) {
+          cout << "MAC não encontrado: " << endl;
+          return;
+     } 
 
      cout << "Iniciando envio de dados IP" << endl;
 
@@ -59,17 +56,6 @@ void test_ip_complete() {
      memcpy(header->SRC_ADDR, IP_Manager::_ip_mng->my_ip, 4);
      memcpy(header->DST_ADDR, ip, 4);
 
-     cout << "IP DST " << static_cast<int>(header->DST_ADDR[0]) << ".";
-     cout << static_cast<int>(header->DST_ADDR[1]) << ".";
-     cout << static_cast<int>(header->DST_ADDR[2]) << ".";
-     cout << static_cast<int>(header->DST_ADDR[3]) << "?" << endl;
-
-     cout << "IP SRC " << static_cast<int>(header->SRC_ADDR[0]) << ".";
-     cout << static_cast<int>(header->SRC_ADDR[1]) << ".";
-     cout << static_cast<int>(header->SRC_ADDR[2]) << ".";
-     cout << static_cast<int>(header->SRC_ADDR[3]) << "?" << endl;
-
-     db<Network_buffer>(WRN) << "Datagrama enviado: " << data_second << endl;
      IP_Manager::_ip_mng->send(header, data_second, data_size, *mac);
 
 }
@@ -123,8 +109,8 @@ void test_ip_incomplete() {
      // Teste forçando a perda de um fragmento
      Simple_List<IP::Fragment>::Element * e = fragments->head();
      for (; e; e = e->next() ) {
-          // unsigned int offset = ntohs(e->object()->Flags_Offset) & IP_Manager::GET_OFFSET;
-          // if (offset == 185) continue;
+          unsigned int offset = ntohs(e->object()->Flags_Offset) & IP_Manager::GET_OFFSET;
+          if (offset == 185) continue;
           SiFiveU_NIC::_device->send(*mac, (void*)e->object(),  ntohs(e->object()->Total_Length), 0x800);
           Delay(1000000);
      }
@@ -166,8 +152,14 @@ int main()
      if(sifiveu_nic->address[5] % 2 ) {
           cout << "Sender" << endl;
 
+          test_ping();
+          Delay(3000000);
+
           test_ip_incomplete();
-          Delay(5000000);
+          Delay(3000000);
+
+          test_ip_complete();
+          Delay(1000000000);
 
      // Receiver | Router
      } else {

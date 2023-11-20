@@ -198,7 +198,7 @@ void IP_Manager::routing(void * datagram) {
 
 
 void IP_Manager::send(Header * header, void* data, unsigned int size,  Address mac) {
-    db<IP_Manager>(WRN) << "IP_Manager::IP_send inicio"<< endl;
+    db<IP_Manager>(TRC) << "IP_Manager::IP_send inicio"<< endl;
     
     // Cria o datagram para ser enviado
     unsigned char datagram[sizeof(IP::Header) + size];
@@ -245,11 +245,6 @@ void IP_Manager::send(Header * header, void* data, unsigned int size,  Address m
 
     FList::Element * e = fragments->head();
     for (; e; e = e->next() ) {
-        db<IP_Manager>(TRC) << "IP_Manager:: chegou na lista id: " << hex << ntohs(e->object()->Identification) << endl;
-        unsigned int offset = ntohs(e->object()->Flags_Offset) & GET_OFFSET;
-        db<IP_Manager>(TRC) << "IP_Manager:: offset: " << offset << endl;
-        db<IP_Manager>(TRC) << "IP_Manager:: Identification: " << hex << ntohs(e->object()->Identification) << endl;
-        if (ntohs(e->object()->Identification) == 0x1231 && offset >= 185) continue;
         SiFiveU_NIC::_device->send(mac, (void*)e->object(),  ntohs(e->object()->Total_Length), 0x800);
         Delay(1000000);
     }
@@ -260,7 +255,7 @@ void IP_Manager::receive(void* data) {
     Frame *frame = reinterpret_cast<Frame*>(data);
     Fragment * fragment = reinterpret_cast<Fragment*>(reinterpret_cast<char*>(data) + sizeof(Ethernet::Header));
 
-    db<IP_Manager>(WRN) << "IP_Manager::IP_receive"<< endl;
+    db<IP_Manager>(TRC) << "IP_Manager::IP_receive"<< endl;
     
     // Capturando os valores do fragmento
     short unsigned int header_length = (fragment->Version_IHL & GET_IHL)*4;
@@ -295,7 +290,7 @@ void IP_Manager::receive(void* data) {
 
         // Alarme
         Functor_Handler<INFO> * functor = new Functor_Handler<INFO>(&timeout_handler, datagram_info);
-        Alarm * timer = new Alarm(Microsecond(Second(30)), functor, 1);
+        Alarm * timer = new Alarm(Microsecond(Second(15)), functor, 1);
 
         datagram_info->fragments = fragments;
         datagram_info->id = identification;
@@ -351,10 +346,8 @@ void IP_Manager::receive(void* data) {
  
     // Quando todos os framentos chegaram, remonta.
     if (total_frame == dt_info->num_fragments) {
-        db<IP_Manager>(WRN) << "Inserir datagrama completo e liberar thread 2" << endl;
+        db<IP_Manager>(TRC) << "Inserir datagrama completo e liberar thread 2" << endl;
         complete_dtgs->insert(incomplete_dtgs->remove(e));
-        Delay(30000000);
-        db<IP_Manager>(WRN) << "Deletando alarme" << endl;
         delete dt_info->timer;
         // Semáfor para liberar a thread IP_Foward para 
         // (I) Remontar
@@ -440,10 +433,6 @@ void IP_Manager::timeout_handler(INFO * dt_info) {
     // Semáforo para bloquear a thread Ethernet_foward 
     // de adicionar novos fragmentos na incomplete_dtgs
     dt_info->sem->p();
-    db<IP_Manager>(WRN) << "Timeout handler liberado após p(): " <<endl;
-    
-    if (!dt_info) return; 
-    db<IP_Manager>(WRN) << "Timeout handler passou (!dt_info) " <<endl;
 
     // Cópia dos primeiros 8 bytes (64bits) de um datagrama incompleto
     unsigned char data[8];
@@ -527,11 +516,11 @@ void* IP_Manager::reassembly(INFO * dt_info) {
     header->Total_Length = htons(dt_info->total_length + header_length);
     db<IP_Manager>(TRC) << "Total Length: " << htons(header->Total_Length) << endl;
 
-    db<IP_Manager>(WRN) << "\nRecebido datagrama:" << endl;
+    db<IP_Manager>(TRC) << "\nRecebido datagrama:" << endl;
     for (unsigned int i = 20; i < dt_info->total_length; i++) {
-        db<IP_Manager>(WRN) << reinterpret_cast<char*>(base)[i];
+        db<IP_Manager>(TRC) << reinterpret_cast<char*>(base)[i];
     }
-    db<IP_Manager>(WRN) << endl;
+    db<IP_Manager>(TRC) << endl;
 
     return base;
 
@@ -606,9 +595,6 @@ int IP_Manager::ip_foward() {
     
     // Tamanho padrão de cada fragmento
     header->Total_Length = CPU_Common::htons(Ethernet::MTU);
-    db<IP_Manager>(WRN) << "Começo do default " << endl;
-
-    // header->fragment_Checksum = 0;
  }
 
 IP_Manager::FList * IP_Manager::fragmentation(void * datagram, unsigned int size) {

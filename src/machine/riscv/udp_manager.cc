@@ -9,18 +9,21 @@ void UDP_Manager::init() {
     udp_mng = new (SYSTEM) UDP_Manager();
 }
 
-void UDP_Manager::hello() {
-    db<UDP_Manager>(WRN) << "UDP_Manager::hello()"<< endl;
+void UDP_Manager::handle_package(char *data, unsigned int size) {
+    db<UDP_Manager>(TRC) << "UDP_Manager::handle_package()"<< endl;
+    for (unsigned int i = 20; i < size; i++) {
+        db<UDP_Manager>(WRN) << data[i];
+    }
+    db<UDP_Manager>(WRN) << endl;
 }
 
 void UDP_Manager::update(Data_Observed<unsigned char, void> * o, unsigned char * d) {
-    db<UDP_Manager>(WRN) << "UDP_Manager::update()"<< endl;
-    for (unsigned int i = 20; i < 1000; i++) {
-        db<UDP_Manager>(WRN) << reinterpret_cast<char*>(d)[i];
-    }
-    db<UDP_Manager>(WRN) << endl;
+    db<UDP_Manager>(TRC) << "UDP_Manager::update()"<< endl;
+    IP::Header *header = reinterpret_cast<IP::Header*>(d);
+    unsigned int size = ntohs(header->Total_Length) - 20;
+
+    handle_package(reinterpret_cast<char*>(d), size);
     
-    hello();
 }
 
 __END_SYS
