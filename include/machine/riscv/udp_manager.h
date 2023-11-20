@@ -13,7 +13,7 @@ __BEGIN_SYS
 class UDP_Manager: public Data_Observer<unsigned char, void> {
 public:
     static void init();
-    void hello();
+    void handle_package(char *data, unsigned int size);
     void update(Data_Observed<unsigned char, void> * o, unsigned char * d);
 
 public:
