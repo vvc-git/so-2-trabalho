@@ -19,9 +19,9 @@ struct INFO
     unsigned int total_length;
     // Lista ordenada de fragmentos por offset
     Simple_List<IP::Fragment>  * fragments;
-    Alarm * timer;
-    Functor_Handler<INFO> * timeout_handler;
-    Semaphore * sem;
+    // Alarm * timer;
+    // Functor_Handler<INFO> * timeout_handler;
+    // Semaphore * sem;
     NIC_Common::Address<6> src_address;
     unsigned int time_live;
 };
@@ -67,6 +67,7 @@ public:
     static int ip_foward();
     static void default_header(IP::Header * header);
     void set_own_IP();
+    List::Element * timeout_checker(short unsigned int identification);
     // void attach(Data_Observer<char, void> *o) { Data_Observed<char, void>::attach(o); };
 
 

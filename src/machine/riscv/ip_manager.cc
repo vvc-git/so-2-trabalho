@@ -272,36 +272,14 @@ void IP_Manager::receive(void* data) {
     db<IP_Manager>(WRN) << "identification: " << hex << identification << endl;
     db<IP_Manager>(TRC) << "offset: " << offset << endl;
     db<IP_Manager>(TRC) << "flags: " << flags << endl;
+    
+    List::Element * finded = timeout_checker(identification);
 
-    List::Element * d = nullptr;
-    List::Element * e = incomplete_dtgs->head();
-    // Varredura na lista de informações de datagramas
-    for (; e ; e = e->next()) {
-        db<IP_Manager>(WRN) << "e: " << hex << e << endl;
-        if (e->object()->id == identification) {
-            db<IP_Manager>(WRN) << "d = e" << endl;
-            d = e;
-            // e = e->next();
-        } else {
-            db<IP_Manager>(WRN) << "d != e" << endl;
-            e->object()->time_live--;
-            if (!e->object()->time_live) {
-                List::Element * f = e;
-                // e = e->next();
-                clear_dt_info(f->object());
-                // delete incomplete_dtgs->remove(f);
-                // deletar dt_info
-            }
-        }
-
-
-    }   
-
-    db<IP_Manager>(WRN) << "depois do for" << endl;
+    if (finded) db<IP_Manager>(WRN) << "Finded->ID " << hex << finded->object()->id << endl;
 
     // Verifica se já temos informações do fragmento que chegou
     // Se não tiver, inicia um datagrama novo
-    if (!d) {
+    if (!finded) {
         db<SiFiveU_NIC>(WRN) << "Primeiro frame"<<endl;
         
         // Criando uma nova estrutura para frames do mesmo datagrama
@@ -309,17 +287,10 @@ void IP_Manager::receive(void* data) {
 
         INFO * datagram_info = new INFO;
 
-        // Alarme
-        Functor_Handler<INFO> * functor = new Functor_Handler<INFO>(&timeout_handler, datagram_info);
-        Alarm * timer = new Alarm(Microsecond(Second(1000)), functor, 1);
-
         datagram_info->fragments = fragments;
         datagram_info->id = identification;
         datagram_info->num_fragments = 0;
         datagram_info->total_length = 0;
-        datagram_info->timer = timer;
-        datagram_info->timeout_handler = functor;
-        datagram_info->sem = new Semaphore(1);
         datagram_info->src_address = frame->src();
         datagram_info->time_live = 1;
 
@@ -328,19 +299,16 @@ void IP_Manager::receive(void* data) {
         
         // Adiciona na lista de datagramas
         incomplete_dtgs->insert(link2);
-        d = link2; 
+        finded = link2; 
         
     }
     db<IP_Manager>(WRN) << "Setando fragmento" << endl;
 
     // Informações do datagrama em que o frgamentos que chegou se encontra
-    INFO * dt_info = d->object();
-
-    // Semáforo para impedir o timeout enquanto o fragmento está sendo tratado
-    dt_info->sem->p();
+    INFO * dt_info = finded->object();
 
     // Lista de fragmentos  de um mesmo datagram
-    Simple_List<Fragment> * fragments = d->object()->fragments; 
+    Simple_List<Fragment> * fragments = finded->object()->fragments; 
 
     // Inserindo na lista de fragmentos
     Simple_List<Fragment>::Element * link1 = new  Simple_List<Fragment>::Element(fragment);
@@ -370,21 +338,14 @@ void IP_Manager::receive(void* data) {
     // Quando todos os framentos chegaram, remonta.
     if (total_frame == dt_info->num_fragments) {
         db<IP_Manager>(WRN) << "Inserir datagrama completo e liberar thread 2" << endl;
-        complete_dtgs->insert(incomplete_dtgs->remove(d));
-        Delay(30000000);
-        db<IP_Manager>(WRN) << "Deletando alarme" << endl;
-        delete dt_info->timer;
+        complete_dtgs->insert(incomplete_dtgs->remove(finded));
         // Semáfor para liberar a thread IP_Foward para 
         // (I) Remontar
         // (II) Encaminhar para UDP ou roteamento
         sem_th->v();
 
-    } else {
-        dt_info->timer->reset();
-        dt_info->sem->v();
     }
     
-
 }
 
 IP_Manager::Address * IP_Manager::find_mac(unsigned char* dst_ip)
@@ -454,14 +415,6 @@ void IP_Manager::timeout_handler(INFO * dt_info) {
 
     // Tratador 
     db<IP_Manager>(WRN) << "Timeout handler id: " << hex << dt_info->id <<endl;
-    
-    // Semáforo para bloquear a thread Ethernet_foward 
-    // de adicionar novos fragmentos na incomplete_dtgs
-    dt_info->sem->p();
-    db<IP_Manager>(WRN) << "Timeout handler liberado após p(): " <<endl;
-    
-    if (!dt_info) return; 
-    db<IP_Manager>(WRN) << "Timeout handler passou (!dt_info) " <<endl;
 
     // Cópia dos primeiros 8 bytes (64bits) de um datagrama incompleto
     unsigned char data[8];
@@ -492,27 +445,18 @@ void IP_Manager::clear_dt_info(INFO * dt_info) {
 
     }
 
-    db<IP_Manager>(WRN) << "Deletando timer " << endl;
-    if (dt_info->timer) delete dt_info->timer;
-    delete dt_info->timeout_handler;
-
-    db<IP_Manager>(WRN) << "Deletando Elemento linkagem, INFO e semaforo " << endl;
-    // List::Element * d = incomplete_dtgs->search(dt_info);
-    // complete_dtgs->remove(d);
-    // delete dt_info->sem;
-    // delete dt_info;
 }
 
 void* IP_Manager::reassembly(INFO * dt_info) {
 
-    db<IP_Manager>(TRC) << "Remontagem" << endl;
+    db<IP_Manager>(WRN) << "Remontagem" << endl;
         
     // Capturando o 1° fragmento 
     Simple_List<Fragment>::Element * h = dt_info->fragments->head();
 
     // Tamanho do cabeçalho IP
     short unsigned int header_length = (h->object()->Version_IHL & GET_IHL)*4;
-    db<IP_Manager>(TRC) << "Header Length: " << header_length << endl;
+    db<IP_Manager>(WRN) << "Header Length: " << header_length << endl;
 
     // Aloca um espaço no buffer não contíguo (heap) para o datagrama
     void * base = Network_buffer::net_buffer->dt->alloc(dt_info->total_length + header_length);
@@ -532,9 +476,9 @@ void* IP_Manager::reassembly(INFO * dt_info) {
         // Tamanho do fragmento
         unsigned int size = CPU_Common::ntohs(f->Total_Length) - header_length;
 
-        db<IP_Manager>(TRC) << "Size " << size << endl;
-        db<IP_Manager>(TRC) << "Offset do frame " << offset <<endl;
-        db<IP_Manager>(TRC) << "Data " << f->data << endl;
+        db<IP_Manager>(WRN) << "Size " << size << endl;
+        db<IP_Manager>(WRN) << "Offset do frame " << offset <<endl;
+        db<IP_Manager>(WRN) << "Data " << f->data << endl;
 
         // Remontagem do fragmento na heap
         char * next = reinterpret_cast<char*>(base) + offset + header_length;
@@ -580,6 +524,7 @@ int IP_Manager::ip_foward() {
         // Inicia a remontagem dos fragmentos (completos) que chegaram
         void* datagram = IP_Manager::_ip_mng->reassembly(e->object()); 
 
+        db<IP_Manager>(WRN) << "IP_Manager::ip_foward após remontagem" << endl;
         IP::Header* header = reinterpret_cast<IP::Header*>(datagram);
 
         // Verifica se é necessário retransmitir (IP é meu)
@@ -599,6 +544,9 @@ int IP_Manager::ip_foward() {
 
         IP_Manager::_ip_mng->clear_dt_info(e->object());
 
+        complete_dtgs->remove(e);
+        delete e->object();
+        delete e;
     }
     return 0;   
 }
@@ -716,6 +664,32 @@ void IP_Manager::set_own_IP() {
     my_ip[1] = 162;
     my_ip[2] = 60;
     my_ip[3] = SiFiveU_NIC::_device->address[5];
+}
+
+IP_Manager::List::Element * IP_Manager::timeout_checker(short unsigned int identification) {
+
+    List::Element * finded = nullptr;
+    List::Element * e = incomplete_dtgs->head();
+    // Varredura na lista de informações de datagramas
+    for (; e ; e = e->next()) {
+        db<IP_Manager>(WRN) << "e: " << hex << e << endl;
+        if (e->object()->id == identification) {
+            db<IP_Manager>(WRN) << "finded = e" << endl;
+            finded = e;
+        } else {
+            db<IP_Manager>(WRN) << "finded != e" << endl;
+            e->object()->time_live--;
+            if (!e->object()->time_live) {
+                List::Element * f = e;
+                timeout_handler(e->object());
+                delete f->object();
+                delete incomplete_dtgs->remove(f);
+            }
+        }
+    }
+
+    return finded;
+
 }
 
 __END_SYS

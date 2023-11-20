@@ -42,7 +42,7 @@ void test_ip_complete() {
 
      cout << "Iniciando envio de dados IP" << endl;
 
-     unsigned int data_size = 200;
+     unsigned int data_size = 2000;
      unsigned char data_second[data_size];
      for(unsigned int i = 0; i < data_size; i++) {
           if (i < frag_data_size) data_second[i] = '3';
@@ -107,6 +107,7 @@ void test_ip_incomplete() {
      Simple_List<IP::Fragment> * fragments = IP_Manager::_ip_mng->fragmentation(datagram, data_size);
 
      // Teste forçando a perda de um fragmento
+     cout << "Iniciando envio de datagrama incompleto" << endl;
      Simple_List<IP::Fragment>::Element * e = fragments->head();
      for (; e; e = e->next() ) {
           unsigned int offset = ntohs(e->object()->Flags_Offset) & IP_Manager::GET_OFFSET;
@@ -114,6 +115,11 @@ void test_ip_incomplete() {
           SiFiveU_NIC::_device->send(*mac, (void*)e->object(),  ntohs(e->object()->Total_Length), 0x800);
           Delay(1000000);
      }
+
+     // Envio de um segundo datagrama que força a deleção do primeiro
+     cout << "Iniciando envio de datagrama completo" << endl;
+     header->Identification = 0x666;
+     IP_Manager::_ip_mng->send(header, data, data_size, *mac);
 
 }
 
@@ -153,6 +159,9 @@ int main()
           cout << "Sender" << endl;
 
           test_ip_incomplete();
+          Delay(1000000);
+
+          test_ip_complete();
           Delay(1000000);
 
           test_ip_complete();
